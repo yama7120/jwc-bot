@@ -44,6 +44,12 @@ const normalizeWeekNow = (source) => {
   return normalized;
 };
 
+const sendHealthFallback = (res) => {
+  if (!res.headersSent) {
+    res.status(200).send("JWC Bot server is running");
+  }
+};
+
 router.get("/", async function (req, res) {
   try {
     const dataWarStatsCurrent = {
@@ -79,16 +85,27 @@ router.get("/", async function (req, res) {
       console.error("[home] failed to read weekNow from MongoDB:", error.message);
     }
 
-    res.render("home", {
-      config: config,
-      dataWarStatsCurrent: JSON.stringify(dataWarStatsCurrent),
-      chartDataWarProgress: JSON.stringify(chartDataWarProgress),
-      chartOptionsWarProgress: JSON.stringify(chartOptionsWarProgress),
-      weekNow: JSON.stringify(weekNow),
-    });
+    res.render(
+      "home",
+      {
+        config: config,
+        dataWarStatsCurrent: JSON.stringify(dataWarStatsCurrent),
+        chartDataWarProgress: JSON.stringify(chartDataWarProgress),
+        chartOptionsWarProgress: JSON.stringify(chartOptionsWarProgress),
+        weekNow: JSON.stringify(weekNow),
+      },
+      (renderError, html) => {
+        if (renderError) {
+          console.error("[home] template render error:", renderError);
+          sendHealthFallback(res);
+          return;
+        }
+        res.send(html);
+      }
+    );
   } catch (error) {
     console.error("[home] unexpected render error:", error);
-    res.status(200).send("JWC Bot server is running");
+    sendHealthFallback(res);
   }
 });
 
