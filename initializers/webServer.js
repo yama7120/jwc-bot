@@ -1,8 +1,4 @@
 const express = require("express");
-const path = require("path");
-const createError = require("http-errors");
-const cookieParser = require("cookie-parser");
-const morgan = require("morgan");
 
 class WebServer {
   constructor(config) {
@@ -11,40 +7,22 @@ class WebServer {
     this.listener = null;
   }
 
-  // Expressアプリケーションの設定
-  setupExpress() {
-    // view engine setup
-    this.app.set("views", path.join(__dirname, "../express-gen-app/views"));
-    this.app.set("view engine", "ejs");
-
-    // ミドルウェアの設定
+  // Bot運用に必要な最小エンドポイントのみ設定
+  setupCoreRoutes(client, postHandler) {
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: false }));
-    this.app.use(cookieParser());
-    this.app.use(morgan("combined"));
-    this.app.use(express.static(path.join(__dirname, "../express-gen-app/public")));
 
-    // ルートの設定
-    const homeRouter = require("../express-gen-app/routes/home");
-    const j1Router = require("../express-gen-app/routes/j1");
-    const j2Router = require("../express-gen-app/routes/j2");
-    const mixRouter = require("../express-gen-app/routes/mix");
-    const swissRouter = require("../express-gen-app/routes/swiss");
-    const testRouter = require("../express-gen-app/routes/test");
+    // Replitのヘルスチェック用
+    this.app.get("/", (req, res) => {
+      res.status(200).send("ok");
+    });
+    this.app.get("/health", (req, res) => {
+      res.status(200).json({ status: "ok" });
+    });
 
-    this.app.use("/", homeRouter);
-    this.app.use("/j1", j1Router);
-    this.app.use("/j2", j2Router);
-    this.app.use("/mix", mixRouter);
-    this.app.use("/swiss", swissRouter);
-    this.app.use("/test", testRouter);
-  }
-
-  // POSTエンドポイントの設定
-  setupPostEndpoint(client, postHandler) {
     // GET /post など他メソッドは 405（POSTより前に定義）
     this.app.all("/post", (req, res, next) => {
-      if (req.method !== 'POST') {
+      if (req.method !== "POST") {
         return res.status(405).send("Method Not Allowed: use POST");
       }
       next();
@@ -67,14 +45,6 @@ class WebServer {
     // 存在しないルートは 404
     this.app.use((req, res) => {
       res.status(404).send("Not Found");
-    });
-
-    // エラーハンドラー
-    this.app.use((err, req, res, next) => {
-      res.locals.message = err.message;
-      res.locals.error = req.app.get("env") === "development" ? err : {};
-      res.status(err.status || 500);
-      res.render("error");
     });
   }
 

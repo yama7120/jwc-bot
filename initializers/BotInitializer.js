@@ -50,18 +50,11 @@ class BotInitializer {
   async initializeWebServer() {
     try {
       this.webServer = new WebServer(this.config);
-      this.webServer.setupExpress();
-      
-      // POSTエンドポイントの設定
       const post = require("../functions/post.js");
-      this.webServer.setupPostEndpoint(this.client, post);
-      
+      this.webServer.setupCoreRoutes(this.client, post);
       // サーバーの起動
       await this.webServer.start();
-      
-      // アプリケーションをエクスポート
-      module.exports = this.webServer.getApp();
-      
+
       console.log("Web server initialized successfully");
     } catch (error) {
       console.error("Failed to initialize web server:", error);
