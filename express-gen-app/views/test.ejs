@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JWC | Japan War Clans</title>
+	<meta name="description" content="JWC is the one of the oldest-running competitions in Clash of Clans" />
+	<meta name="keywords" content="japan war clans, clash of clans" />
+	<meta name="author" content="yama | GaihaziBomber 2 | Clash of Clans" />
+	<meta name="theme-color" content="#ffffff">
+	<!-- Normalize -->
+	<link rel="stylesheet" type="text/css" href="css/normalize.css">
+	<!-- Bootstrap -->
+	<link rel="stylesheet" type="text/css" href="css/bootstrap.css">
+	<!-- Owl -->
+	<link rel="stylesheet" type="text/css" href="css/owl.css">
+	<!-- Animate.css -->
+	<link rel="stylesheet" type="text/css" href="css/animate.css">
+	<!-- Main style -->
+	<link rel="stylesheet" type="text/css" href="css/main.css">
+</head>
+
+<body>
+	<div class="preloader">
+		<img src="img/loader.gif" alt="Preloader image">
+	</div>
+	<nav class="navbar">
+		<div class="container">
+			<!-- Brand and toggle get grouped for better mobile display -->
+			<div class="navbar-header">
+				<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+					<span class="sr-only">Toggle navigation</span>
+					<span class="icon-bar"></span>
+					<span class="icon-bar"></span>
+					<span class="icon-bar"></span>
+				</button>
+			</div>
+			<!-- Collect the nav links, forms, and other content for toggling -->
+			<div class="collapse navbar-collapse">
+				<ul class="nav navbar-nav navbar-right main-nav">
+					<li><a href="#top">TOP</a></li>
+					<li><a href="/j1#j1">J1</a></li>
+					<li><a href="/j2#j2">J2</a></li>
+					<li><a href="/swiss#swiss">SWISS</a></li>
+					<li><a href="/mix#mix">MIX</a></li>
+				</ul>
+			</div>
+		</div>
+	</nav>
+	<header id="top">
+		<div class="container">
+			<div class="table">
+				<div class="header-text">
+					<div class="row">
+						<div class="col-md-12 text-center">
+							<h5 class="light white">Japan War Clans</h5>
+							<h1 class="white">JWC</h1>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</header>
+	<section>
+		<div class="cut cut-top"></div>
+	</section>
+  <%_ let dataWarStatsCurrentParsed = JSON.parse(dataWarStatsCurrent); _%>
+	<section id="current" class="section section-padded white-bg">
+  <current>
+    <div class="container">
+      <div class="row text-center">
+        <div class="col-md-12">
+          <a href="<%- config.urlImage.season14 %>">
+            <img src="img/jwc/header.jpeg" class="large">
+          </a>
+          <!-- caption -->
+          <div class="row">
+            <span data-css-icon="down">
+              <div class="col-xs-12"><h6 class="italic"><span class="preparation"></span>preparation</h6></div>
+              <div class="col-xs-12"><h6 class="italic"><span class="inWar"></span>now in war</h6></div>
+              <div class="col-xs-12"><h6 class="italic"><span class="warEnded"></span>war has ended</h6></div>
+            </span>
+          </div>
+          <!-- link -->
+          <div class="row">
+            <div class="col-xs-12">
+					     <h2 class="j1">J1</h2>
+              <%_ var league = "j1"; _%>
+              <%_ var weekNowStr = `w${config.weekNow[league]}`; _%>
+              <h5 class="padded">Week <%- config.weekNow[league] %></h5>
+              <%_ for (var i = 0; i < Object.keys(dataWarStatsCurrentParsed[league]).length; i++) { _%>
+                <%_ let matchStr = `m${i+1}`; _%>
+                <%_ var thisDataWarStats = dataWarStatsCurrentParsed[league][matchStr]; _%>
+                <%_ var deal = dataWarStatsCurrentParsed[league][matchStr].deal; _%>
+                <h6 class="link">
+                  <span class="<%- thisDataWarStats.state %>"></span>
+                  <%- `${i+1}. ` %>
+                    <a href="#<%- `${league}-${matchStr}` %>"><%- `<b>${thisDataWarStats.teamName[0].replace(/\\/g, "")}</b>  vs  <b>${thisDataWarStats.teamName[1].replace(/\\/g, "")}</b>` %></a>
+                </h6>
+                <%_ if (thisDataWarStats.state == "beforeTheWar") { _%> <!-- beforeTheWar -->
+                  <%_ if (deal == "") { _%>
+                    <h6><i>not scheduled yet</i></h6>
+                  <%_ } else { _%>
+                    <h6><%- `${deal.date}` %> <%- `${deal.time}` %></h6>
+                    <h6><%- `${deal.prep_time} / ${deal.battle_time}` %></h6>
+                  <%_ }; _%>
+                <%_ } else if (thisDataWarStats.state == "preparation") { _%> <!-- preparation -->
+                  <h6 class="orange">
+                    <span class="hour-<%- league %>-<%- matchStr %>"></span>:<span class="min-<%- league %>-<%- matchStr %>"></span>:<span class="sec-<%- league %>-<%- matchStr %>"></span>
+                  </h6>
+                <%_ } else { _%> <!-- inWar / warEnded -->
+                  <%_ var triByAt1 = `${thisDataWarStats.clan.allAttackTypes.nTriple.total}/${thisDataWarStats.clan.allAttackTypes.nAt.total}` _%>
+                  <%_ var triByAt2 = `${thisDataWarStats.opponent.allAttackTypes.nTriple.total}/${thisDataWarStats.opponent.allAttackTypes.nAt.total}` _%>
+                  <%_ var hitrate1 = Math.round(thisDataWarStats.clan.allAttackTypes.hitrate.total * 10) / 10 _%>
+                  <%_ var hitrate2 = Math.round(thisDataWarStats.opponent.allAttackTypes.hitrate.total * 10) / 10 _%>
+                  <h6><%- `${triByAt1} (${hitrate1}%)` %> - <%- `${triByAt2} (${hitrate2}%)` %></h6>
+                  <%_ if (thisDataWarStats.state == "inWar") { _%> <!-- inWar -->
+                    <h6 class="red">
+                      <span class="hour-<%- league %>-<%- matchStr %>"></span>:<span class="min-<%- league %>-<%- matchStr %>"></span>:<span class="sec-<%- league %>-<%- matchStr %>"></span>
+                    </h6>
+                  <%_ }; _%>
+                <%_ }; _%>
+              <%_ }; _%>
+            </div>
+            <div class="col-xs-12">
+					     <h2 class="j2">J2</h2>
+              <%_ var league = "j2"; _%>
+              <%_ var weekNowStr = `w${config.weekNow[league]}`; _%>
+              <h5 class="padded">Week <%- config.weekNow[league] %></h5>
+              <%_ for (var i = 0; i < Object.keys(dataWarStatsCurrentParsed[league]).length; i++) { _%>
+                <%_ let matchStr = `m${i+1}`; _%>
+                <%_ var thisDataWarStats = dataWarStatsCurrentParsed[league][matchStr]; _%>
+                <%_ var deal = dataWarStatsCurrentParsed[league][matchStr].deal; _%>
+                <h6 class="link">
+                  <span class="<%- thisDataWarStats.state %>"></span>
+                  <%- `${i+1}. ` %>
+                    <a href="#<%- `${league}-${matchStr}` %>"><%- `<b>${thisDataWarStats.teamName[0].replace(/\\/g, "")}</b>  vs  <b>${thisDataWarStats.teamName[1].replace(/\\/g, "")}</b>` %></a>
+                </h6>
+                <%_ if (thisDataWarStats.state == "beforeTheWar") { _%> <!-- beforeTheWar -->
+                  <%_ if (deal == "") { _%>
+                    <h6><i>not scheduled yet</i></h6>
+                  <%_ } else { _%>
+                    <h6><%- `${deal.date}` %> <%- `${deal.time}` %></h6>
+                    <h6><%- `${deal.prep_time} / ${deal.battle_time}` %></h6>
+                  <%_ }; _%>
+                <%_ } else if (thisDataWarStats.state == "preparation") { _%> <!-- preparation -->
+                  <h6 class="orange">
+                    <span class="hour-<%- league %>-<%- matchStr %>"></span>:<span class="min-<%- league %>-<%- matchStr %>"></span>:<span class="sec-<%- league %>-<%- matchStr %>"></span>
+                  </h6>
+                <%_ } else { _%> <!-- inWar / warEnded -->
+                  <%_ var triByAt1 = `${thisDataWarStats.clan.allAttackTypes.nTriple.total}/${thisDataWarStats.clan.allAttackTypes.nAt.total}` _%>
+                  <%_ var triByAt2 = `${thisDataWarStats.opponent.allAttackTypes.nTriple.total}/${thisDataWarStats.opponent.allAttackTypes.nAt.total}` _%>
+                  <%_ var hitrate1 = Math.round(thisDataWarStats.clan.allAttackTypes.hitrate.total * 10) / 10 _%>
+                  <%_ var hitrate2 = Math.round(thisDataWarStats.opponent.allAttackTypes.hitrate.total * 10) / 10 _%>
+                  <h6><%- `${triByAt1} (${hitrate1}%)` %> - <%- `${triByAt2} (${hitrate2}%)` %></h6>
+                  <%_ if (thisDataWarStats.state == "inWar") { _%> <!-- inWar -->
+                    <h6 class="red">
+                      <span class="hour-<%- league %>-<%- matchStr %>"></span>:<span class="min-<%- league %>-<%- matchStr %>"></span>:<span class="sec-<%- league %>-<%- matchStr %>"></span>
+                    </h6>
+                  <%_ }; _%>
+                <%_ }; _%>
+              <%_ }; _%>
+            </div>
+            <div class="col-xs-12">
+					     <h2 class="swiss">SWISS</h2>
+              <%_ var league = "swiss"; _%>
+              <%_ var weekNowStr = `w${config.weekNow[league]}`; _%>
+              <h5 class="padded">Week <%- config.weekNow[league] %></h5>
+              <%_ for (var i = 0; i < Object.keys(dataWarStatsCurrentParsed[league]).length; i++) { _%>
+                <%_ let matchStr = `m${i+1}`; _%>
+                <%_ var thisDataWarStats = dataWarStatsCurrentParsed[league][matchStr]; _%>
+                <%_ var deal = dataWarStatsCurrentParsed[league][matchStr].deal; _%>
+                <h6 class="link">
+                  <span class="<%- thisDataWarStats.state %>"></span>
+                  <%- `${i+1}. ` %>
+                    <a href="#<%- `${league}-${matchStr}` %>"><%- `<b>${thisDataWarStats.teamName[0].replace(/\\/g, "")}</b>  vs  <b>${thisDataWarStats.teamName[1].replace(/\\/g, "")}</b>` %></a>
+                </h6>
+                <%_ if (thisDataWarStats.state == "beforeTheWar") { _%> <!-- beforeTheWar -->
+                  <%_ if (deal == "") { _%>
+                    <h6><i>not scheduled yet</i></h6>
+                  <%_ } else { _%>
+                    <h6><%- `${deal.date}` %> <%- `${deal.time}` %></h6>
+                    <h6><%- `${deal.prep_time} / ${deal.battle_time}` %></h6>
+                  <%_ }; _%>
+                <%_ } else if (thisDataWarStats.state == "preparation") { _%> <!-- preparation -->
+                  <h6 class="orange">
+                    <span class="hour-<%- league %>-<%- matchStr %>"></span>:<span class="min-<%- league %>-<%- matchStr %>"></span>:<span class="sec-<%- league %>-<%- matchStr %>"></span>
+                  </h6>
+                <%_ } else { _%> <!-- inWar / warEnded -->
+                  <%_ var triByAt1 = `${thisDataWarStats.clan.allAttackTypes.nTriple.total}/${thisDataWarStats.clan.allAttackTypes.nAt.total}` _%>
+                  <%_ var triByAt2 = `${thisDataWarStats.opponent.allAttackTypes.nTriple.total}/${thisDataWarStats.opponent.allAttackTypes.nAt.total}` _%>
+                  <%_ var hitrate1 = Math.round(thisDataWarStats.clan.allAttackTypes.hitrate.total * 10) / 10 _%>
+                  <%_ var hitrate2 = Math.round(thisDataWarStats.opponent.allAttackTypes.hitrate.total * 10) / 10 _%>
+                  <h6><%- `${triByAt1} (${hitrate1}%)` %> - <%- `${triByAt2} (${hitrate2}%)` %></h6>
+                  <%_ if (thisDataWarStats.state == "inWar") { _%> <!-- inWar -->
+                    <h6 class="red">
+                      <span class="hour-<%- league %>-<%- matchStr %>"></span>:<span class="min-<%- league %>-<%- matchStr %>"></span>:<span class="sec-<%- league %>-<%- matchStr %>"></span>
+                    </h6>
+                  <%_ }; _%>
+                <%_ }; _%>
+              <%_ }; _%>
+            </div>
+            <div class="col-xs-12">
+					     <h2 class="mix">MIX</h2>
+              <%_ var league = "mix"; _%>
+              <%_ var weekNowStr = `w${config.weekNow[league]}`; _%>
+              <h5 class="padded">Week <%- config.weekNow[league] %></h5>
+              <%_ for (var i = 0; i < Object.keys(dataWarStatsCurrentParsed[league]).length; i++) { _%>
+                <%_ let matchStr = `m${i+1}`; _%>
+                <%_ var thisDataWarStats = dataWarStatsCurrentParsed[league][matchStr]; _%>
+                <%_ var deal = dataWarStatsCurrentParsed[league][matchStr].deal; _%>
+                <h6 class="link">
+                  <span class="<%- thisDataWarStats.state %>"></span>
+                  <%- `${i+1}. ` %>
+                    <a href="#<%- `${league}-${matchStr}` %>"><%- `<b>${thisDataWarStats.teamName[0].replace(/\\/g, "")}</b>  vs  <b>${thisDataWarStats.teamName[1].replace(/\\/g, "")}</b>` %></a>
+                </h6>
+                <%_ if (thisDataWarStats.state == "beforeTheWar") { _%> <!-- beforeTheWar -->
+                  <%_ if (deal == "") { _%>
+                    <h6><i>not scheduled yet</i></h6>
+                  <%_ } else { _%>
+                    <h6><%- `${deal.date}` %> <%- `${deal.time}` %></h6>
+                    <h6><%- `${deal.prep_time} / ${deal.battle_time}` %></h6>
+                  <%_ }; _%>
+                <%_ } else if (thisDataWarStats.state == "preparation") { _%> <!-- preparation -->
+                  <h6 class="orange">
+                    <span class="hour-<%- league %>-<%- matchStr %>"></span>:<span class="min-<%- league %>-<%- matchStr %>"></span>:<span class="sec-<%- league %>-<%- matchStr %>"></span>
+                  </h6>
+                <%_ } else { _%> <!-- inWar / warEnded -->
+                  <%_ var triByAt1 = `${thisDataWarStats.clan.allAttackTypes.nTriple.total}/${thisDataWarStats.clan.allAttackTypes.nAt.total}` _%>
+                  <%_ var triByAt2 = `${thisDataWarStats.opponent.allAttackTypes.nTriple.total}/${thisDataWarStats.opponent.allAttackTypes.nAt.total}` _%>
+                  <%_ var hitrate1 = Math.round(thisDataWarStats.clan.allAttackTypes.hitrate.total * 10) / 10 _%>
+                  <%_ var hitrate2 = Math.round(thisDataWarStats.opponent.allAttackTypes.hitrate.total * 10) / 10 _%>
+                  <h6><%- `${triByAt1} (${hitrate1}%)` %> - <%- `${triByAt2} (${hitrate2}%)` %></h6>
+                  <%_ if (thisDataWarStats.state == "inWar") { _%> <!-- inWar -->
+                    <h6 class="red">
+                      <span class="hour-<%- league %>-<%- matchStr %>"></span>:<span class="min-<%- league %>-<%- matchStr %>"></span>:<span class="sec-<%- league %>-<%- matchStr %>"></span>
+                    </h6>
+                  <%_ }; _%>
+                <%_ }; _%>
+              <%_ }; _%>
+            </div>
+          </div>
+          <!-- ***** J1 ***** -->
+					<h2 class="j1">J1</h2>
+          <%_ var league = "j1"; _%>
+          <%_ var weekNowStr = `w${config.weekNow[league]}`; _%>
+          <h5 class="padded">Week <%- config.weekNow[league] %></h5>
+          <%_ for (var i = 0; i < Object.keys(dataWarStatsCurrentParsed[league]).length; i++) { _%>
+            <%_ let matchStr = `m${i+1}`; _%>
+            <%_ var thisDataWarStats = dataWarStatsCurrentParsed[league][matchStr]; _%>
+            <%_ if (thisDataWarStats.state == "inWar") { _%>
+            <details open>
+            <%_ } else { _%>
+            <details>
+            <%_ }; _%>
+              <summary id=<%- `${league}-${matchStr}` %>>
+                <span data-css-icon="down">
+                  <h6><span class="<%- thisDataWarStats.state %>"></span><%- `<b>${i+1}. ${thisDataWarStats.teamName[0].replace(/\\/g, "")}</b>  vs  <b>${thisDataWarStats.teamName[1].replace(/\\/g, "")}</b>` %></h6><i></i>
+                </span>
+              </summary>
+              <%_ if (thisDataWarStats.nameMatch != "-") { _%>
+                <div class="row">
+                  <div class="col-md-12">
+                    <h6><i><%- `${thisDataWarStats.nameMatch}` %></i></h6>
+                  </div>
+                </div>
+              <%_ }; _%>
+              <!-- beforeTheWar -->
+              <%_ if (thisDataWarStats.state == "beforeTheWar") { _%>
+                <div class="row">
+                  <div class="col-md-12">
+                    <%_ var deal = dataWarStatsCurrentParsed[league][matchStr].deal; _%>
+                    <%_ if (deal == "") { _%>
+                      <h6><i>not scheduled yet</i></h6>
+                    <%_ } else { _%>
+                      <h6><%- `${deal.date}` %></h6>
+                      <h6><%- `${deal.time}` %></h6>
+                      <h6><%- `${deal.prep_time} / ${deal.battle_time}` %></h6>
+                    <%_ }; _%>
+                  </div>
+                </div>
+              <!-- preparation -->
+              <%_ } else if (thisDataWarStats.state == "preparation") { _%>
+                <div class="row">
+                  <div class="col-md-12">
+                    <%_ var deal = dataWarStatsCurrentParsed[league][matchStr].deal; _%>
+                    <%_ if (deal == "") { _%>
+                      <h6><i>not scheduled yet</i></h6>
+                    <%_ } else { _%>
+                      <h6><%- `${deal.date}` %></h6>
+                      <h6><%- `${deal.time}` %></h6>
+                      <h6><%- `${deal.prep_time} / ${deal.battle_time}` %></h6>
+                    <%_ }; _%>
+                  </div>
+                </div>
+              <!-- inWar or warEnded -->
+              <%_ } else { _%>
+                <div class="row">
+                  <div class="col-sm-12">
+                    <div class="row">
+                      <div class="col-sm-10 col-sm-offset-1">
+                        <%_ var idChartTriples = `chartTriples-${league}-${matchStr}`; _%>
+                        <canvas id="<%- idChartTriples %>"></canvas>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <h5 class="padded">Stats</h5>
+                      <div class="col-xs-5"><h6 class="right bold"><%- thisDataWarStats.clan.stars %></h6></div>
+                      <div class="col-xs-2"><h6>Stars</h6></div>
+                      <div class="col-xs-5"><h6 class="left bold"><%- thisDataWarStats.opponent.stars %></h6></div>
+                      <div class="col-xs-5"><h6 class="right bold"><%- thisDataWarStats.clan.destruction %>%</h6></div>
+                      <div class="col-xs-2"><h6>Dest.</h6></div>
+                      <div class="col-xs-5"><h6 class="left bold"><%- thisDataWarStats.opponent.destruction %>%</h6></div>
+                      <!-- hitrate -->
+                      <%_ var triByAt1 = `${thisDataWarStats.clan.allAttackTypes.nTriple.total}/${thisDataWarStats.clan.allAttackTypes.nAt.total}` _%>
+                      <%_ var triByAt2 = `${thisDataWarStats.opponent.allAttackTypes.nTriple.total}/${thisDataWarStats.opponent.allAttackTypes.nAt.total}` _%>
+                      <%_ var hitrate1 = Math.round(thisDataWarStats.clan.allAttackTypes.hitrate.total * 10) / 10 _%>
+                      <%_ var hitrate2 = Math.round(thisDataWarStats.opponent.allAttackTypes.hitrate.total * 10) / 10 _%>
+                      <div class="col-xs-5"><h6 class="right bold"><%- `${triByAt1} (${hitrate1}%)` %></h6></div>
+                      <div class="col-xs-2"><h6>Hitrate</h6></div>
+                      <div class="col-xs-5"><h6 class="left bold"><%- `${triByAt2} (${hitrate2}%)` %></h6></div>
+                      <!-- Fresh -->
+                      <%_ if (league != "swiss") { _%>
+                        <%_ var triByAt1 = `${thisDataWarStats.clan.fresh.nTriple.total}/${thisDataWarStats.clan.fresh.nAt.total}` _%>
+                        <%_ var triByAt2 = `${thisDataWarStats.opponent.fresh.nTriple.total}/${thisDataWarStats.opponent.fresh.nAt.total}` _%>
+                        <%_ var hitrate1 = Math.round(thisDataWarStats.clan.fresh.hitrate.total * 10) / 10 _%>
+                        <%_ var hitrate2 = Math.round(thisDataWarStats.opponent.fresh.hitrate.total * 10) / 10 _%>
+                        <div class="col-xs-5"><h6 class="right bold"><%- `${triByAt1} (${hitrate1}%)` %></h6></div>
+                        <div class="col-xs-2"><h6>(Fresh)</h6></div>
+                        <div class="col-xs-5"><h6 class="left bold"><%- `${triByAt2} (${hitrate2}%)` %></h6></div>
+                      <%_ }; _%>
+                      <!-- Cleanup -->
+                      <%_ if (thisDataWarStats.clan.cleanup.nTriple.total + thisDataWarStats.clan.cleanup.nAt.total > 0) { _%>
+                        <%_ var triByAt1 = `${thisDataWarStats.clan.cleanup.nTriple.total}/${thisDataWarStats.clan.cleanup.nAt.total}` _%>
+                        <%_ var triByAt2 = `${thisDataWarStats.opponent.cleanup.nTriple.total}/${thisDataWarStats.opponent.cleanup.nAt.total}` _%>
+                        <%_ var hitrate1 = Math.round(thisDataWarStats.clan.cleanup.hitrate.total * 10) / 10 _%>
+                        <%_ var hitrate2 = Math.round(thisDataWarStats.opponent.cleanup.hitrate.total * 10) / 10 _%>
+                        <div class="col-xs-5"><h6 class="right bold"><%- `${triByAt1} (${hitrate1}%)` %></h6></div>
+                        <div class="col-xs-2"><h6>(Cleanup)</h6></div>
+                        <div class="col-xs-5"><h6 class="left bold"><%- `${triByAt2} (${hitrate2}%)` %></h6></div>
+                      <%_ }; _%>
+                      <!-- Overkill -->
+                      <%_ if (thisDataWarStats.clan.overkill.nTriple.total + thisDataWarStats.clan.overkill.nAt.total > 0) { _%>
+                        <%_ var triByAt1 = `${thisDataWarStats.clan.overkill.nTriple.total}/${thisDataWarStats.clan.overkill.nAt.total}` _%>
+                        <%_ var triByAt2 = `${thisDataWarStats.opponent.overkill.nTriple.total}/${thisDataWarStats.opponent.overkill.nAt.total}` _%>
+                        <%_ var hitrate1 = Math.round(thisDataWarStats.clan.overkill.hitrate.total * 10) / 10 _%>
+                        <%_ var hitrate2 = Math.round(thisDataWarStats.opponent.overkill.hitrate.total * 10) / 10 _%>
+                        <div class="col-xs-5"><h6 class="right bold"><%- `${triByAt1} (${hitrate1}%)` %></h6></div>
+                        <div class="col-xs-2"><h6>(Overkill)</h6></div>
+                        <div class="col-xs-5"><h6 class="left bold"><%- `${triByAt2} (${hitrate2}%)` %></h6></div>
+                      <%_ }; _%>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-8 col-md-offset-2">
+                    <h5 class="padded">Remining Attacks</h5>
+                    <%_ var attacks = dataWarStatsCurrentParsed[league][matchStr].attacks; _%>
+                    <%_ var remainingAttacks = ["", ""]; _%>
+                    <%_ attacks.map((attack) => { _%>
+                      <%_ if (attack.attackType == "remaining") { _%>
+                        <%_ if (attack.action == "attack") { _%>
+                          <%_ remainingAttacks[0] += `${attack.name} <img src=img/th/th${attack.townHallLevel}.png class=thLeft><br>`;_%>
+                        <%_ } else { _%>
+                          <%_ remainingAttacks[1] += `<img src=img/th/th${attack.townHallLevel}.png class=thRight> ${attack.name}<br>`;_%>
+                        <%_ }; _%>
+                      <%_ }; _%>
+                    <%_ }); _%>
+                    <%_ if (remainingAttacks[0].length == 0) { _%>
+                      <%_ remainingAttacks[0] = `<h6 class="italic">no attacks</h6>`; _%>
+                    <%_ }; _%>
+                    <%_ if (remainingAttacks[1].length == 0) { _%>
+                      <%_ remainingAttacks[1] = `<h6 class="italic">no attacks</h6>`; _%>
+                    <%_ }; _%>
+                    <div class="row">
+                      <div class="col-xs-6">
+                        <h6 class="right"><%- remainingAttacks[0] %></h6>
+                      </div>
+                      <div class="col-xs-6">
+                        <h6 class="left"><%- remainingAttacks[1] %></h6>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- Attacks -->
+                <div class="row">
+                  <div class="col-md-8 col-md-offset-2">
+                    <h5 class="padded">Attacks</h5>
+                    <%_ var attacks = dataWarStatsCurrentParsed[league][matchStr].attacks.reverse(); _%>
+                    <%_ attacks.map((attack) => { _%>
+                      <%_ if (attack.attackType != "remaining") { _%>
+                        <div class="row">
+                          <div class="col-xs-12">
+                            <div class="row">
+                              <div class="col-xs-1"><h6 class="left"><%- attack.order %>.</h6></div>
+                              <%_ if (attack.action == "attack") { _%>
+                              <div class="col-xs-5">
+                                <h6 class="right">
+                                  <%- attack.destruction %>%
+                                  &nbsp; &nbsp;
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[0] %>.png" class="star">
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[1] %>.png" class="star">
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[2] %>.png" class="star">
+                                </h6>
+                              </div>
+                              <%_ } else { _%>
+                              <div class="col-xs-5 col-xs-offset-5">
+                                <h6 class="left">
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[0] %>.png" class="star">
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[1] %>.png" class="star">
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[2] %>.png" class="star">
+                                  &nbsp; &nbsp;
+                                  <%- attack.destruction %>%
+                                </h6>
+                              </div>
+                              <%_ }; _%>
+                            </div>
+                            <div class="row border">
+                              <%_ if (attack.action == "attack") { _%>
+                              <div class="col-xs-4"><h6 class="right bold"><%- attack.name %></h6></div>
+                              <div class="col-xs-4">
+                                <h6>
+                                  <img src="img/th/th<%- attack.townHallLevel %>.png" class="th">
+                                  <img src="img/jwc/swordLeft.png" class="sword">
+                                  <img src="img/th/th<%- attack.townHallLevelDef %>.png" class="th">
+                                </h6>
+                              </div>
+                              <div class="col-xs-4"><h6 class="left gray"><%- attack.namePlayerDef %></h6></div>
+                              <%_ } else { _%>
+                              <div class="col-xs-4"><h6 class="right gray"><%- attack.namePlayerDef %></h6></div>
+                              <div class="col-xs-4">
+                                <h6>
+                                  <img src="img/th/th<%- attack.townHallLevel %>.png" class="th">
+                                  <img src="img/jwc/swordRight.png" class="sword">
+                                  <img src="img/th/th<%- attack.townHallLevelDef %>.png" class="th">
+                                  </h6>
+                              </div>
+                              <div class="col-xs-4"><h6 class="left bold"><%- attack.name %></h6></div>
+                              <%_ }; _%>
+                            </div>
+                          </div>
+                        </div>
+                      <%_ }; _%>
+                    <%_ }); _%>
+                  </div>
+                </div>
+              <%_ }; _%>
+            </details>
+          <%_ } _%>
+          <h6 class="link"><a href="/j1#j1">See Standings / All Wars</a></h6>
+          <!-- ***** J2 ***** -->
+					<h2 class="j2">J2</h2>
+          <%_ var league = "j2"; _%>
+          <%_ var weekNowStr = `w${config.weekNow[league]}`; _%>
+          <h5 class="padded">Week <%- config.weekNow[league] %></h5>
+          <%_ for (var i = 0; i < Object.keys(dataWarStatsCurrentParsed[league]).length; i++) { _%>
+            <%_ let matchStr = `m${i+1}`; _%>
+            <%_ var thisDataWarStats = dataWarStatsCurrentParsed[league][matchStr]; _%>
+            <%_ if (thisDataWarStats.state == "inWar") { _%>
+            <details open>
+            <%_ } else { _%>
+            <details>
+            <%_ }; _%>
+              <summary id=<%- `${league}-${matchStr}` %>>
+                <span data-css-icon="down">
+                  <h6><span class="<%- thisDataWarStats.state %>"></span><%- `<b>${i+1}. ${thisDataWarStats.teamName[0].replace(/\\/g, "")}</b>  vs  <b>${thisDataWarStats.teamName[1].replace(/\\/g, "")}</b>` %></h6><i></i>
+                </span>
+              </summary>
+              <%_ if (thisDataWarStats.nameMatch != "-") { _%>
+                <div class="row">
+                  <div class="col-md-12">
+                    <h6><i><%- `${thisDataWarStats.nameMatch}` %></i></h6>
+                  </div>
+                </div>
+              <%_ }; _%>
+              <!-- beforeTheWar -->
+              <%_ if (thisDataWarStats.state == "beforeTheWar") { _%>
+                <div class="row">
+                  <div class="col-md-12">
+                    <%_ var deal = dataWarStatsCurrentParsed[league][matchStr].deal; _%>
+                    <%_ if (deal == "") { _%>
+                      <h6><i>not scheduled yet</i></h6>
+                    <%_ } else { _%>
+                      <h6><%- `${deal.date}` %></h6>
+                      <h6><%- `${deal.time}` %></h6>
+                      <h6><%- `${deal.prep_time} / ${deal.battle_time}` %></h6>
+                    <%_ }; _%>
+                  </div>
+                </div>
+              <!-- preparation -->
+              <%_ } else if (thisDataWarStats.state == "preparation") { _%>
+                <div class="row">
+                  <div class="col-md-12">
+                    <%_ var deal = dataWarStatsCurrentParsed[league][matchStr].deal; _%>
+                    <%_ if (deal == "") { _%>
+                      <h6><i>not scheduled yet</i></h6>
+                    <%_ } else { _%>
+                      <h6><%- `${deal.date}` %></h6>
+                      <h6><%- `${deal.time}` %></h6>
+                      <h6><%- `${deal.prep_time} / ${deal.battle_time}` %></h6>
+                    <%_ }; _%>
+                  </div>
+                </div>
+              <!-- inWar or warEnded -->
+              <%_ } else { _%>
+                <div class="row">
+                  <div class="col-md-12">
+                    <div class="row view460">
+                      <div class="col-md-10 col-md-offset-1">
+                        <%_ var idChartTriples = `chartTriples-${league}-${matchStr}`; _%>
+                        <canvas id="<%- idChartTriples %>"></canvas>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <h5 class="padded">Stats</h5>
+                      <div class="col-xs-5"><h6 class="right bold"><%- thisDataWarStats.clan.stars %></h6></div>
+                      <div class="col-xs-2"><h6>Stars</h6></div>
+                      <div class="col-xs-5"><h6 class="left bold"><%- thisDataWarStats.opponent.stars %></h6></div>
+                      <div class="col-xs-5"><h6 class="right bold"><%- thisDataWarStats.clan.destruction %>%</h6></div>
+                      <div class="col-xs-2"><h6>Dest.</h6></div>
+                      <div class="col-xs-5"><h6 class="left bold"><%- thisDataWarStats.opponent.destruction %>%</h6></div>
+                      <!-- hitrate -->
+                      <%_ var triByAt1 = `${thisDataWarStats.clan.allAttackTypes.nTriple.total}/${thisDataWarStats.clan.allAttackTypes.nAt.total}` _%>
+                      <%_ var triByAt2 = `${thisDataWarStats.opponent.allAttackTypes.nTriple.total}/${thisDataWarStats.opponent.allAttackTypes.nAt.total}` _%>
+                      <%_ var hitrate1 = Math.round(thisDataWarStats.clan.allAttackTypes.hitrate.total * 10) / 10 _%>
+                      <%_ var hitrate2 = Math.round(thisDataWarStats.opponent.allAttackTypes.hitrate.total * 10) / 10 _%>
+                      <div class="col-xs-5"><h6 class="right bold"><%- `${triByAt1} (${hitrate1}%)` %></h6></div>
+                      <div class="col-xs-2"><h6>Hitrate</h6></div>
+                      <div class="col-xs-5"><h6 class="left bold"><%- `${triByAt2} (${hitrate2}%)` %></h6></div>
+                      <!-- Fresh -->
+                      <%_ if (league != "swiss") { _%>
+                        <%_ var triByAt1 = `${thisDataWarStats.clan.fresh.nTriple.total}/${thisDataWarStats.clan.fresh.nAt.total}` _%>
+                        <%_ var triByAt2 = `${thisDataWarStats.opponent.fresh.nTriple.total}/${thisDataWarStats.opponent.fresh.nAt.total}` _%>
+                        <%_ var hitrate1 = Math.round(thisDataWarStats.clan.fresh.hitrate.total * 10) / 10 _%>
+                        <%_ var hitrate2 = Math.round(thisDataWarStats.opponent.fresh.hitrate.total * 10) / 10 _%>
+                        <div class="col-xs-5"><h6 class="right bold"><%- `${triByAt1} (${hitrate1}%)` %></h6></div>
+                        <div class="col-xs-2"><h6>(Fresh)</h6></div>
+                        <div class="col-xs-5"><h6 class="left bold"><%- `${triByAt2} (${hitrate2}%)` %></h6></div>
+                      <%_ }; _%>
+                      <!-- Cleanup -->
+                      <%_ if (thisDataWarStats.clan.cleanup.nTriple.total + thisDataWarStats.clan.cleanup.nAt.total > 0) { _%>
+                        <%_ var triByAt1 = `${thisDataWarStats.clan.cleanup.nTriple.total}/${thisDataWarStats.clan.cleanup.nAt.total}` _%>
+                        <%_ var triByAt2 = `${thisDataWarStats.opponent.cleanup.nTriple.total}/${thisDataWarStats.opponent.cleanup.nAt.total}` _%>
+                        <%_ var hitrate1 = Math.round(thisDataWarStats.clan.cleanup.hitrate.total * 10) / 10 _%>
+                        <%_ var hitrate2 = Math.round(thisDataWarStats.opponent.cleanup.hitrate.total * 10) / 10 _%>
+                        <div class="col-xs-5"><h6 class="right bold"><%- `${triByAt1} (${hitrate1}%)` %></h6></div>
+                        <div class="col-xs-2"><h6>(Cleanup)</h6></div>
+                        <div class="col-xs-5"><h6 class="left bold"><%- `${triByAt2} (${hitrate2}%)` %></h6></div>
+                      <%_ }; _%>
+                      <!-- Overkill -->
+                      <%_ if (thisDataWarStats.clan.overkill.nTriple.total + thisDataWarStats.clan.overkill.nAt.total > 0) { _%>
+                        <%_ var triByAt1 = `${thisDataWarStats.clan.overkill.nTriple.total}/${thisDataWarStats.clan.overkill.nAt.total}` _%>
+                        <%_ var triByAt2 = `${thisDataWarStats.opponent.overkill.nTriple.total}/${thisDataWarStats.opponent.overkill.nAt.total}` _%>
+                        <%_ var hitrate1 = Math.round(thisDataWarStats.clan.overkill.hitrate.total * 10) / 10 _%>
+                        <%_ var hitrate2 = Math.round(thisDataWarStats.opponent.overkill.hitrate.total * 10) / 10 _%>
+                        <div class="col-xs-5"><h6 class="right bold"><%- `${triByAt1} (${hitrate1}%)` %></h6></div>
+                        <div class="col-xs-2"><h6>(Overkill)</h6></div>
+                        <div class="col-xs-5"><h6 class="left bold"><%- `${triByAt2} (${hitrate2}%)` %></h6></div>
+                      <%_ }; _%>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-8 col-md-offset-2">
+                    <h5 class="padded">Remining Attacks</h5>
+                    <%_ var attacks = dataWarStatsCurrentParsed[league][matchStr].attacks; _%>
+                    <%_ var remainingAttacks = ["", ""]; _%>
+                    <%_ attacks.map((attack) => { _%>
+                      <%_ if (attack.attackType == "remaining") { _%>
+                        <%_ if (attack.action == "attack") { _%>
+                          <%_ remainingAttacks[0] += `${attack.name} <img src=img/th/th${attack.townHallLevel}.png class=thLeft><br>`;_%>
+                        <%_ } else { _%>
+                          <%_ remainingAttacks[1] += `<img src=img/th/th${attack.townHallLevel}.png class=thRight> ${attack.name}<br>`;_%>
+                        <%_ }; _%>
+                      <%_ }; _%>
+                    <%_ }); _%>
+                    <%_ if (remainingAttacks[0].length == 0) { _%>
+                      <%_ remainingAttacks[0] = `<h6 class="italic">no attacks</h6>`; _%>
+                    <%_ }; _%>
+                    <%_ if (remainingAttacks[1].length == 0) { _%>
+                      <%_ remainingAttacks[1] = `<h6 class="italic">no attacks</h6>`; _%>
+                    <%_ }; _%>
+                    <div class="row">
+                      <div class="col-xs-6">
+                        <h6 class="right"><%- remainingAttacks[0] %></h6>
+                      </div>
+                      <div class="col-xs-6">
+                        <h6 class="left"><%- remainingAttacks[1] %></h6>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- Attacks -->
+                <div class="row">
+                  <div class="col-md-8 col-md-offset-2">
+                    <h5 class="padded">Attacks</h5>
+                    <%_ var attacks = dataWarStatsCurrentParsed[league][matchStr].attacks.reverse(); _%>
+                    <%_ attacks.map((attack) => { _%>
+                      <%_ if (attack.attackType != "remaining") { _%>
+                        <div class="row">
+                          <div class="col-xs-12">
+                            <div class="row">
+                              <div class="col-xs-1"><h6 class="left"><%- attack.order %>.</h6></div>
+                              <%_ if (attack.action == "attack") { _%>
+                              <div class="col-xs-5">
+                                <h6 class="right">
+                                  <%- attack.destruction %>%
+                                  &nbsp; &nbsp;
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[0] %>.png" class="star">
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[1] %>.png" class="star">
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[2] %>.png" class="star">
+                                </h6>
+                              </div>
+                              <%_ } else { _%>
+                              <div class="col-xs-5 col-xs-offset-5">
+                                <h6 class="left">
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[0] %>.png" class="star">
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[1] %>.png" class="star">
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[2] %>.png" class="star">
+                                  &nbsp; &nbsp;
+                                  <%- attack.destruction %>%
+                                </h6>
+                              </div>
+                              <%_ }; _%>
+                            </div>
+                            <div class="row border">
+                              <%_ if (attack.action == "attack") { _%>
+                              <div class="col-xs-4"><h6 class="right bold"><%- attack.name %></h6></div>
+                              <div class="col-xs-4">
+                                <h6>
+                                  <img src="img/th/th<%- attack.townHallLevel %>.png" class="th">
+                                  <img src="img/jwc/swordLeft.png" class="sword">
+                                  <img src="img/th/th<%- attack.townHallLevelDef %>.png" class="th">
+                                </h6>
+                              </div>
+                              <div class="col-xs-4"><h6 class="left gray"><%- attack.namePlayerDef %></h6></div>
+                              <%_ } else { _%>
+                              <div class="col-xs-4"><h6 class="right gray"><%- attack.namePlayerDef %></h6></div>
+                              <div class="col-xs-4">
+                                <h6>
+                                  <img src="img/th/th<%- attack.townHallLevel %>.png" class="th">
+                                  <img src="img/jwc/swordRight.png" class="sword">
+                                  <img src="img/th/th<%- attack.townHallLevelDef %>.png" class="th">
+                                  </h6>
+                              </div>
+                              <div class="col-xs-4"><h6 class="left bold"><%- attack.name %></h6></div>
+                              <%_ }; _%>
+                            </div>
+                          </div>
+                        </div>
+                      <%_ }; _%>
+                    <%_ }); _%>
+                  </div>
+                </div>
+              <%_ }; _%>
+            </details>
+          <%_ } _%>
+          <h6 class="link"><a href="/j2#j2">See Standings / All Wars</a></h6>
+          <!-- ***** SWISS ***** -->
+					<h2 class="swiss">SWISS</h2>
+          <%_ var league = "swiss"; _%>
+          <%_ var weekNowStr = `w${config.weekNow[league]}`; _%>
+          <h5 class="padded">Week <%- config.weekNow[league] %></h5>
+          <%_ for (var i = 0; i < Object.keys(dataWarStatsCurrentParsed[league]).length; i++) { _%>
+            <%_ let matchStr = `m${i+1}`; _%>
+            <%_ var thisDataWarStats = dataWarStatsCurrentParsed[league][matchStr]; _%>
+            <%_ if (thisDataWarStats.state == "inWar") { _%>
+            <details open>
+            <%_ } else { _%>
+            <details>
+            <%_ }; _%>
+              <summary id=<%- `${league}-${matchStr}` %>>
+                <span data-css-icon="down">
+                  <h6><span class="<%- thisDataWarStats.state %>"></span><%- `<b>${i+1}. ${thisDataWarStats.teamName[0].replace(/\\/g, "")}</b>  vs  <b>${thisDataWarStats.teamName[1].replace(/\\/g, "")}</b>` %></h6><i></i>
+                </span>
+              </summary>
+              <%_ if (thisDataWarStats.nameMatch != "-") { _%>
+                <div class="row">
+                  <div class="col-md-12">
+                    <h6><i><%- `${thisDataWarStats.nameMatch}` %></i></h6>
+                  </div>
+                </div>
+              <%_ }; _%>
+              <!-- beforeTheWar -->
+              <%_ if (thisDataWarStats.state == "beforeTheWar") { _%>
+                <div class="row">
+                  <div class="col-md-12">
+                    <%_ var deal = dataWarStatsCurrentParsed[league][matchStr].deal; _%>
+                    <%_ if (deal == "") { _%>
+                      <h6><i>not scheduled yet</i></h6>
+                    <%_ } else { _%>
+                      <h6><%- `${deal.date}` %></h6>
+                      <h6><%- `${deal.time}` %></h6>
+                      <h6><%- `${deal.prep_time} / ${deal.battle_time}` %></h6>
+                    <%_ }; _%>
+                  </div>
+                </div>
+              <!-- preparation -->
+              <%_ } else if (thisDataWarStats.state == "preparation") { _%>
+                <div class="row">
+                  <div class="col-md-12">
+                    <%_ var deal = dataWarStatsCurrentParsed[league][matchStr].deal; _%>
+                    <%_ if (deal == "") { _%>
+                      <h6><i>not scheduled yet</i></h6>
+                    <%_ } else { _%>
+                      <h6><%- `${deal.date}` %></h6>
+                      <h6><%- `${deal.time}` %></h6>
+                      <h6><%- `${deal.prep_time} / ${deal.battle_time}` %></h6>
+                    <%_ }; _%>
+                  </div>
+                </div>
+              <!-- inWar or warEnded -->
+              <%_ } else { _%>
+                <div class="row">
+                  <div class="col-md-12">
+                    <div class="row view460">
+                      <div class="col-md-10 col-md-offset-1">
+                        <%_ var idChartTriples = `chartTriples-${league}-${matchStr}`; _%>
+                        <canvas id="<%- idChartTriples %>"></canvas>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <h5 class="padded">Stats</h5>
+                      <div class="col-xs-5"><h6 class="right bold"><%- thisDataWarStats.clan.stars %></h6></div>
+                      <div class="col-xs-2"><h6>Stars</h6></div>
+                      <div class="col-xs-5"><h6 class="left bold"><%- thisDataWarStats.opponent.stars %></h6></div>
+                      <div class="col-xs-5"><h6 class="right bold"><%- thisDataWarStats.clan.destruction %>%</h6></div>
+                      <div class="col-xs-2"><h6>Dest.</h6></div>
+                      <div class="col-xs-5"><h6 class="left bold"><%- thisDataWarStats.opponent.destruction %>%</h6></div>
+                      <!-- hitrate -->
+                      <%_ var triByAt1 = `${thisDataWarStats.clan.allAttackTypes.nTriple.total}/${thisDataWarStats.clan.allAttackTypes.nAt.total}` _%>
+                      <%_ var triByAt2 = `${thisDataWarStats.opponent.allAttackTypes.nTriple.total}/${thisDataWarStats.opponent.allAttackTypes.nAt.total}` _%>
+                      <%_ var hitrate1 = Math.round(thisDataWarStats.clan.allAttackTypes.hitrate.total * 10) / 10 _%>
+                      <%_ var hitrate2 = Math.round(thisDataWarStats.opponent.allAttackTypes.hitrate.total * 10) / 10 _%>
+                      <div class="col-xs-5"><h6 class="right bold"><%- `${triByAt1} (${hitrate1}%)` %></h6></div>
+                      <div class="col-xs-2"><h6>Hitrate</h6></div>
+                      <div class="col-xs-5"><h6 class="left bold"><%- `${triByAt2} (${hitrate2}%)` %></h6></div>
+                      <!-- Fresh -->
+                      <%_ if (league != "swiss") { _%>
+                        <%_ var triByAt1 = `${thisDataWarStats.clan.fresh.nTriple.total}/${thisDataWarStats.clan.fresh.nAt.total}` _%>
+                        <%_ var triByAt2 = `${thisDataWarStats.opponent.fresh.nTriple.total}/${thisDataWarStats.opponent.fresh.nAt.total}` _%>
+                        <%_ var hitrate1 = Math.round(thisDataWarStats.clan.fresh.hitrate.total * 10) / 10 _%>
+                        <%_ var hitrate2 = Math.round(thisDataWarStats.opponent.fresh.hitrate.total * 10) / 10 _%>
+                        <div class="col-xs-5"><h6 class="right bold"><%- `${triByAt1} (${hitrate1}%)` %></h6></div>
+                        <div class="col-xs-2"><h6>(Fresh)</h6></div>
+                        <div class="col-xs-5"><h6 class="left bold"><%- `${triByAt2} (${hitrate2}%)` %></h6></div>
+                      <%_ }; _%>
+                      <!-- Cleanup -->
+                      <%_ if (thisDataWarStats.clan.cleanup.nTriple.total + thisDataWarStats.clan.cleanup.nAt.total > 0) { _%>
+                        <%_ var triByAt1 = `${thisDataWarStats.clan.cleanup.nTriple.total}/${thisDataWarStats.clan.cleanup.nAt.total}` _%>
+                        <%_ var triByAt2 = `${thisDataWarStats.opponent.cleanup.nTriple.total}/${thisDataWarStats.opponent.cleanup.nAt.total}` _%>
+                        <%_ var hitrate1 = Math.round(thisDataWarStats.clan.cleanup.hitrate.total * 10) / 10 _%>
+                        <%_ var hitrate2 = Math.round(thisDataWarStats.opponent.cleanup.hitrate.total * 10) / 10 _%>
+                        <div class="col-xs-5"><h6 class="right bold"><%- `${triByAt1} (${hitrate1}%)` %></h6></div>
+                        <div class="col-xs-2"><h6>(Cleanup)</h6></div>
+                        <div class="col-xs-5"><h6 class="left bold"><%- `${triByAt2} (${hitrate2}%)` %></h6></div>
+                      <%_ }; _%>
+                      <!-- Overkill -->
+                      <%_ if (thisDataWarStats.clan.overkill.nTriple.total + thisDataWarStats.clan.overkill.nAt.total > 0) { _%>
+                        <%_ var triByAt1 = `${thisDataWarStats.clan.overkill.nTriple.total}/${thisDataWarStats.clan.overkill.nAt.total}` _%>
+                        <%_ var triByAt2 = `${thisDataWarStats.opponent.overkill.nTriple.total}/${thisDataWarStats.opponent.overkill.nAt.total}` _%>
+                        <%_ var hitrate1 = Math.round(thisDataWarStats.clan.overkill.hitrate.total * 10) / 10 _%>
+                        <%_ var hitrate2 = Math.round(thisDataWarStats.opponent.overkill.hitrate.total * 10) / 10 _%>
+                        <div class="col-xs-5"><h6 class="right bold"><%- `${triByAt1} (${hitrate1}%)` %></h6></div>
+                        <div class="col-xs-2"><h6>(Overkill)</h6></div>
+                        <div class="col-xs-5"><h6 class="left bold"><%- `${triByAt2} (${hitrate2}%)` %></h6></div>
+                      <%_ }; _%>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-8 col-md-offset-2">
+                    <h5 class="padded">Remining Attacks</h5>
+                    <%_ var attacks = dataWarStatsCurrentParsed[league][matchStr].attacks; _%>
+                    <%_ var remainingAttacks = ["", ""]; _%>
+                    <%_ attacks.map((attack) => { _%>
+                      <%_ if (attack.attackType == "remaining") { _%>
+                        <%_ if (attack.action == "attack") { _%>
+                          <%_ remainingAttacks[0] += `${attack.name} <img src=img/th/th${attack.townHallLevel}.png class=thLeft><br>`;_%>
+                        <%_ } else { _%>
+                          <%_ remainingAttacks[1] += `<img src=img/th/th${attack.townHallLevel}.png class=thRight> ${attack.name}<br>`;_%>
+                        <%_ }; _%>
+                      <%_ }; _%>
+                    <%_ }); _%>
+                    <%_ if (remainingAttacks[0].length == 0) { _%>
+                      <%_ remainingAttacks[0] = `<h6 class="italic">no attacks</h6>`; _%>
+                    <%_ }; _%>
+                    <%_ if (remainingAttacks[1].length == 0) { _%>
+                      <%_ remainingAttacks[1] = `<h6 class="italic">no attacks</h6>`; _%>
+                    <%_ }; _%>
+                    <div class="row">
+                      <div class="col-xs-6">
+                        <h6 class="right"><%- remainingAttacks[0] %></h6>
+                      </div>
+                      <div class="col-xs-6">
+                        <h6 class="left"><%- remainingAttacks[1] %></h6>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- Attacks -->
+                <div class="row">
+                  <div class="col-md-8 col-md-offset-2">
+                    <h5 class="padded">Attacks</h5>
+                    <%_ var attacks = dataWarStatsCurrentParsed[league][matchStr].attacks.reverse(); _%>
+                    <%_ attacks.map((attack) => { _%>
+                      <%_ if (attack.attackType != "remaining") { _%>
+                        <div class="row">
+                          <div class="col-xs-12">
+                            <div class="row">
+                              <div class="col-xs-1"><h6 class="left"><%- attack.order %>.</h6></div>
+                              <%_ if (attack.action == "attack") { _%>
+                              <div class="col-xs-5">
+                                <h6 class="right">
+                                  <%- attack.destruction %>%
+                                  &nbsp; &nbsp;
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[0] %>.png" class="star">
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[1] %>.png" class="star">
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[2] %>.png" class="star">
+                                </h6>
+                              </div>
+                              <%_ } else { _%>
+                              <div class="col-xs-5 col-xs-offset-5">
+                                <h6 class="left">
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[0] %>.png" class="star">
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[1] %>.png" class="star">
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[2] %>.png" class="star">
+                                  &nbsp; &nbsp;
+                                  <%- attack.destruction %>%
+                                </h6>
+                              </div>
+                              <%_ }; _%>
+                            </div>
+                            <div class="row border">
+                              <%_ if (attack.action == "attack") { _%>
+                              <div class="col-xs-4"><h6 class="right bold"><%- attack.name %></h6></div>
+                              <div class="col-xs-4">
+                                <h6>
+                                  <img src="img/th/th<%- attack.townHallLevel %>.png" class="th">
+                                  <img src="img/jwc/swordLeft.png" class="sword">
+                                  <img src="img/th/th<%- attack.townHallLevelDef %>.png" class="th">
+                                </h6>
+                              </div>
+                              <div class="col-xs-4"><h6 class="left gray"><%- attack.namePlayerDef %></h6></div>
+                              <%_ } else { _%>
+                              <div class="col-xs-4"><h6 class="right gray"><%- attack.namePlayerDef %></h6></div>
+                              <div class="col-xs-4">
+                                <h6>
+                                  <img src="img/th/th<%- attack.townHallLevel %>.png" class="th">
+                                  <img src="img/jwc/swordRight.png" class="sword">
+                                  <img src="img/th/th<%- attack.townHallLevelDef %>.png" class="th">
+                                  </h6>
+                              </div>
+                              <div class="col-xs-4"><h6 class="left bold"><%- attack.name %></h6></div>
+                              <%_ }; _%>
+                            </div>
+                          </div>
+                        </div>
+                      <%_ }; _%>
+                    <%_ }); _%>
+                  </div>
+                </div>
+              <%_ }; _%>
+            </details>
+          <%_ } _%>
+          <h6 class="link"><a href="/swiss#swiss">See Standings / All Wars</a></h6>
+          <!-- ***** MIX ***** -->
+					<h2 class="mix">MIX</h2>
+          <%_ var league = "mix"; _%>
+          <%_ var weekNowStr = `w${config.weekNow[league]}`; _%>
+          <h5 class="padded">Week <%- config.weekNow[league] %></h5>
+          <%_ for (var i = 0; i < Object.keys(dataWarStatsCurrentParsed[league]).length; i++) { _%>
+            <%_ let matchStr = `m${i+1}`; _%>
+            <%_ var thisDataWarStats = dataWarStatsCurrentParsed[league][matchStr]; _%>
+            <%_ if (thisDataWarStats.state == "inWar") { _%>
+            <details open>
+            <%_ } else { _%>
+            <details>
+            <%_ }; _%>
+              <summary id=<%- `${league}-${matchStr}` %>>
+                <span data-css-icon="down">
+                  <h6><span class="<%- thisDataWarStats.state %>"></span><%- `<b>${i+1}. ${thisDataWarStats.teamName[0].replace(/\\/g, "")}</b>  vs  <b>${thisDataWarStats.teamName[1].replace(/\\/g, "")}</b>` %></h6><i></i>
+                </span>
+              </summary>
+              <%_ if (thisDataWarStats.nameMatch != "-") { _%>
+                <div class="row">
+                  <div class="col-md-12">
+                    <h6><i><%- `${thisDataWarStats.nameMatch}` %></i></h6>
+                  </div>
+                </div>
+              <%_ }; _%>
+              <!-- beforeTheWar -->
+              <%_ if (thisDataWarStats.state == "beforeTheWar") { _%>
+                <div class="row">
+                  <div class="col-md-12">
+                    <%_ var deal = dataWarStatsCurrentParsed[league][matchStr].deal; _%>
+                    <%_ if (deal == "") { _%>
+                      <h6><i>not scheduled yet</i></h6>
+                    <%_ } else { _%>
+                      <h6><%- `${deal.date}` %></h6>
+                      <h6><%- `${deal.time}` %></h6>
+                      <h6><%- `${deal.prep_time} / ${deal.battle_time}` %></h6>
+                    <%_ }; _%>
+                  </div>
+                </div>
+              <!-- preparation -->
+              <%_ } else if (thisDataWarStats.state == "preparation") { _%>
+                <div class="row">
+                  <div class="col-md-12">
+                    <%_ var deal = dataWarStatsCurrentParsed[league][matchStr].deal; _%>
+                    <%_ if (deal == "") { _%>
+                      <h6><i>not scheduled yet</i></h6>
+                    <%_ } else { _%>
+                      <h6><%- `${deal.date}` %></h6>
+                      <h6><%- `${deal.time}` %></h6>
+                      <h6><%- `${deal.prep_time} / ${deal.battle_time}` %></h6>
+                    <%_ }; _%>
+                  </div>
+                </div>
+              <!-- inWar or warEnded -->
+              <%_ } else { _%>
+                <div class="row">
+                  <div class="col-md-12">
+                    <div class="row view460">
+                      <div class="col-md-10 col-md-offset-1">
+                        <%_ var idChartTriples = `chartTriples-${league}-${matchStr}`; _%>
+                        <canvas id="<%- idChartTriples %>"></canvas>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <h5 class="padded">Stats</h5>
+                      <div class="col-xs-5"><h6 class="right bold"><%- thisDataWarStats.clan.stars %></h6></div>
+                      <div class="col-xs-2"><h6>Stars</h6></div>
+                      <div class="col-xs-5"><h6 class="left bold"><%- thisDataWarStats.opponent.stars %></h6></div>
+                      <div class="col-xs-5"><h6 class="right bold"><%- thisDataWarStats.clan.destruction %>%</h6></div>
+                      <div class="col-xs-2"><h6>Dest.</h6></div>
+                      <div class="col-xs-5"><h6 class="left bold"><%- thisDataWarStats.opponent.destruction %>%</h6></div>
+                      <!-- hitrate -->
+                      <%_ var triByAt1 = `${thisDataWarStats.clan.allAttackTypes.nTriple.total}/${thisDataWarStats.clan.allAttackTypes.nAt.total}` _%>
+                      <%_ var triByAt2 = `${thisDataWarStats.opponent.allAttackTypes.nTriple.total}/${thisDataWarStats.opponent.allAttackTypes.nAt.total}` _%>
+                      <%_ var hitrate1 = Math.round(thisDataWarStats.clan.allAttackTypes.hitrate.total * 10) / 10 _%>
+                      <%_ var hitrate2 = Math.round(thisDataWarStats.opponent.allAttackTypes.hitrate.total * 10) / 10 _%>
+                      <div class="col-xs-5"><h6 class="right bold"><%- `${triByAt1} (${hitrate1}%)` %></h6></div>
+                      <div class="col-xs-2"><h6>Hitrate</h6></div>
+                      <div class="col-xs-5"><h6 class="left bold"><%- `${triByAt2} (${hitrate2}%)` %></h6></div>
+                      <!-- Fresh -->
+                      <%_ if (league != "swiss") { _%>
+                        <%_ var triByAt1 = `${thisDataWarStats.clan.fresh.nTriple.total}/${thisDataWarStats.clan.fresh.nAt.total}` _%>
+                        <%_ var triByAt2 = `${thisDataWarStats.opponent.fresh.nTriple.total}/${thisDataWarStats.opponent.fresh.nAt.total}` _%>
+                        <%_ var hitrate1 = Math.round(thisDataWarStats.clan.fresh.hitrate.total * 10) / 10 _%>
+                        <%_ var hitrate2 = Math.round(thisDataWarStats.opponent.fresh.hitrate.total * 10) / 10 _%>
+                        <div class="col-xs-5"><h6 class="right bold"><%- `${triByAt1} (${hitrate1}%)` %></h6></div>
+                        <div class="col-xs-2"><h6>(Fresh)</h6></div>
+                        <div class="col-xs-5"><h6 class="left bold"><%- `${triByAt2} (${hitrate2}%)` %></h6></div>
+                      <%_ }; _%>
+                      <!-- Cleanup -->
+                      <%_ if (thisDataWarStats.clan.cleanup.nTriple.total + thisDataWarStats.clan.cleanup.nAt.total > 0) { _%>
+                        <%_ var triByAt1 = `${thisDataWarStats.clan.cleanup.nTriple.total}/${thisDataWarStats.clan.cleanup.nAt.total}` _%>
+                        <%_ var triByAt2 = `${thisDataWarStats.opponent.cleanup.nTriple.total}/${thisDataWarStats.opponent.cleanup.nAt.total}` _%>
+                        <%_ var hitrate1 = Math.round(thisDataWarStats.clan.cleanup.hitrate.total * 10) / 10 _%>
+                        <%_ var hitrate2 = Math.round(thisDataWarStats.opponent.cleanup.hitrate.total * 10) / 10 _%>
+                        <div class="col-xs-5"><h6 class="right bold"><%- `${triByAt1} (${hitrate1}%)` %></h6></div>
+                        <div class="col-xs-2"><h6>(Cleanup)</h6></div>
+                        <div class="col-xs-5"><h6 class="left bold"><%- `${triByAt2} (${hitrate2}%)` %></h6></div>
+                      <%_ }; _%>
+                      <!-- Overkill -->
+                      <%_ if (thisDataWarStats.clan.overkill.nTriple.total + thisDataWarStats.clan.overkill.nAt.total > 0) { _%>
+                        <%_ var triByAt1 = `${thisDataWarStats.clan.overkill.nTriple.total}/${thisDataWarStats.clan.overkill.nAt.total}` _%>
+                        <%_ var triByAt2 = `${thisDataWarStats.opponent.overkill.nTriple.total}/${thisDataWarStats.opponent.overkill.nAt.total}` _%>
+                        <%_ var hitrate1 = Math.round(thisDataWarStats.clan.overkill.hitrate.total * 10) / 10 _%>
+                        <%_ var hitrate2 = Math.round(thisDataWarStats.opponent.overkill.hitrate.total * 10) / 10 _%>
+                        <div class="col-xs-5"><h6 class="right bold"><%- `${triByAt1} (${hitrate1}%)` %></h6></div>
+                        <div class="col-xs-2"><h6>(Overkill)</h6></div>
+                        <div class="col-xs-5"><h6 class="left bold"><%- `${triByAt2} (${hitrate2}%)` %></h6></div>
+                      <%_ }; _%>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-8 col-md-offset-2">
+                    <h5 class="padded">Remining Attacks</h5>
+                    <%_ var attacks = dataWarStatsCurrentParsed[league][matchStr].attacks; _%>
+                    <%_ var remainingAttacks = ["", ""]; _%>
+                    <%_ attacks.map((attack) => { _%>
+                      <%_ if (attack.attackType == "remaining") { _%>
+                        <%_ if (attack.action == "attack") { _%>
+                          <%_ remainingAttacks[0] += `${attack.name} <img src=img/th/th${attack.townHallLevel}.png class=thLeft><br>`;_%>
+                        <%_ } else { _%>
+                          <%_ remainingAttacks[1] += `<img src=img/th/th${attack.townHallLevel}.png class=thRight> ${attack.name}<br>`;_%>
+                        <%_ }; _%>
+                      <%_ }; _%>
+                    <%_ }); _%>
+                    <%_ if (remainingAttacks[0].length == 0) { _%>
+                      <%_ remainingAttacks[0] = `<h6 class="italic">no attacks</h6>`; _%>
+                    <%_ }; _%>
+                    <%_ if (remainingAttacks[1].length == 0) { _%>
+                      <%_ remainingAttacks[1] = `<h6 class="italic">no attacks</h6>`; _%>
+                    <%_ }; _%>
+                    <div class="row">
+                      <div class="col-xs-6">
+                        <h6 class="right"><%- remainingAttacks[0] %></h6>
+                      </div>
+                      <div class="col-xs-6">
+                        <h6 class="left"><%- remainingAttacks[1] %></h6>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- Attacks -->
+                <div class="row">
+                  <div class="col-md-8 col-md-offset-2">
+                    <h5 class="padded">Attacks</h5>
+                    <%_ var attacks = dataWarStatsCurrentParsed[league][matchStr].attacks.reverse(); _%>
+                    <%_ attacks.map((attack) => { _%>
+                      <%_ if (attack.attackType != "remaining") { _%>
+                        <div class="row">
+                          <div class="col-xs-12">
+                            <div class="row">
+                              <div class="col-xs-1"><h6 class="left"><%- attack.order %>.</h6></div>
+                              <%_ if (attack.action == "attack") { _%>
+                              <div class="col-xs-5">
+                                <h6 class="right">
+                                  <%- attack.destruction %>%
+                                  &nbsp; &nbsp;
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[0] %>.png" class="star">
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[1] %>.png" class="star">
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[2] %>.png" class="star">
+                                </h6>
+                              </div>
+                              <%_ } else { _%>
+                              <div class="col-xs-5 col-xs-offset-5">
+                                <h6 class="left">
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[0] %>.png" class="star">
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[1] %>.png" class="star">
+                                  <img src="img/jwc/star<%- attack.arrStarsFlag[2] %>.png" class="star">
+                                  &nbsp; &nbsp;
+                                  <%- attack.destruction %>%
+                                </h6>
+                              </div>
+                              <%_ }; _%>
+                            </div>
+                            <div class="row border">
+                              <%_ if (attack.action == "attack") { _%>
+                              <div class="col-xs-4"><h6 class="right bold"><%- attack.name %></h6></div>
+                              <div class="col-xs-4">
+                                <h6>
+                                  <img src="img/th/th<%- attack.townHallLevel %>.png" class="th">
+                                  <img src="img/jwc/swordLeft.png" class="sword">
+                                  <img src="img/th/th<%- attack.townHallLevelDef %>.png" class="th">
+                                </h6>
+                              </div>
+                              <div class="col-xs-4"><h6 class="left gray"><%- attack.namePlayerDef %></h6></div>
+                              <%_ } else { _%>
+                              <div class="col-xs-4"><h6 class="right gray"><%- attack.namePlayerDef %></h6></div>
+                              <div class="col-xs-4">
+                                <h6>
+                                  <img src="img/th/th<%- attack.townHallLevel %>.png" class="th">
+                                  <img src="img/jwc/swordRight.png" class="sword">
+                                  <img src="img/th/th<%- attack.townHallLevelDef %>.png" class="th">
+                                  </h6>
+                              </div>
+                              <div class="col-xs-4"><h6 class="left bold"><%- attack.name %></h6></div>
+                              <%_ }; _%>
+                            </div>
+                          </div>
+                        </div>
+                      <%_ }; _%>
+                    <%_ }); _%>
+                  </div>
+                </div>
+              <%_ }; _%>
+            </details>
+          <%_ } _%>
+          <h6 class="link"><a href="/mix#mix">See Standings / All Wars</a></h6>
+        </div>
+      </div>
+    </div>
+  </current>
+	</section>
+	<!-- footer -->
+	<footer>
+    <div class="text-center text-center-mobile">
+      <h6 class="link"><a href="https://discord.gg/rQz6KEY3E8">Discord</a></h6>
+      <h6 class="link"><a href="https://twitter.com/JWC_RANKING">Twitter</a></h6>
+      <h6 class="link"><a href="https://twitter.com/JwcMix">Twitter (Mix)</a></h6>
+    </div>
+	</footer>
+	<!-- Holder for mobile navigation -->
+	<div class="mobile-nav">
+    <ul class="nav navbar-nav navbar-right main-nav">
+    </ul>
+		<a href="#" class="close-link"><i class="arrow_up"></i></a>
+	</div>
+  
+	<!-- Scripts -->
+	<script src="js/jquery-1.11.1.min.js"></script>
+	<script src="js/owl.carousel.min.js"></script>
+	<script src="js/bootstrap.min.js"></script>
+	<script src="js/typewriter.js"></script>
+	<script src="js/jquery.onepagenav.js"></script>
+	<script src="js/main.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // charts
+    let chartDataWarProgress = JSON.parse('<%- chartDataWarProgress %>');
+    let chartOptionsWarProgress = JSON.parse('<%- chartOptionsWarProgress %>');
+    var league = "j1";
+    Object.keys(chartDataWarProgress[league]).map((match, index) => {
+      var idChart = `chartTriples-${league}-${match}`;
+      var ctx = document.getElementById(idChart);
+      new Chart(ctx, {
+        type: 'line',
+        data: chartDataWarProgress[league][match],
+        options: chartOptionsWarProgress[league][match],
+      });
+    });
+    var league = "j2";
+    Object.keys(chartDataWarProgress[league]).map((match, index) => {
+      var idChart = `chartTriples-${league}-${match}`;
+      var ctx = document.getElementById(idChart);
+      new Chart(ctx, {
+        type: 'line',
+        data: chartDataWarProgress[league][match],
+        options: chartOptionsWarProgress[league][match],
+      });
+    });
+    var league = "swiss";
+    Object.keys(chartDataWarProgress[league]).map((match, index) => {
+      var idChart = `chartTriples-${league}-${match}`;
+      var ctx = document.getElementById(idChart);
+      new Chart(ctx, {
+        type: 'line',
+        data: chartDataWarProgress[league][match],
+        options: chartOptionsWarProgress[league][match],
+      });
+    });
+    var league = "mix";
+    Object.keys(chartDataWarProgress[league]).map((match, index) => {
+      var idChart = `chartTriples-${league}-${match}`;
+      var ctx = document.getElementById(idChart);
+      new Chart(ctx, {
+        type: 'line',
+        data: chartDataWarProgress[league][match],
+        options: chartOptionsWarProgress[league][match],
+      });
+    });
+  </script>
+  <script>
+    let dataWarStatsCurrent = JSON.parse('<%- dataWarStatsCurrent %>');
+    const rewriteTime = () => {
+      var league = "j1";
+      Object.keys(dataWarStatsCurrent[league]).map((match, index) => {
+        var state = dataWarStatsCurrent[league][match].state;
+        var elmHour = document.querySelector(`.hour-${league}-${match}`);
+        var elmMin = document.querySelector(`.min-${league}-${match}`);
+        var elmSec = document.querySelector(`.sec-${league}-${match}`);
+        const now = new Date();
+        var start = new Date();
+        if (state == "preparation") {
+          start = new Date(dataWarStatsCurrent[league][match].startTime);
+        }
+        else if (state == "inWar") {
+          start = new Date(dataWarStatsCurrent[league][match].endTime);
+        };
+        if (state == "preparation" || state == "inWar") {
+          var differ = start.getTime() - now.getTime();
+          var sec = Math.floor(differ / 1000) % 60;
+          var min = Math.floor(differ / 1000 / 60) % 60;
+          var hour = Math.floor(differ / 1000 / 60 / 60);
+          elmHour.textContent = String(hour);
+          elmMin.textContent = String(min).padStart(2, "0");
+          elmSec.textContent = String(sec).padStart(2, "0");
+        };
+      });
+      var league = "j2";
+      Object.keys(dataWarStatsCurrent[league]).map((match, index) => {
+        var state = dataWarStatsCurrent[league][match].state;
+        var elmHour = document.querySelector(`.hour-${league}-${match}`);
+        var elmMin = document.querySelector(`.min-${league}-${match}`);
+        var elmSec = document.querySelector(`.sec-${league}-${match}`);
+        const now = new Date();
+        var start = new Date();
+        if (state == "preparation") {
+          start = new Date(dataWarStatsCurrent[league][match].startTime);
+        }
+        else if (state == "inWar") {
+          start = new Date(dataWarStatsCurrent[league][match].endTime);
+        };
+        if (state == "preparation" || state == "inWar") {
+          var differ = start.getTime() - now.getTime();
+          var sec = Math.floor(differ / 1000) % 60;
+          var min = Math.floor(differ / 1000 / 60) % 60;
+          var hour = Math.floor(differ / 1000 / 60 / 60);
+          elmHour.textContent = String(hour);
+          elmMin.textContent = String(min).padStart(2, "0");
+          elmSec.textContent = String(sec).padStart(2, "0");
+        };
+      });
+      var league = "swiss";
+      Object.keys(dataWarStatsCurrent[league]).map((match, index) => {
+        var state = dataWarStatsCurrent[league][match].state;
+        var elmHour = document.querySelector(`.hour-${league}-${match}`);
+        var elmMin = document.querySelector(`.min-${league}-${match}`);
+        var elmSec = document.querySelector(`.sec-${league}-${match}`);
+        const now = new Date();
+        var start = new Date();
+        if (state == "preparation") {
+          start = new Date(dataWarStatsCurrent[league][match].startTime);
+        }
+        else if (state == "inWar") {
+          start = new Date(dataWarStatsCurrent[league][match].endTime);
+        };
+        if (state == "preparation" || state == "inWar") {
+          var differ = start.getTime() - now.getTime();
+          var sec = Math.floor(differ / 1000) % 60;
+          var min = Math.floor(differ / 1000 / 60) % 60;
+          var hour = Math.floor(differ / 1000 / 60 / 60);
+          elmHour.textContent = String(hour);
+          elmMin.textContent = String(min).padStart(2, "0");
+          elmSec.textContent = String(sec).padStart(2, "0");
+        };
+      });
+      var league = "mix";
+      Object.keys(dataWarStatsCurrent[league]).map((match, index) => {
+        var state = dataWarStatsCurrent[league][match].state;
+        var elmHour = document.querySelector(`.hour-${league}-${match}`);
+        var elmMin = document.querySelector(`.min-${league}-${match}`);
+        var elmSec = document.querySelector(`.sec-${league}-${match}`);
+        const now = new Date();
+        var start = new Date();
+        if (state == "preparation") {
+          start = new Date(dataWarStatsCurrent[league][match].startTime);
+        }
+        else if (state == "inWar") {
+          start = new Date(dataWarStatsCurrent[league][match].endTime);
+        };
+        if (state == "preparation" || state == "inWar") {
+          var differ = start.getTime() - now.getTime();
+          var sec = Math.floor(differ / 1000) % 60;
+          var min = Math.floor(differ / 1000 / 60) % 60;
+          var hour = Math.floor(differ / 1000 / 60 / 60);
+          elmHour.textContent = String(hour);
+          elmMin.textContent = String(min).padStart(2, "0");
+          elmSec.textContent = String(sec).padStart(2, "0");
+        };
+      });
+    };
+    setInterval(rewriteTime, 1000);
+  </script>
+</body>
+
+</html>
