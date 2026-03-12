@@ -5,8 +5,6 @@ const {
   Collection,
 } = require("discord.js");
 
-const http = require("http");
-
 const options = {
   intents: [GatewayIntentBits.Guilds],
 };
@@ -31,23 +29,6 @@ const clientMongo = new MongoClient(config.mongo.uri, {
     deprecationErrors: true,
   },
 });
-
-// Replit health check 用
-const port = process.env.PORT || 3000;
-http
-  .createServer((req, res) => {
-    if (req.url === "/") {
-      res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
-      res.end("ok");
-      return;
-    }
-
-    res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-    res.end("not found");
-  })
-  .listen(port, () => {
-    console.log(`Health check server listening on port ${port}`);
-  });
 
 (async function () {
   try {
