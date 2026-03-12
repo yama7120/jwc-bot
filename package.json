@@ -20,7 +20,7 @@
     "@discordjs/rest": "^1.5.0",
     "@napi-rs/canvas": "^0.1.56",
     "@napi-rs/canvas-linux-x64-gnu": "^0.1.80",
-    "@replit/database": "^2.0.2",
+    "@replit/database": "^3.0.1",
     "@replit/node-fetch": "^3.1.0",
     "chart.js": "^3.9.1",
     "chartjs-node-canvas": "^4.1.6",
