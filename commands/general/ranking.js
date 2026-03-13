@@ -1,9 +1,8 @@
-const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
-
-const config = require('../../config.js');
-const config_coc = require('../../config_coc.js');
-const functions = require('../../functions/functions.js');
-const fRanking = require('../../functions/fRanking.js');
+import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import config from '../../config/config.js';
+import config_coc from '../../config/config_coc.js';
+import * as functions from '../../functions/functions.js';
+import * as fRanking from '../../functions/fRanking.js';
 
 
 const nameCommand = 'ranking';
@@ -220,7 +219,7 @@ choices_attackType.forEach(choice => {
 });
 
 
-module.exports = {
+export default {
   data: data,
 
   async autocomplete(interaction, client) {
@@ -238,7 +237,7 @@ module.exports = {
         await interaction.respond([{ name: 'ENTIRE JWC BOT', value: 'entire' }]);
       }
       else {
-        teams = teamList[iLeague].filter(function(team) { return team.team_abbr.includes(focusedValue) });
+        let teams = teamList[iLeague].filter(function(team) { return team.team_abbr.includes(focusedValue) });
         if (iLeague == 'j1' || iLeague == 'j2') {
           if (subcommandGroup == 'jwc') {
             teams = [{ team_abbr: 'Entire', clan_name: config.league[iLeague], team_name: config.league[iLeague], division: '' }].concat(teams);
@@ -752,7 +751,7 @@ async function jwcAttack(interaction, client) {
   let title = `${config.emote.sword} **TOP ATTACKERS**`;
   embed.setTitle(title);
 
-  const description = await fRanking.getDescriptionRankingJwcAttack(client.clientMongo, iLeague, query, sort, teamAbbr = 'entire', lvTH, nDisplay, flagSummary = false, iRegularSeason, iAttackType);
+  const description = await fRanking.getDescriptionRankingJwcAttack(client.clientMongo, iLeague, query, sort, 'entire', lvTH, nDisplay, false, iRegularSeason, iAttackType);
 
   let footer = '';
   if (iAttackType == 'total') {
@@ -768,7 +767,11 @@ async function jwcAttack(interaction, client) {
       { clan_abbr: teamAbbr },
       { projection: { team_name: 1, logo_url: 1, _id: 0 } }
     );
-    embed.setAuthor({ name: dbValueClan.team_name, iconURL: dbValueClan.logo_url });
+    if (dbValueClan) {
+      embed.setAuthor({ name: dbValueClan.team_name, iconURL: dbValueClan.logo_url });
+    } else {
+      console.warn(`jwcAttack: clan not found for abbr="${teamAbbr}"`);
+    }
   };
 
   let color = config.color[iLeague];
@@ -890,7 +893,11 @@ async function jwcDefense(interaction, client) {
 
   if (teamAbbr != 'entire') {
     let dbValueClan = await client.clientMongo.db('jwc').collection('clans').findOne({ clan_abbr: teamAbbr });
-    embed.setAuthor({ name: dbValueClan.team_name, iconURL: dbValueClan.logo_url });
+    if (dbValueClan) {
+      embed.setAuthor({ name: dbValueClan.team_name, iconURL: dbValueClan.logo_url });
+    } else {
+      console.warn(`jwcDefense: clan not found for abbr="${teamAbbr}"`);
+    }
   };
 
   let color = config.color[iLeague];

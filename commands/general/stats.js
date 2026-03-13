@@ -1,9 +1,8 @@
-const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
-
-const config = require('../../config.js');
-const functions = require('../../functions/functions.js');
-const schedule = require('../../schedule.js');
-const fCanvas = require('../../functions/fCanvas.js');
+import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import config from '../../config/config.js';
+import * as functions from '../../functions/functions.js';
+import schedule from '../../config/schedule.js';
+import * as fCanvas from '../../functions/fCanvas.js';
 
 
 const nameCommand = 'stats';
@@ -110,7 +109,7 @@ config.choices.weekInt.forEach(choice => {
   data.options[2].options[1].addChoices(choice);
 });
 
-module.exports = {
+export default {
   data: data,
 
   async autocomplete(interaction, client) {
@@ -244,7 +243,7 @@ async function statsAccount(interaction, client) {
         else {
           arrDescriptionAttacks[index] += `w${attack.week} `;
           let stars = [];
-          for (i = 0; i < 3; i++) {
+          for (let i = 0; i < 3; i++) {
             if (attack.arrStarsFlag[i] == 3) {
               stars[i] = config.emote.starRed;
             }
@@ -340,7 +339,7 @@ async function statsAccount(interaction, client) {
         arrDescriptionDefenses[index] = '';
         arrDescriptionDefenses[index] += `w${defense.week} `;
         let stars = [];
-        for (i = 0; i < 3; i++) {
+        for (let i = 0; i < 3; i++) {
           if (defense.arrStarsFlag[i] == 3) {
             stars[i] = config.emote.starRed;
           }
@@ -795,7 +794,7 @@ async function statsPlayer(interaction, client) {
   //** update database: pilotDC
   var query = { 'pilotDC.id': pilotDc.id };
   pilotDc.avatarUrl = `https://cdn.discordapp.com/avatars/${pilotDc.id}/${pilotDc.avatar}.png`;
-  updatedListing = { pilotDC: pilotDc };
+  let updatedListing = { pilotDC: pilotDc };
   await client.clientMongo.db('jwc').collection('players').updateOne(query, { $set: updatedListing });
 
   return;

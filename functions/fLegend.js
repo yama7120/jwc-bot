@@ -1,14 +1,18 @@
-const { EmbedBuilder } = require("discord.js");
+import { EmbedBuilder } from "discord.js";
 
-const config = require("../config.js");
-const config_coc = require("../config_coc.js");
+import config from "../config/config.js";
+import config_coc from "../config/config_coc.js";
 
-const functions = require("./functions.js");
-const fMongo = require("./fMongo.js");
-const fRanking = require("./fRanking.js");
-const fCron = require("./fCron.js");
+import * as functions from "./functions.js";
+import * as fRanking from "./fRanking.js";
 
-async function autoUpdateLegend(client, mongoAcc, beforePlayerStats, afterPlayerStats, seasonData) {
+async function autoUpdateLegend(
+  client,
+  mongoAcc,
+  beforePlayerStats,
+  afterPlayerStats,
+  seasonData,
+) {
   if (!mongoAcc) {
     console.log(`something wrong`, beforePlayerStats.tag, afterPlayerStats.tag);
     return;
@@ -18,8 +22,10 @@ async function autoUpdateLegend(client, mongoAcc, beforePlayerStats, afterPlayer
 
   const unixTimeSeconds = Math.floor(Date.now() / 1000);
 
-  const diffAttackWins = afterPlayerStats.attackWins - beforePlayerStats.attackWins;
-  const diffDefenseWins = afterPlayerStats.defenseWins - beforePlayerStats.defenseWins;
+  const diffAttackWins =
+    afterPlayerStats.attackWins - beforePlayerStats.attackWins;
+  const diffDefenseWins =
+    afterPlayerStats.defenseWins - beforePlayerStats.defenseWins;
 
   // 基本的なeventDataオブジェクトを作成
   const baseEventData = {
@@ -36,38 +42,49 @@ async function autoUpdateLegend(client, mongoAcc, beforePlayerStats, afterPlayer
     leagueName: afterPlayerStats.leagueTier.name,
   };
 
-  if (isSeasonResetEvent(beforePlayerStats, afterPlayerStats, seasonData)) {
-    await handleLegendEvent(client, afterPlayerStats, mongoAcc, "seasonReset", baseEventData, diffAttackWins, seasonData);
-    return;
-  }
-
   if (afterPlayerStats.leagueTier.id == config_coc.leagueId.legend) {
-    const legendEventType = isAttackOrDefenseLegend(diffAttackWins, diffDefenseWins,
-      afterPlayerStats.trophies - beforePlayerStats.trophies, afterPlayerStats.attackWins);
-    await handleLegendEvent(client, afterPlayerStats, mongoAcc, legendEventType, baseEventData, diffAttackWins, seasonData);
+    const legendEventType = isAttackOrDefenseLegend(
+      diffAttackWins,
+      diffDefenseWins,
+      afterPlayerStats.trophies - beforePlayerStats.trophies,
+    );
+    await handleEvent(
+      client,
+      afterPlayerStats,
+      mongoAcc,
+      legendEventType,
+      baseEventData,
+      diffAttackWins,
+      seasonData,
+    );
   } else {
-    const legendEventType = isAttackOrDefense(diffAttackWins);
-    await handleLegendEvent(client, afterPlayerStats, mongoAcc, legendEventType, baseEventData, diffAttackWins, seasonData);
+    if (baseEventData.diffTrophies < 0 && baseEventData.trophiesCurrent == 0) {
+      const embed = await createLogReset(afterPlayerStats, mongoAcc, baseEventData, seasonData);
+      await sendLogEmbed(client, mongoAcc, embed);
+    }
+    else {
+      const eventType = isAttackOrDefense(diffAttackWins);
+      await handleEvent(
+        client,
+        afterPlayerStats,
+        mongoAcc,
+        eventType,
+        baseEventData,
+        diffAttackWins,
+        seasonData,
+      );
+    }
   }
 
   return;
 }
-exports.autoUpdateLegend = autoUpdateLegend;
+export { autoUpdateLegend };
 
-function isSeasonResetEvent(beforePlayerStats, afterPlayerStats, seasonData) {
-  const hasTrophyReset =
-    beforePlayerStats.trophies > afterPlayerStats.trophies &&
-    afterPlayerStats.trophies === 5000;
-  const hasCounterReset =
-    afterPlayerStats.attackWins < beforePlayerStats.attackWins ||
-    afterPlayerStats.defenseWins < beforePlayerStats.defenseWins;
-  const isSeasonStartDay = seasonData.daysNow === 1;
-  const isLegendLeague = afterPlayerStats.leagueTier.id === config_coc.leagueId.legend;
-
-  return isLegendLeague && hasTrophyReset && (isSeasonStartDay || hasCounterReset);
-}
-
-function isAttackOrDefenseLegend(diffAttackWins, diffDefenseWins, diffTrophies, attacksCurrent) {
+function isAttackOrDefenseLegend(
+  diffAttackWins,
+  diffDefenseWins,
+  diffTrophies,
+) {
   if (diffAttackWins == 0) {
     if (diffDefenseWins == 1) {
       return "defense";
@@ -118,46 +135,80 @@ function isAttackOrDefense(diffAttackWins) {
 }
 
 // イベント処理
-async function handleLegendEvent(client, scPlayer, mongoAcc, legendEventType, baseEventData, diffAttackWins, seasonData) {
-  switch (legendEventType) {
-    case "seasonReset":
-      await sendLogLegendMain(client, scPlayer, mongoAcc, legendEventType, baseEventData, 1, 0, { nToday: { attacks: 0, defenses: 0 } }, seasonData);
-      break;
-
-    case "nonLegend":
-    case "nextLegend":
-      if (baseEventData.diffTrophies !== 0) {
-        const result = await writeLogLegendR2(client, mongoAcc, legendEventType, baseEventData);
-        if (result && result.value) {
-          await sendLogLegendMain(client, scPlayer, mongoAcc, legendEventType, baseEventData, 1, 0, result, seasonData);
-        }
-      }
-      break;
-
+async function handleEvent(
+  client,
+  scPlayer,
+  mongoAcc,
+  eventType,
+  baseEventData,
+  diffAttackWins,
+  seasonData,
+) {
+  switch (eventType) {
     case "multipleAttacks":
-      await handleMultipleAttacks(client, scPlayer, mongoAcc, baseEventData, diffAttackWins, seasonData);
+      await handleMultipleAttacks(
+        client,
+        scPlayer,
+        mongoAcc,
+        baseEventData,
+        diffAttackWins,
+        seasonData,
+      );
       break;
 
     case "both":
-      await handleBothAttackDefense(client, scPlayer, mongoAcc, baseEventData, seasonData);
+      await handleBothAttackDefense(
+        client,
+        scPlayer,
+        mongoAcc,
+        baseEventData,
+        seasonData,
+      );
       break;
 
     case "2defenses":
-      await handle2Defenses(client, scPlayer, mongoAcc, baseEventData, seasonData);
+      await handle2Defenses(
+        client,
+        scPlayer,
+        mongoAcc,
+        baseEventData,
+        seasonData,
+      );
       break;
 
     default:
-      // 単一のattack/defense
-      const result = await writeLogLegendR2(client, mongoAcc, legendEventType, baseEventData);
+      const result = await writeLogLegendR2(
+        client,
+        mongoAcc,
+        eventType,
+        baseEventData,
+      );
       if (result && result.value) {
-        await sendLogLegendMain(client, scPlayer, mongoAcc, legendEventType, baseEventData, 1, 0, result, seasonData);
+        await sendLogLegendMain(
+          client,
+          scPlayer,
+          mongoAcc,
+          eventType,
+          baseEventData,
+          1,
+          0,
+          result,
+          seasonData,
+        );
       }
       break;
   }
 }
 
 // 複数攻撃の処理
-async function handleMultipleAttacks(client, scPlayer, mongoAcc, baseEventData, attackCount, seasonData) {
+async function handleMultipleAttacks(
+  client,
+  scPlayer,
+  mongoAcc,
+  baseEventData,
+  attackCount,
+  seasonData,
+) {
   const { diffTrophies, trophiesCurrent, unixTimeSeconds } = baseEventData;
 
   // トロフィーを攻撃回数分に分割
@@ -168,20 +219,36 @@ async function handleMultipleAttacks(client, scPlayer, mongoAcc, baseEventData, 
   for (let i = 0; i < attackCount; i++) {
     const eventData = {
       ...baseEventData,
-      trophiesCurrent: trophiesCurrent - (diffTrophies - trophyDistribution.cumulative[i]),
+      trophiesCurrent:
+        trophiesCurrent - (diffTrophies - trophyDistribution.cumulative[i]),
       diffTrophies: trophyDistribution.individual[i],
       unixTimeSeconds: unixTimeSeconds - (attackCount - 1 - i) * 120, // 120秒間隔
-      attacksCurrent: baseEventData.attacksCurrent - (attackCount - 1 - i)
+      attacksCurrent: baseEventData.attacksCurrent - (attackCount - 1 - i),
     };
     multipleEvents.push(eventData);
   }
 
   // 1回のデータベース書き込みで複数イベントを処理
-  const result = await writeLogLegendR2(client, mongoAcc, "attack", multipleEvents);
+  const result = await writeLogLegendR2(
+    client,
+    mongoAcc,
+    "attack",
+    multipleEvents,
+  );
   if (result && result.value) {
     // ひとつひとつ通知を送信する
     for (let i = 0; i < multipleEvents.length; i++) {
-      await sendLogLegendMain(client, scPlayer, mongoAcc, "attack", multipleEvents[i], multipleEvents.length, i, result, seasonData);
+      await sendLogLegendMain(
+        client,
+        scPlayer,
+        mongoAcc,
+        "attack",
+        multipleEvents[i],
+        multipleEvents.length,
+        i,
+        result,
+        seasonData,
+      );
     }
   }
 }
@@ -191,28 +258,50 @@ function distributeTrophies(totalTrophies, attackCount) {
   const individual = new Array(attackCount).fill(0);
   const cumulative = new Array(attackCount).fill(0);
 
-  let remaining = totalTrophies;
-  
-  // 平均値（小数は切り捨て）で均等配分し、最後で合計を調整
-  const base = Math.floor(totalTrophies / attackCount);
-  for (let i = 0; i < attackCount; i++) {
-    individual[i] = base;
+  // attackCountが2から8で、totalTrophiesが40*attackCount-14以上の場合
+  // 最初の(attackCount-1)個を40に設定し、最後をtotalTrophies - 40*(attackCount-1)に設定
+  if (attackCount >= 2 && attackCount <= 8 && totalTrophies >= 40 * attackCount - 14) {
+    for (let i = 0; i < attackCount - 1; i++) {
+      individual[i] = 40;
+    }
+    individual[attackCount - 1] = totalTrophies - 40 * (attackCount - 1);
+    
+    // 累積計算
+    let sum = 0;
+    for (let i = 0; i < attackCount; i++) {
+      sum += individual[i];
+      cumulative[i] = sum;
+    }
+    return { individual, cumulative };
   }
-  const sumBase = base * attackCount;
-  const adjust = totalTrophies - sumBase; // 調整分（0以上とは限らない）
-  individual[attackCount - 1] += adjust;
+  else {
+    // 平均値（小数は切り捨て）で均等配分し、最後で合計を調整
+    const base = Math.floor(totalTrophies / attackCount);
+    for (let i = 0; i < attackCount; i++) {
+      individual[i] = base;
+    }
+    const sumBase = base * attackCount;
+    const adjust = totalTrophies - sumBase; // 調整分
+    individual[attackCount - 1] += adjust;
 
-  // 累積計算
-  let sum = 0;
-  for (let i = 0; i < attackCount; i++) {
-    sum += individual[i];
-    cumulative[i] = sum;
+    // 累積計算
+    let sum = 0;
+    for (let i = 0; i < attackCount; i++) {
+      sum += individual[i];
+      cumulative[i] = sum;
+    }
+    return { individual, cumulative };
   }
-  return { individual, cumulative };
 }
 
 // 攻撃+防衛の同時処理
-async function handleBothAttackDefense(client, scPlayer, mongoAcc, baseEventData, seasonData) {
+async function handleBothAttackDefense(
+  client,
+  scPlayer,
+  mongoAcc,
+  baseEventData,
+  seasonData,
+) {
   const { diffTrophies, unixTimeSeconds } = baseEventData;
 
   // トロフィーを攻撃と防衛に分割
@@ -230,25 +319,41 @@ async function handleBothAttackDefense(client, scPlayer, mongoAcc, baseEventData
     {
       ...baseEventData,
       diffTrophies: attackTrophies,
-      unixTimeSeconds: unixTimeSeconds - 60
+      unixTimeSeconds: unixTimeSeconds - 60,
     },
     {
       ...baseEventData,
       diffTrophies: defenseTrophies,
-      unixTimeSeconds: unixTimeSeconds
-    }
+      unixTimeSeconds: unixTimeSeconds,
+    },
   ];
 
   // 1回のデータベース書き込みで両方のイベントを処理
   const result = await writeLogLegendR2(client, mongoAcc, "both", bothEvents);
 
   if (result && result.value) {
-    await sendLogLegendMain(client, scPlayer, mongoAcc, "both", baseEventData, 1, 0, result, seasonData);
+    await sendLogLegendMain(
+      client,
+      scPlayer,
+      mongoAcc,
+      "both",
+      baseEventData,
+      1,
+      0,
+      result,
+      seasonData,
+    );
   }
 }
 
 // 2回同時防衛の処理
-async function handle2Defenses(client, scPlayer, mongoAcc, baseEventData, seasonData) {
+async function handle2Defenses(
+  client,
+  scPlayer,
+  mongoAcc,
+  baseEventData,
+  seasonData,
+) {
   const { diffTrophies, trophiesCurrent, unixTimeSeconds } = baseEventData;
 
   // 2回の防衛イベントを作成
@@ -259,23 +364,48 @@ async function handle2Defenses(client, scPlayer, mongoAcc, baseEventData, season
       ...baseEventData,
       trophiesCurrent: trophiesCurrent - secondDefenseTrophies,
       diffTrophies: -40,
-      unixTimeSeconds: unixTimeSeconds - 60
+      unixTimeSeconds: unixTimeSeconds - 60,
     },
     {
       ...baseEventData,
       trophiesCurrent: trophiesCurrent,
       diffTrophies: secondDefenseTrophies,
-      unixTimeSeconds: unixTimeSeconds
-    }
+      unixTimeSeconds: unixTimeSeconds,
+    },
   ];
 
   // 1回のデータベース書き込みで両方の防衛イベントを処理
-  const result = await writeLogLegendR2(client, mongoAcc, "defense", defenseEvents);
+  const result = await writeLogLegendR2(
+    client,
+    mongoAcc,
+    "defense",
+    defenseEvents,
+  );
 
   if (result && result.value) {
     // 2回の通知を送信する
-    await sendLogLegendMain(client, scPlayer, mongoAcc, "defense", defenseEvents[0], 2, 0, result, seasonData);
-    await sendLogLegendMain(client, scPlayer, mongoAcc, "defense", defenseEvents[1], 2, 1, result, seasonData);
+    await sendLogLegendMain(
+      client,
+      scPlayer,
+      mongoAcc,
+      "defense",
+      defenseEvents[0],
+      2,
+      0,
+      result,
+      seasonData,
+    );
+    await sendLogLegendMain(
+      client,
+      scPlayer,
+      mongoAcc,
+      "defense",
+      defenseEvents[1],
+      2,
+      1,
+      result,
+      seasonData,
+    );
   }
 }
 
@@ -283,7 +413,7 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
   // 単一イベントの場合は配列に変換
   const events = Array.isArray(eventData) ? eventData : [eventData];
 
-  const newEvents = events.map(event => ({
+  const newEvents = events.map((event) => ({
     unixTime: event.unixTimeSeconds,
     season: event.season,
     day: event.day,
@@ -291,7 +421,7 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
     diffTrophies: event.diffTrophies,
     trophies: event.trophiesCurrent,
     leagueId: event.leagueId,
-    leagueName: event.leagueName
+    leagueName: event.leagueName,
   }));
 
   // 1. 新しいイベントの最後のdayを取得
@@ -300,91 +430,18 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
   const targetDay = lastEvent.day;
 
   // 2. 既存のeventsから該当するdayのイベントを取得
-  const existingEvents = Array.isArray(mongoAcc.legend.events) ? mongoAcc.legend.events : [];
-  const targetDayEvents = existingEvents.filter(event =>
-    event.season === targetSeason && event.day === targetDay
+  const existingEvents = Array.isArray(mongoAcc.legend.events)
+    ? mongoAcc.legend.events
+    : [];
+  const targetDayEvents = existingEvents.filter(
+    (event) => event.season === targetSeason && event.day === targetDay,
   );
 
   // 3. 該当するdayのイベントを再計算（既存 + 新規）
   const allTargetDayEvents = [...targetDayEvents, ...newEvents];
-  const updatedDayData = aggregateDaysFromEvents(allTargetDayEvents).find(d =>
-    d.season === targetSeason && d.day === targetDay
+  const updatedDayData = aggregateDaysFromEvents(allTargetDayEvents).find(
+    (d) => d.season === targetSeason && d.day === targetDay,
   );
-
-  const updatePipeline = [
-    {
-      $set: {
-        "legend.events": {
-          $concatArrays: [
-            { $ifNull: ["$legend.events", []] },
-            newEvents
-          ]
-        }
-      }
-    },
-    {
-      $set: {
-        "legend.events": {
-          $slice: ["$legend.events", -80] // 最新80件のみ保持
-        }
-      }
-    }
-  ];
-
-  // updatedDayData がないケース（Legend以外のリーグ等）では
-  // legend.days に null が混入しないようにし、既存の null も掃除する
-  if (updatedDayData) {
-    updatePipeline.push(
-      {
-        $set: {
-          "legend.days": {
-            $concatArrays: [
-              {
-                $filter: {
-                  input: { $ifNull: ["$legend.days", []] },
-                  cond: {
-                    $not: {
-                      $and: [
-                        { $eq: ["$$this.season", targetSeason] },
-                        { $eq: ["$$this.day", targetDay] }
-                      ]
-                    }
-                  }
-                }
-              },
-              [updatedDayData]
-            ]
-          }
-        }
-      },
-      {
-        $set: {
-          "legend.days": {
-            $sortArray: { input: "$legend.days", sortBy: { season: -1, day: -1 } }
-          }
-        }
-      },
-      {
-        $set: {
-          "legend.days": {
-            $slice: ["$legend.days", 80] // 最新80件のみ保持（先頭から）
-          }
-        }
-      }
-    );
-  } else {
-    updatePipeline.push({
-      $set: {
-        "legend.days": {
-          $filter: {
-            input: { $ifNull: ["$legend.days", []] },
-            as: "day",
-            cond: { $ne: ["$$day", null] }
-          }
-        }
-      }
-    });
-  }
 
   // 4. 1回のデータベースアクセスでeventsとdaysを同時に更新
   const result = await client.clientMongo
@@ -392,34 +449,101 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
     .collection("accounts")
     .findOneAndUpdate(
       { tag: mongoAcc.tag },
-      updatePipeline,
+      [
+        {
+          $set: {
+            "legend.events": {
+              $concatArrays: [{ $ifNull: ["$legend.events", []] }, newEvents],
+            },
+          },
+        },
+        {
+          $set: {
+            "legend.events": {
+              $sortArray: {
+                input: "$legend.events",
+                sortBy: { unixTime: -1 },
+              },
+            },
+          },
+        },
+        {
+          $set: {
+            "legend.events": {
+              $slice: ["$legend.events", 80], // 最新80件のみ保持（先頭から）
+            },
+          },
+        },
+        {
+          $set: {
+            "legend.days": {
+              $concatArrays: [
+                {
+                  $filter: {
+                    input: { $ifNull: ["$legend.days", []] },
+                    cond: {
+                      $not: {
+                        $and: [
+                          { $eq: ["$$this.season", targetSeason] },
+                          { $eq: ["$$this.day", targetDay] },
+                        ],
+                      },
+                    },
+                  },
+                },
+                [updatedDayData],
+              ],
+            },
+          },
+        },
+        {
+          $set: {
+            "legend.days": {
+              $sortArray: {
+                input: "$legend.days",
+                sortBy: { season: -1, day: -1 },
+              },
+            },
+          },
+        },
+        {
+          $set: {
+            "legend.days": {
+              $slice: ["$legend.days", 80], // 最新80件のみ保持（先頭から）
+            },
+          },
+        },
+      ],
       {
         returnDocument: "after",
-        projection: { legend: 1, _id: 0 }
-      }
+        includeResultMetadata: true,
+        projection: { legend: 1, _id: 0 },
+      },
     );
 
   // 5. 戻り値用にnTodayを計算（更新されたdayデータから取得）
   const nToday = {
     attacks: updatedDayData ? updatedDayData.attacks : 0,
-    defenses: updatedDayData ? updatedDayData.defenses : 0
+    defenses: updatedDayData ? updatedDayData.defenses : 0,
+    attackTrophies: updatedDayData ? updatedDayData.attackTrophies : 0,
+    defenseTrophies: updatedDayData ? updatedDayData.defenseTrophies : 0,
   };
 
   result.nToday = nToday;
   return result;
 }
-exports.writeLogLegendR2 = writeLogLegendR2;
+export { writeLogLegendR2 };
 
 // eventsからdaysを集約計算する関数
 function aggregateDaysFromEvents(events) {
   const daysMap = new Map(); // key: "season-day"
 
-  events.forEach(event => {
+  events.forEach((event) => {
     // legendリーグのイベントのみを処理
     if (event.leagueId !== config_coc.leagueId.legend) {
       return;
     }
-    
+
     const key = `${event.season}-${event.day}`;
 
     if (!daysMap.has(key)) {
@@ -429,12 +553,12 @@ function aggregateDaysFromEvents(events) {
         day: event.day,
         trophies: event.trophies,
         diffTrophies: 0,
-        attackTrophies: 0,  // 攻撃で増加したトロフィー数
+        attackTrophies: 0, // 攻撃で増加したトロフィー数
         defenseTrophies: 0, // 防衛で減少したトロフィー数
         attacks: 0,
         defenses: 0,
         triples: 0,
-        defTriples: 0
+        defTriples: 0,
       });
     }
 
@@ -472,22 +596,43 @@ function aggregateDaysFromEvents(events) {
   });
 
   // Mapを配列に変換してソート
-  return Array.from(daysMap.values())
-    .sort((a, b) => {
-      if (a.season !== b.season) return b.season - a.season;
-      return b.day - a.day;
-    });
+  return Array.from(daysMap.values()).sort((a, b) => {
+    if (a.season !== b.season) return b.season - a.season;
+    return b.day - a.day;
+  });
 }
 
-async function sendLogLegendMain(client, scPlayer, mongoAcc, legendEventType, eventData, nEvents, i, result, seasonData) {
+async function sendLogLegendMain(
+  client,
+  scPlayer,
+  mongoAcc,
+  legendEventType,
+  eventData,
+  nEvents,
+  i,
+  result,
+  seasonData,
+) {
   let embed = null;
 
   // embed作成
   if (mongoAcc.legend.logSettings) {
-    if (mongoAcc.legend.logSettings.post === "channel" || mongoAcc.legend.logSettings.post === "dm") {
-      embed = await handleBattleLog(legendEventType, scPlayer, mongoAcc, eventData, nEvents, i, result, seasonData);
-    }
-    else {
+    if (
+      mongoAcc.legend.logSettings.post === "channel" ||
+      mongoAcc.legend.logSettings.post === "dm"
+    ) {
+      embed = await handleBattleLog(
+        client,
+        legendEventType,
+        scPlayer,
+        mongoAcc,
+        eventData,
+        nEvents,
+        i,
+        result,
+        seasonData,
+      );
+    } else {
       embed = null;
     }
   } else {
@@ -497,32 +642,76 @@ async function sendLogLegendMain(client, scPlayer, mongoAcc, legendEventType, ev
   // 送信
   if (embed) {
     await sendLogEmbed(client, mongoAcc, embed);
-  }
-  else {
+  } else {
     //await sendSimpleLogToChannel(client, mongoAcc, eventData, seasonData);
   }
 }
 
-async function handleBattleLog(legendEventType, scPlayer, mongoAcc, eventData, nEvents, i, result, seasonData) {
+async function handleBattleLog(
+  client,
+  legendEventType,
+  scPlayer,
+  mongoAcc,
+  eventData,
+  nEvents,
+  i,
+  result,
+  seasonData,
+) {
   const logSettings = mongoAcc.legend.logSettings;
   switch (legendEventType) {
-    case "seasonReset":
-      return await createLogLegendSeasonReset(scPlayer, seasonData);
-
     case "attack":
-      if (logSettings.attacks === "all") return await createLogLegendAttack(scPlayer, eventData, result.nToday, nEvents, i, seasonData);
+      if (logSettings.attacks === "all")
+        return await createLogLegendAttack(
+          client,
+          scPlayer,
+          eventData,
+          result.nToday,
+          nEvents,
+          i,
+          seasonData,
+        );
       break;
 
     case "defense":
-      if (logSettings.defenses === "all") return await createLogLegendDefense(scPlayer, eventData, result.nToday, nEvents, i, seasonData);
-      if (logSettings.defenses === "non-tripled" && eventData.diffTrophies !== -40) return await createLogLegendDefense(scPlayer, eventData, result.nToday, nEvents, i, seasonData);
+      if (logSettings.defenses === "all")
+        return await createLogLegendDefense(
+          client,
+          scPlayer,
+          eventData,
+          result.nToday,
+          nEvents,
+          i,
+          seasonData,
+        );
+      if (
+        logSettings.defenses === "non-tripled" &&
+        eventData.diffTrophies !== -40
+      )
+        return await createLogLegendDefense(
+          client,
+          scPlayer,
+          eventData,
+          result.nToday,
+          nEvents,
+          i,
+          seasonData,
+        );
       break;
 
     case "both":
-      return await createLogLegendBoth(scPlayer, eventData.diffTrophies, seasonData);
+      return await createLogLegendBoth(
+        scPlayer,
+        eventData.diffTrophies,
+        seasonData,
+      );
 
     default:
-      return await createLogLegendWarning(scPlayer, eventData.diffTrophies, seasonData);
+      return await createLogLegendWarning(
+        scPlayer,
+        eventData.diffTrophies,
+        seasonData,
+      );
   }
   return null;
 }
@@ -530,8 +719,11 @@ async function handleBattleLog(legendEventType, scPlayer, mongoAcc, eventData, n
 async function sendLogEmbed(client, mongoAcc, myEmbed) {
   try {
     // ユーザー設定に基づく送信
-    if (mongoAcc.legend.logSettings.post == "NA") {
-    } else if (mongoAcc.legend.logSettings.post == "channel") {
+    if (!mongoAcc.legend.logSettings) {
+      return;
+    } else if (mongoAcc.legend.logSettings.post == "NA") {
+      return;
+    } else if (mongoAcc.legend.logSettings.post === "channel") {
       const channelUser = client.channels.cache.get(
         mongoAcc.legend.logSettings.channel,
       );
@@ -571,22 +763,46 @@ async function sendToDM(client, mongoAcc, myEmbed) {
   }
 }
 
-async function createLogLegendAttack(scPlayer, eventData, nToday, nEvents, i, seasonData) {
+async function createLogLegendAttack(
+  client,
+  scPlayer,
+  eventData,
+  nToday,
+  nEvents,
+  i,
+  seasonData,
+) {
   const myEmbed = new EmbedBuilder();
-  myEmbed.setTitle(`${config.emote.sword} ${createDescriptionLegend(eventData.diffTrophies)}`);
+  myEmbed.setTitle(
+    `${config.emote.sword} ${createDescriptionLegend(eventData.diffTrophies)}`,
+  );
   let footer = "";
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
-    footer = `#${nToday.attacks - nEvents + i + 1} | ` +
+    footer =
+      `#${nToday.attacks - nEvents + i + 1} | ` +
       `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | ${scPlayer.leagueTier.name.toUpperCase()}`;
-  }
-  else {
+  } else {
     footer = `${scPlayer.leagueTier.name.toUpperCase()}`;
   }
   myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
   myEmbed.setColor(config.color.attack);
   myEmbed.setTimestamp();
-  let description = `<t:${eventData.unixTimeSeconds}:t> :trophy: ${eventData.trophiesCurrent} ${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}**\n`;
+
+  let description = `<t:${eventData.unixTimeSeconds}:t> :trophy: **${eventData.trophiesCurrent}** ${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}**\n`;
+
+  // 今日の攻撃合計と平均を表示
+  if (nToday.attacks >= 2) {
+    const averageTrophies = Math.round(nToday.attackTrophies / nToday.attacks);
+    description += `:bar_chart: **+${nToday.attackTrophies}** in ${nToday.attacks} attacks (avg: +${averageTrophies})\n`;
+  }
+
   if (eventData.leagueId == config_coc.leagueId.legend) {
+    // TOP200ランキング確認
+    const rankingDisplay = await getRankingDisplay(client, scPlayer);
+    if (rankingDisplay) {
+      description += rankingDisplay;
+    }
+
     description += `${config.emote.discord}</legend stats:${config.command.legend.id}>`;
     description += ` ${config.emote.discord}</legend history own:${config.command.legend.id}>`;
   }
@@ -595,35 +811,97 @@ async function createLogLegendAttack(scPlayer, eventData, nToday, nEvents, i, se
   return myEmbed;
 }
 
-async function createLogLegendDefense(scPlayer, eventData, nToday, nEvents, i, seasonData) {
+async function createLogLegendDefense(
+  client,
+  scPlayer,
+  eventData,
+  nToday,
+  nEvents,
+  i,
+  seasonData,
+) {
   const myEmbed = new EmbedBuilder();
   let title = "";
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     title = `${config.emote.shield} ${createDescriptionLegend(eventData.diffTrophies)}`;
-  }
-  else {
+  } else {
     title = `${config.emote.shield} ${createDescriptionNonLegend(eventData.diffTrophies)}`;
   }
   myEmbed.setTitle(title);
   let footer = "";
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
-    footer = `#${nToday.defenses - nEvents + i + 1} | ` +
+    footer =
+      `#${nToday.defenses - nEvents + i + 1} | ` +
       `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | ${scPlayer.leagueTier.name.toUpperCase()}`;
-  }
-  else {
+  } else {
     footer = `${scPlayer.leagueTier.name.toUpperCase()}`;
   }
   myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
   myEmbed.setColor(config.color.defense);
   myEmbed.setTimestamp();
-  let description = `<t:${eventData.unixTimeSeconds}:t> :trophy: ${eventData.trophiesCurrent} ${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}**\n`;
+  let description = `<t:${eventData.unixTimeSeconds}:t> :trophy: **${eventData.trophiesCurrent}** ${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}**\n`;
+
+  // 今日の防衛合計と平均を表示
+  if (nToday.defenses >= 2) {
+    const averageTrophies = Math.round(
+      Math.abs(nToday.defenseTrophies) / nToday.defenses,
+    );
+    description += `:bar_chart: **${nToday.defenseTrophies}** in ${nToday.defenses} defenses (avg: -${averageTrophies})\n`;
+  }
+
   if (eventData.leagueId == config_coc.leagueId.legend) {
+    // TOP200ランキング確認
+    const rankingDisplay = await getRankingDisplay(client, scPlayer);
+    if (rankingDisplay) {
+      description += rankingDisplay;
+    }
+
     description += `${config.emote.discord}</legend stats:${config.command.legend.id}>`;
     description += ` ${config.emote.discord}</legend history own:${config.command.legend.id}>`;
   }
   myEmbed.setDescription(description);
 
   return myEmbed;
+}
+
+// ランキング表示用の共通関数
+async function getRankingDisplay(client, scPlayer) {
+  try {
+    const playerRanks = await client.clientCoc.getPlayerRanks(
+      config_coc.locationId.japan,
+    );
+    const playerRank = playerRanks.find((rank) => rank.tag === scPlayer.tag);
+
+    if (playerRank && playerRank.rank <= 200) {
+      let rankingText = `:flag_jp: No. **${playerRank.rank}** in JAPAN`;
+
+      // 20位以内の場合はグローバルランキングも取得
+      if (playerRank.rank <= 20) {
+        try {
+          const globalRanks = await client.clientCoc.getPlayerRanks("global");
+          const globalRank = globalRanks.find(
+            (rank) => rank.tag === scPlayer.tag,
+          );
+
+          if (globalRank) {
+            rankingText += ` :earth_asia: No. **${globalRank.rank}** in GLOBAL\n`;
+          } else {
+            rankingText += `\n`;
+          }
+        } catch (globalError) {
+          console.error("グローバルランキング取得エラー:", globalError);
+        }
+      } else {
+        rankingText += `\n`;
+      }
+
+      return rankingText;
+    }
+  } catch (error) {
+    console.error("ランキング取得エラー:", error);
+  }
+
+  return "";
 }
 
 async function createLogLegendBoth(scPlayer, diffTrophies, seasonData) {
@@ -632,8 +910,7 @@ async function createLogLegendBoth(scPlayer, diffTrophies, seasonData) {
   let footer = "";
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     footer = `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
-  }
-  else {
+  } else {
     footer = `${scPlayer.leagueTier.name.toUpperCase()}`;
   }
   myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
@@ -658,8 +935,7 @@ async function createLogLegendWarning(scPlayer, diffTrophies, seasonData) {
   let footer = "";
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     footer = `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
-  }
-  else {
+  } else {
     footer = `${scPlayer.leagueTier.name.toUpperCase()}`;
   }
   myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
@@ -678,19 +954,29 @@ async function createLogLegendWarning(scPlayer, diffTrophies, seasonData) {
   return myEmbed;
 }
 
-async function createLogLegendSeasonReset(scPlayer, seasonData) {
+async function createLogReset(scPlayer, mongoAcc, eventData, seasonData) {
   const myEmbed = new EmbedBuilder();
-  myEmbed.setTitle(`**RANKED BATTLES LOG**`);
-  myEmbed.setFooter({
-    text: `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`,
-    iconURL: scPlayer.leagueTier.icon.url
-  });
-  myEmbed.setColor(config.color.attack);
+  const title = `**⚔️ LEAGUE RESET!**`;
+  myEmbed.setTitle(title);
+  const footer = `${scPlayer.leagueTier.name.toUpperCase()}`;
+  myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
+  myEmbed.setColor(config.color.main);
   myEmbed.setTimestamp();
-
-  let description = `${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}** | ${scPlayer.tag}\n\n`;
-  description += `:trophy: **5000**\n\n`;
-  description += `:sparkles: New season has started.\n`;
+  let description = "";
+  description += `<t:${eventData.unixTimeSeconds}:t> :trophy: **${eventData.trophiesCurrent}** ${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}**\n\n`;
+  const leagueTierIdBefore = mongoAcc.leagueTier?.id ?? 0;
+  const leagueTierIdAfter = scPlayer.leagueTier?.id ?? 0;
+  if (leagueTierIdAfter - leagueTierIdBefore == 1) {
+    description += `${config.emote.up} You've been promoted!\n`;
+  } else if (leagueTierIdAfter - leagueTierIdBefore == -1) {
+    description += `${config.emote.down} You've been demoted.\n`;
+  } else if (leagueTierIdAfter - leagueTierIdBefore == 0) {
+    description += `${config.emote.white_small_square} You've stayed the same.\n`;
+  } else {
+    description += `:exclamation: The league has been reset.\n`;
+  }
+  description += `Sign up now to join the next tournament.\n`;
+  description += `Tournament starts at: ${seasonData.tournamentWindow.startTime}\n`;
   myEmbed.setDescription(description);
 
   return myEmbed;
@@ -756,30 +1042,6 @@ function createDescriptionNonLegend(diffTrophies) {
   return myEmbed;
 }*/
 
-/*async function createLogLegendReset(scPlayer, seasonData) {
-  const myEmbed = new EmbedBuilder();
-  myEmbed.setTitle(`**LEGEND LOG**`);
-  const footer = `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
-  myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
-  myEmbed.setColor(config.color.attack);
-  myEmbed.setTimestamp();
-  let description = "";
-  description += config.emote.thn[scPlayer.townHallLevel];
-  description += ` **${scPlayer.name}**\n`;
-  description += ` ${scPlayer.tag}\n`;
-  description += `\n`;
-  //description += `:trophy: **5000**\n`;
-  //description += `\n`;
-  description += `*New season has started.*\n`;
-  description += `* ${seasonData.seasonId} SEASON\n`;
-  description += `* ${seasonData.daysEnd} DAYS\n`;
-  description += `* Start: ${seasonData.seasonStart}\n`;
-  description += `* End: ${seasonData.seasonEnd}\n`;
-  myEmbed.setDescription(description);
-
-  return myEmbed;
-}*/
-
 async function autoUpdateLegendReset(client) {
   var query = { status: true };
   var sort = { trophies: -1 };
@@ -790,7 +1052,7 @@ async function autoUpdateLegendReset(client) {
       projection: {
         _id: 0,
         tag: 1,
-      }
+      },
     })
     .sort(sort);
   let accountsAll = await cursor.toArray();
@@ -825,24 +1087,21 @@ async function autoUpdateLegendReset(client) {
   // legend [previous season]
   await fRanking.rankingLegend(
     client.clientMongo,
-    (nameItem = "previous"),
-    (nameRanking = "legendPreviousSeason"),
-    (key = "legend.previous.trophies"),
+    "previous",
+    "legendPreviousSeason",
+    "legend.previous.trophies"
   );
 
   return;
 }
-exports.autoUpdateLegendReset = autoUpdateLegendReset;
+export { autoUpdateLegendReset };
 
 async function updateLegendPreviousSeason(clientMongo, clientCoc, playerTag) {
   try {
     let mongoAcc = await clientMongo
       .db("jwc")
       .collection("accounts")
-      .findOne(
-        { tag: playerTag },
-        { projection: { legend: 1, _id: 0 } }
-      );
+      .findOne({ tag: playerTag }, { projection: { legend: 1, _id: 0 } });
 
     if (mongoAcc.legend) {
       let listingUpdate = {};
@@ -852,7 +1111,11 @@ async function updateLegendPreviousSeason(clientMongo, clientCoc, playerTag) {
       listingUpdate.diffDefenseWins = 0;
 
       const resultScan = await functions.scanAcc(clientCoc, playerTag);
-      listingUpdate.legend.previous = resultScan.scPlayer.legendStatistics?.previousSeason ?? null;
+      if (resultScan.scPlayer) {
+        listingUpdate.legend = mongoAcc.legend;
+        listingUpdate.legend.previous =
+          resultScan.scPlayer.legendStatistics?.previousSeason ?? null;
+      }
 
       await clientMongo
         .db("jwc")

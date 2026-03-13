@@ -1,11 +1,8 @@
-const { SlashCommandBuilder } = require('@discordjs/builders');
-const { EmbedBuilder } = require('discord.js');
-
-const config = require('../../config.js');
-const schedule = require('../../schedule.js');
-const functions = require('../../functions/functions.js');
-const fGetWars = require('../../functions/fGetWars.js');
-const fCanvas = require('../../functions/fCanvas.js');
+import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import config from '../../config/config.js';
+import schedule from '../../config/schedule.js';
+import * as functions from '../../functions/functions.js';
+import * as fGetWars from '../../functions/fGetWars.js';
 
 const nameCommand = 'war';
 let data = new SlashCommandBuilder()
@@ -112,51 +109,45 @@ config.choices.weekInt.forEach(choice => {
 });
 
 
-module.exports = {
+export default {
   data: data,
 
   async autocomplete(interaction, client) {
     const focusedOption = interaction.options.getFocused(true);
-    const iLeague = interaction.options.getString('league');
-    let iWeek = interaction.options.getInteger('week');
-
-    // Autocomplete interactions expire quickly; always return a response promptly.
-    if (!iLeague) {
-      await safeAutocompleteRespond(interaction, []);
-      return;
-    }
+    const iLeague = await interaction.options.getString('league');
+    let iWeek = await interaction.options.getInteger('week');
+    if (iWeek == null || iWeek == 99) {
+      iWeek = await functions.getWeekNow(iLeague);
+    };
 
     if (focusedOption.name === 'match') {
-      if (iWeek == null || iWeek == 99) {
-        iWeek = await functions.getWeekNow(iLeague);
-      };
-
       const query = { season: config.season[iLeague], league: iLeague, week: iWeek };
       const options = { projection: { _id: 0, league: 1, week: 1, match: 1, clan_abbr: 1, opponent_abbr: 1, name_match: 1 } };
       const sort = { match: 1 };
-      const mongoWars = await client.clientMongo.db('jwc').collection('wars').find(query, options).sort(sort).limit(25).toArray();
-      await safeAutocompleteRespond(interaction, mongoWars.map(war => ({
-        name: `${war.name_match || war.match} - ${war.clan_abbr.toUpperCase()} vs. ${war.opponent_abbr.toUpperCase()}`,
-        value: war.match
-      })));
-      return;
+      const cursor = client.clientMongo.db('jwc').collection('wars').find(query, options).sort(sort);
+      let mongoWars = await cursor.toArray();
+      await cursor.close();
+
+      if (mongoWars.length > 0) {
+        await interaction.respond(mongoWars.map(war => ({
+          name: `${war.name_match || war.match} - ${war.clan_abbr.toUpperCase()} vs. ${war.opponent_abbr.toUpperCase()}`,
+          value: war.match
+        })));
+      };
     }
     else if (focusedOption.name === 'team') {
       let teamList = await client.clientMongo.db('jwc').collection('config').findOne({ _id: 'teamList' });
 
       const focusedValue = interaction.options.getFocused();
-      teamList = (teamList?.[iLeague] || []).filter(function(team) { return team.team_abbr.includes(focusedValue) });
+      teamList = teamList[iLeague].filter(function(team) { return team.team_abbr.includes(focusedValue) });
       if (teamList.length >= 25) {
         teamList = teamList.filter(function(team, index) { return index < 25 });
       };
 
-      await safeAutocompleteRespond(interaction, teamList.map(team => (
+      await interaction.respond(teamList.map(team => (
         { name: `${team.team_abbr.toUpperCase()}: ${team.team_name}`, value: team.team_abbr }
       )));
-      return;
     };
-
-    await safeAutocompleteRespond(interaction, []);
   },
 
   async execute(interaction, client) {
@@ -186,17 +177,6 @@ module.exports = {
     };
   }
 };
-
-async function safeAutocompleteRespond(interaction, choices) {
-  try {
-    await interaction.respond(choices);
-  } catch (error) {
-    if (error?.code === 10062 || error?.code === 40060) {
-      return;
-    }
-    throw error;
-  }
-}
 
 
 async function warSummary(interaction, client) {
@@ -426,7 +406,7 @@ async function warAttacks(interaction, client) {
     { clan_abbr: clanAbbr },
     { projection: { team_name: 1, _id: 0 } }
   );
-  const teamName = mongoClan?.team_name || iClan.toUpperCase();
+  const teamName = mongoClan.team_name;
 
   const query = {
     season: config.season[iLeague],
@@ -465,7 +445,7 @@ async function warAttacks(interaction, client) {
   if (clanAbbrOpp) {
     const mongoClanOpp = await client.clientMongo.db('jwc').collection('clans')
       .findOne({ clan_abbr: clanAbbrOpp });
-    teamNameOpp = mongoClanOpp?.team_name || clanAbbrOpp.toUpperCase();
+    teamNameOpp = mongoClanOpp.team_name;
   };
 
   let arrDescription = ['', '', '', '', ''];
@@ -489,7 +469,7 @@ async function warAttacks(interaction, client) {
         }
         else {
           let stars = [];
-          for (j = 0; j < 3; j++) {
+          for (let j = 0; j < 3; j++) {
             if (attack.arrStarsFlag[j] == 2) {
               stars[j] = config.emote.star;
             }
@@ -551,7 +531,7 @@ async function warAttacks(interaction, client) {
   embed.setTitle(title);
   embed.setColor(config.color[iLeague]);
   embed.setFooter({ text: footerText, iconURL: config.urlImage.jwc });
-  embed.setAuthor({ name: teamName, iconURL: mongoClan?.logo_url });
+  embed.setAuthor({ name: teamName, iconURL: mongoClan.logo_url });
 
   for (const desc of description) {
     embed.setDescription(desc);
@@ -576,7 +556,7 @@ async function warDefenses(interaction, client) {
     { clan_abbr: clanAbbr },
     { projection: { team_name: 1, _id: 0 } }
   );
-  const teamName = mongoClan?.team_name || iClan.toUpperCase();
+  const teamName = mongoClan.team_name;
 
   const query = {
     season: config.season[iLeague],
@@ -595,28 +575,28 @@ async function warDefenses(interaction, client) {
   let arrAttacks = {};
   let members = {};
 
-  if (mongoWar?.clan_abbr == clanAbbr) {
+  if (mongoWar.clan_abbr == clanAbbr) {
     clanAbbrOpp = mongoWar.opponent_abbr;
     arrAttacks = mongoWar.result.arrAttacksPlus;
-    members = mongoWar.clan_war?.clan?.members || [];
+    members = mongoWar.clan_war?.clan?.members;
   }
-  else if (mongoWar?.opponent_abbr == clanAbbr) {
+  else if (mongoWar.opponent_abbr == clanAbbr) {
     clanAbbrOpp = mongoWar.clan_abbr;
     arrAttacks = mongoWar.result.arrAttacksPlus;
-    members = mongoWar.opponent_war?.clan?.members || [];
+    members = mongoWar.opponent_war?.clan?.members;
   };
 
   let teamNameOpp = '';
   if (clanAbbrOpp) {
     const mongoClanOpp = await client.clientMongo.db('jwc').collection('clans')
       .findOne({ clan_abbr: clanAbbrOpp });
-    teamNameOpp = mongoClanOpp?.team_name || clanAbbrOpp.toUpperCase();
+    teamNameOpp = mongoClanOpp.team_name;
   };
 
   let arrDescription = ['', '', '', '', ''];
   let footerText = '';
 
-  if (arrAttacks && clanAbbrOpp && Array.isArray(members) && members.length > 0) {
+  if (arrAttacks && clanAbbrOpp) {
     members.sort((a, b) => a.mapPosition - b.mapPosition);
 
     let membersTag = [];
@@ -650,7 +630,7 @@ async function warDefenses(interaction, client) {
           description += `${functions.nameReplacer(namePlayerDef)}\n`;
         };
         let stars = [];
-        for (j = 0; j < 3; j++) {
+        for (let j = 0; j < 3; j++) {
           if (attack.arrStarsFlag[j] == 2) {
             stars[j] = config.emote.star;
           }
@@ -703,7 +683,7 @@ async function warDefenses(interaction, client) {
   embed.setTitle(title);
   embed.setColor(config.color[iLeague]);
   embed.setFooter({ text: footerText, iconURL: config.urlImage.jwc });
-  embed.setAuthor({ name: teamName, iconURL: mongoClan?.logo_url });
+  embed.setAuthor({ name: teamName, iconURL: mongoClan.logo_url });
 
   for (const desc of description) {
     embed.setDescription(desc);
@@ -715,28 +695,22 @@ async function warDefenses(interaction, client) {
 
 
 async function warLineupMain(interaction, client) {
+  const iLeague = await interaction.options.getString('league');
+  let iWeek = await interaction.options.getInteger('week');
+  const iMatch = await interaction.options.getInteger('match');
+
+  if (iWeek == null || iWeek == 99) {
+    iWeek = await functions.getWeekNow(iLeague);
+  };
+
+  let mongoWar = await client.clientMongo.db('jwc').collection('wars')
+    .findOne({ season: config.season[iLeague], league: iLeague, week: iWeek, match: iMatch });
+
   let embed = new EmbedBuilder();
+  embed.setTitle('**LINEUP**');
+  embed.setColor(config.color[iLeague]);
+
   try {
-    const iLeague = await interaction.options.getString('league');
-    let iWeek = await interaction.options.getInteger('week');
-    const iMatch = await interaction.options.getInteger('match');
-
-    if (iWeek == null || iWeek == 99) {
-      iWeek = await functions.getWeekNow(iLeague);
-    };
-
-    embed.setTitle('**LINEUP**');
-    embed.setColor(config.color[iLeague]);
-
-    let mongoWar = await client.clientMongo.db('jwc').collection('wars')
-      .findOne({ season: config.season[iLeague], league: iLeague, week: iWeek, match: iMatch });
-
-    if (!mongoWar?.clan_war?.clan?.members || !mongoWar?.opponent_war?.clan?.members) {
-      embed.setDescription(`*no lineup*`);
-      await interaction.followUp({ embeds: [embed] });
-      return;
-    };
-
     let teamAbbr_A = mongoWar.clan_abbr;
     let teamAbbr_B = mongoWar.opponent_abbr;
     let members_A = mongoWar.clan_war.clan.members;
@@ -744,20 +718,22 @@ async function warLineupMain(interaction, client) {
     let mongoTeam_A = await client.clientMongo.db('jwc').collection('clans').findOne({ clan_abbr: teamAbbr_A });
     let mongoTeam_B = await client.clientMongo.db('jwc').collection('clans').findOne({ clan_abbr: teamAbbr_B });
 
-    if (!mongoTeam_A || !mongoTeam_B) {
-      embed.setDescription(`*no lineup*`);
-      await interaction.followUp({ embeds: [embed] });
-      return;
-    };
-
     embed = await sendLineup(client, embed, iLeague, iWeek, mongoTeam_A, mongoTeam_B, members_A);
     await interaction.followUp({ embeds: [embed] });
     embed = await sendLineup(client, embed, iLeague, iWeek, mongoTeam_B, mongoTeam_A, members_B);
     await interaction.followUp({ embeds: [embed] });
   }
   catch (err) {
-    embed.setDescription(`*no lineup*`);
+    let description = '';
+    description += `*no lineup*\n`;
+    description += `league: ${iLeague}\n`;
+    description += `week: ${iWeek}\n`;
+    description += `match: ${iMatch}\n`;
+    description += `\n`;
+    description += `ERROR: ${err.message}`;
+    embed.setDescription(description);
     await interaction.followUp({ embeds: [embed] });
+    console.error(err);
     return;
   };
 
@@ -811,7 +787,7 @@ async function sendLineup(client, embed, iLeague, iWeek, mongoTeam, mongoTeamOpp
 
   embed.setDescription(description);
 
-  footerText = `${config.footer} ${config.league[iLeague]} W${iWeek} | vs ${mongoTeamOpp.team_name}`;
+  const footerText = `${config.footer} ${config.league[iLeague]} W${iWeek} | vs ${mongoTeamOpp.team_name}`;
   embed.setFooter({ text: footerText, iconURL: config.urlImage.jwc });
 
   return embed;

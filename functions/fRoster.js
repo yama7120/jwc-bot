@@ -1,8 +1,8 @@
-const { EmbedBuilder } = require('discord.js');
+import { EmbedBuilder } from 'discord.js';
 
-const config = require('../config.js');
-const functions = require('./functions.js');
-const fMongo = require('./fMongo.js');
+import config from '../config/config.js';
+import * as functions from './functions.js';
+import * as fMongo from './fMongo.js';
 
 
 async function roster(interaction, client, iLeague, iTeamAbbr) {
@@ -41,7 +41,7 @@ async function roster(interaction, client, iLeague, iTeamAbbr) {
 
   await rosterMain(interaction, client, mongoTeam, accs, iLeague);
 };
-exports.roster = roster;
+export { roster };
 
 async function rosterMain(interaction, client, mongoTeam, accs, iLeague) {
   let embed = new EmbedBuilder();
@@ -144,7 +144,7 @@ async function rosterMain(interaction, client, mongoTeam, accs, iLeague) {
     };
   };
 
-  description = await setDescriptionRosterLeagueOne(client.clientMongo, iLeague, index = -1, mongoTeam.clan_abbr, mongoTeam.team_name);
+  description = await setDescriptionRosterLeagueOne(client.clientMongo, iLeague, -1, mongoTeam.clan_abbr, mongoTeam.team_name);
 
   embed.setDescription(description);
   await interaction.followUp({ embeds: [embed] });
@@ -174,7 +174,7 @@ async function rosterLeague(interaction, client, iLeague) {
 
   return;
 };
-exports.rosterLeague = rosterLeague;
+export { rosterLeague };
 
 async function setDescriptionRosterLeague(client, iLeague) {
   let return_arr = [];
@@ -298,4 +298,4 @@ async function rosterClan(interaction, client, iLeague, iTeamAbbr) {
   
   return;
 };
-exports.rosterClan = rosterClan;
+export { rosterClan };
