@@ -1081,6 +1081,19 @@ export default {
         id: 956, name: 'Meteor Staff', hero: 'Minion Prince', type: 'epic',
         emote: '<:eqMeteorStaff:1426039889039724594>'
       },
+      // Dragon Duke
+      {
+        id: 961, name: 'Flame Heart', hero: 'Dragon Duke', type: 'common',
+        emote: '<:qFlameHeart:1481908629576613981>'
+      },
+      {
+        id: 962, name: 'Flame Breath', hero: 'Dragon Duke', type: 'common',
+        emote: '<:eqFlameBreath:1481908680902447145>'
+      },
+      {
+        id: 963, name: 'Stun Blast', hero: 'Dragon Duke', type: 'common',
+        emote: '<:eqStunBlast:1481908726972809357>'
+      },
     ],
     /*
     新装備実装時
