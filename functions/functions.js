@@ -581,39 +581,65 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
   }
 
   if (showAllEquipment == true) {
-    let equipmentCountInLine = 0;
-    scPlayer.heroEquipment.map((equipment) => {
-      //console.log(equipment.name);
-      if (arrEqName.includes(equipment.name) == false) {
-        const foundEquipment = config_coc.heroEquipments.find(
-          (equipment_config) => equipment_config.name == equipment.name,
-        );
-        let hallMaxLevel = 99;
-        let emote = ":question:";
-        if (foundEquipment) {
-          hallMaxLevel =
-            equipment.hallMaxLevel ??
-            config_coc.maxLevel.heroEquipments[foundEquipment.type][
-              `th${scPlayer.townHallLevel}`
-            ];
-          emote = foundEquipment.emote;
-        } else {
-          logUnknownEquipment(equipment.name);
-        }
-        description += ` ${emote}`;
-        if (equipment.level == hallMaxLevel) {
-          description += ` **${equipment.level}/${hallMaxLevel}**`;
-        } else {
-          description += ` ${equipment.level}/${hallMaxLevel}`;
-        }
-        equipmentCountInLine += 1;
-        if (equipmentCountInLine % 6 == 0) {
-          description += `\n`;
-        }
-        hasHeroEquipments = true;
-      }
+    const heroOrder = [
+      "Barbarian King",
+      "Archer Queen",
+      "Grand Warden",
+      "Royal Champion",
+      "Minion Prince",
+      "Dragon Duke",
+    ];
+    const equipmentsByHero = {};
+    heroOrder.forEach((heroName) => {
+      equipmentsByHero[heroName] = [];
     });
+
+    scPlayer.heroEquipment.map((equipment) => {
+      const foundEquipment = config_coc.heroEquipments.find(
+        (equipment_config) => equipment_config.name == equipment.name,
+      );
+      let hallMaxLevel = 99;
+      let emote = ":question:";
+      let heroName = "Unknown";
+      if (foundEquipment) {
+        hallMaxLevel =
+          equipment.hallMaxLevel ??
+          config_coc.maxLevel.heroEquipments[foundEquipment.type][
+            `th${scPlayer.townHallLevel}`
+          ];
+        emote = foundEquipment.emote;
+        heroName = foundEquipment.hero;
+      } else {
+        logUnknownEquipment(equipment.name);
+      }
+
+      if (!equipmentsByHero[heroName]) {
+        equipmentsByHero[heroName] = [];
+      }
+      const levelText =
+        equipment.level == hallMaxLevel
+          ? `**${equipment.level}/${hallMaxLevel}**`
+          : `${equipment.level}/${hallMaxLevel}`;
+      equipmentsByHero[heroName].push(`${emote} ${levelText}`);
+      hasHeroEquipments = true;
+    });
+
     if (hasHeroEquipments == true) {
+      const renderOrder = [
+        ...heroOrder,
+        ...Object.keys(equipmentsByHero).filter(
+          (heroName) => heroOrder.includes(heroName) == false,
+        ),
+      ];
+      renderOrder.forEach((heroName) => {
+        if (equipmentsByHero[heroName]?.length > 0) {
+          const foundHero = config_coc.heroes.find(
+            (hero_config) => hero_config.name == heroName,
+          );
+          const heroEmote = foundHero?.emote ?? `[${heroName}]`;
+          description += `${heroEmote} ${equipmentsByHero[heroName].join(" ")}\n`;
+        }
+      });
       description += `\n`;
     }
   }
