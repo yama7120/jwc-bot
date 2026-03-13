@@ -530,12 +530,12 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
           ];
       }
       if (hero.name == "Dragon Duke") {
-        const dragonDukeEquipments = Array.isArray(hero.equipment)
-          ? hero.equipment.map((eq) => `${eq.name}:${eq.level}`)
-          : [];
-        console.log(
-          `[getAccInfoDescriptionHeroes] Dragon Duke equipment fetched: hasEquipment=${Array.isArray(hero.equipment)} count=${dragonDukeEquipments.length} items=${dragonDukeEquipments.join(", ") || "none"}`,
-        );
+        // hero.equipment を正しく表示する
+        if (hero.equipment) {
+          console.log("装備一覧:", hero.equipment.map(eq => eq.name).join(", "));
+        } else {
+          console.log("装備なし");
+        }
         hallMaxLevel =
           config_coc.maxLevel.heroes.dragonDuke[
             `th${scPlayer.townHallLevel}`
