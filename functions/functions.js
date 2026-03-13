@@ -489,6 +489,11 @@ async function createDescriptionAttack(clanWarAttack) {
 
 async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
   let description = "";
+  const logUnknownEquipment = (equipmentName, heroName = "unknown") => {
+    console.error(
+      `[getAccInfoDescriptionHeroes] unknown hero equipment: ${equipmentName} (hero: ${heroName}, player: ${scPlayer?.name ?? "unknown"}, tag: ${scPlayer?.tag ?? "unknown"})`,
+    );
+  };
 
   if (!scPlayer.heroes) {
     return "*ERROR*\n";
@@ -554,6 +559,8 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
             /*if (foundEquipment.type == "epic") {
               numEpic += 1;
             }*/
+          } else {
+            logUnknownEquipment(equipment.name, hero.name);
           }
           description += ` ${emote}`;
           if (equipment.level == hallMaxLevel) {
@@ -589,6 +596,8 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
               `th${scPlayer.townHallLevel}`
             ];
           emote = foundEquipment.emote;
+        } else {
+          logUnknownEquipment(equipment.name);
         }
         description += ` ${emote}`;
         if (equipment.level == hallMaxLevel) {
