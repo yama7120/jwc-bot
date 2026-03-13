@@ -1,7 +1,5 @@
-const { SlashCommandBuilder } = require('@discordjs/builders');
-const { EmbedBuilder } = require('discord.js');
-
-const config = require('../../config.js');
+import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import config from '../../config/config.js';
 
 const nameCommand = 'help';
 let data = new SlashCommandBuilder()
@@ -26,7 +24,7 @@ let data = new SlashCommandBuilder()
       .setDescription(config.command[nameCommand].subCommand['rule'])
   );
 
-module.exports = {
+export default {
   data: data,
 
   async execute(interaction, client) {
@@ -67,7 +65,7 @@ module.exports = {
       .setTitle(title)
       .setDescription(description)
       .setColor(config.color.main)
-      .setFooter({ text: config.footer, iconURL: client.config.urlImage.jwc });
+      .setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
 
     await interaction.followUp({ embeds: [embed] });
   }

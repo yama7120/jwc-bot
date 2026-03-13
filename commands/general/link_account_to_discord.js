@@ -1,7 +1,6 @@
-const { EmbedBuilder, SlashCommandBuilder } = require("discord.js");
-
-const config = require("../../config.js");
-const functions = require("../../functions/functions.js");
+import { EmbedBuilder, SlashCommandBuilder } from "discord.js";
+import config from "../../config/config.js";
+import * as functions from "../../functions/functions.js";
 
 const nameCommand = "link_account_to_discord";
 let data = new SlashCommandBuilder()
@@ -24,20 +23,8 @@ let data = new SlashCommandBuilder()
           .setRequired(true),
       ),
   );
-/*.addSubcommand(subcommand =>
-  subcommand
-    .setName('unlink')
-    .setDescription(config.command[nameCommand].subCommand['unlink'])
-    .addStringOption(option =>
-      option
-        .setName('account')
-        .setDescription('プレイヤータグ')
-        .setRequired(true)
-        .setAutocomplete(true)
-    )
-);*/
 
-module.exports = {
+export default {
   data: data,
 
   async autocomplete(interaction, client) {
@@ -97,46 +84,6 @@ module.exports = {
       .collection("accounts")
       .findOne({ tag: iPlayerTag });
 
-    /*
-    if (interaction.options.getSubcommand() == 'unlink') {
-      if (iSenderId == mongoAcc.pilotDC.id || Object.values(config.adminId).includes(iSenderId) == true) { // 自分の or admins -> OK
-        await client.clientMongo.db('jwc').collection('accounts').updateOne({ tag: iPlayerTag }, { $set: { pilotDC: null } });
-        interaction.followUp(`:white_check_mark: *The account has been unklinked.*`);
-        return;
-      }
-      else {
-        const cursor = client.clientMongo.db('jwc').collection('clans')
-          .find({}, { sort: { clan_abbr: 1 }, projection: { score: 0 } });
-        let clans = await cursor.toArray();
-        await cursor.close();
-        let clan1 = clans.filter(function(clan) {
-          if (clan.rep_1st != null && clan.rep_1st != 'non-registered') {
-            return clan.rep_1st.id.includes(iSenderId);
-          };
-        });
-        let clan2 = clans.filter(function(clan) {
-          if (clan.rep_2nd != null && clan.rep_2nd != 'non-registered') {
-            return clan.rep_2nd.id.includes(iSenderId);
-          };
-        });
-        let clan3 = clans.filter(function(clan) {
-          if (clan.rep_3rd != null && clan.rep_3rd != 'non-registered') {
-            return clan.rep_3rd.id.includes(iSenderId);
-          };
-        });
-        if (clan1.length + clan2.length + clan3.length > 0) { // reps -> OK
-          await client.clientMongo.db('jwc').collection('accounts').updateOne({ tag: iPlayerTag }, { $set: { pilotDC: null } });
-          interaction.followUp(`:white_check_mark: *The account has been unklinked.*`);
-          return;
-        }
-        else {
-          interaction.followUp(`:exclamation: *You can edit only your account.*`);
-          return;
-        };
-      };
-    };
-    */
-
     if (interaction.options.getSubcommand() == "new") {
       if (!mongoAcc) {
         let content = "* You can link the registered account only.\n";
@@ -146,13 +93,10 @@ module.exports = {
       } else {
         let resultScan = await functions.scanAcc(client.clientCoc, iPlayerTag);
 
-        title = await functions.getAccInfoTitle(resultScan.scPlayer);
+        title = await functions.getAccInfoTitle(resultScan.scPlayer, "long");
         embed.setTitle(title);
 
-        description += await functions.getAccInfoDescriptionMain(
-          resultScan.scPlayer,
-          (formatLength = "long"),
-        );
+        description += await functions.getAccInfoDescriptionMain(resultScan.scPlayer, "long");
 
         let pilotDC = mongoAcc.pilotDC || iPilotDc;
         if (iPilotDc.id == config.clientId) {

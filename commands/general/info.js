@@ -1,12 +1,11 @@
-const { EmbedBuilder, SlashCommandBuilder } = require("discord.js");
-
-const config = require("../../config.js");
-const config_coc = require("../../config_coc.js");
-const config_history = require("../../history.js");
-const functions = require("../../functions/functions.js");
-const fMongo = require("../../functions/fMongo.js");
-const fCanvas = require("../../functions/fCanvas.js");
-const fRoster = require("../../functions/fRoster.js");
+import { EmbedBuilder, SlashCommandBuilder } from "discord.js";
+import config from "../../config/config.js";
+import config_coc from "../../config/config_coc.js";
+import config_history from "../../config/history.js";
+import * as functions from "../../functions/functions.js";
+import * as fCanvas from "../../functions/fCanvas.js";
+import * as fRoster from "../../functions/fRoster.js";
+import * as fMongo from "../../functions/fMongo.js";
 
 
 const nameCommand = "info";
@@ -239,6 +238,15 @@ let data = new SlashCommandBuilder()
           .setName("th_level")
           .setDescription("TOWNHALL LEVEL")
       )
+      .addStringOption(option =>
+        option
+          .setName("mode")
+          .setDescription("MODE")
+          .addChoices(
+            { name: "eSports Mode", value: "eSports" },
+            { name: "Other Modes", value: "normal" },
+          )
+      )
   )
   // options[6]
   .addSubcommand(subcommand =>
@@ -314,7 +322,7 @@ config.choices.townHallLevelInt.forEach(choice => {
   data.options[5].options[0].addChoices(choice);
 });
 
-module.exports = {
+export default {
   data: data,
 
   async autocomplete(interaction, client) {
@@ -566,7 +574,7 @@ async function accountList(interaction, client) {
     else if (optionItem == "ranked_battles") {
       flagRankedBattles = "true";
       flagWar = "false";
-      nAccPerPage = 20;
+      nAccPerPage = 10;
     }
     else if (optionItem == "trophies") {
       flagTrophies = "true";
@@ -590,30 +598,30 @@ async function accountList(interaction, client) {
       arrDescription[index] = index + 1;
       arrDescription[index] += ". ";
       if (resultScan.status == "ok") {
-        arrDescription[index] += await functions.getAccInfoDescriptionMain(resultScan.scPlayer, formatLength = "short");
+        arrDescription[index] += await functions.getAccInfoDescriptionMain(resultScan.scPlayer, "short");
         if (flagWar == "true") {
           title = `**WAR**`;
-          arrDescription[index] += await functions.getAccInfoDescriptionWar(client.clientCoc, resultScan.scPlayer, formatLength = "short");
+          arrDescription[index] += await functions.getAccInfoDescriptionWar(client.clientCoc, resultScan.scPlayer, "short");
         }
         else if (flagHero == "true") {
           title = `**HEROES**`;
-          arrDescription[index] += await functions.getAccInfoDescriptionHeroes(resultScan.scPlayer, showAllEquipment = true, formatLength = "short");
+          arrDescription[index] += await functions.getAccInfoDescriptionHeroes(resultScan.scPlayer, true, "short");
         }
         else if (flagSuperTroops == "true") {
           title = `**SUPER TROOPS**`;
-          arrDescription[index] += await functions.getAccInfoDescriptionSuperTroops(resultScan.scPlayer, formatLength = "short");
+          arrDescription[index] += await functions.getAccInfoDescriptionSuperTroops(resultScan.scPlayer, "short");
         }
         else if (flagRankedBattles == "true") {
           title = `**RANKED BATTLES**`;
-          arrDescription[index] += await functions.getAccInfoDescriptionRankedBattles(resultScan.scPlayer, mongoAcc, formatLength = "short");
+          arrDescription[index] += await functions.getAccInfoDescriptionRankedBattles(resultScan.scPlayer, mongoAcc, "short");
         }
         else if (flagTrophies == "true") {
           title = `**TROPHIES**`;
-          arrDescription[index] += await functions.getAccInfoDescriptionTrophies(resultScan.scPlayer, mongoAcc, formatLength = "short");
+          arrDescription[index] += await functions.getAccInfoDescriptionTrophies(resultScan.scPlayer, mongoAcc, "short");
         }
         else if (flagAccData == "true") {
           title = `**LEVELS SUMMARY**`;
-          arrDescription[index] += await functions.getAccInfoDescriptionAccData(mongoAcc, formatLength = "short");
+          arrDescription[index] += await functions.getAccInfoDescriptionAccData(mongoAcc, "short");
         };
         arrDescription[index] += "\n";
       }
@@ -704,16 +712,16 @@ async function accountSingle(interaction, client, subcommand) {
   let description = "";
 
   if (resultScan.status == "ok") {
-    title = await functions.getAccInfoTitle(resultScan.scPlayer, formatLength = "long");
-    description += await functions.getAccInfoDescriptionMain(resultScan.scPlayer, formatLength = "long");
-    description += await functions.getAccInfoDescriptionWar(client.clientCoc, resultScan.scPlayer, formatLength = "long");
-    //description += await functions.getAccInfoDescriptionWarAttacks(client.clientCoc, resultScan.scPlayer, formatLength = "long");
+    title = await functions.getAccInfoTitle(resultScan.scPlayer, "long");
+    description += await functions.getAccInfoDescriptionMain(resultScan.scPlayer, "long");
+    description += await functions.getAccInfoDescriptionWar(client.clientCoc, resultScan.scPlayer, "long");
+    //description += await functions.getAccInfoDescriptionWarAttacks(client.clientCoc, resultScan.scPlayer, "long");
     if (resultScan.scPlayer.townHallLevel >= 7) {
-      description += await functions.getAccInfoDescriptionHeroes(resultScan.scPlayer, showAllEquipment = true, formatLength = "long");
+      description += await functions.getAccInfoDescriptionHeroes(resultScan.scPlayer, true, "long");
     };
-    description += await functions.getAccInfoDescriptionSuperTroops(resultScan.scPlayer, formatLength = "long");
-    description += await functions.getAccInfoDescriptionRankedBattles(resultScan.scPlayer, mongoAcc, formatLength = "long");
-    //description += await functions.getAccInfoDescriptionTrophies(resultScan.scPlayer, mongoAcc, formatLength = "long");
+    description += await functions.getAccInfoDescriptionSuperTroops(resultScan.scPlayer, "long");
+    description += await functions.getAccInfoDescriptionRankedBattles(resultScan.scPlayer, mongoAcc, "long");
+    //description += await functions.getAccInfoDescriptionTrophies(resultScan.scPlayer, mongoAcc, "long");
   }
   else if (resultScan.status == "notFound") {
     title = `:x: **${resultScan.status}**`;
@@ -762,7 +770,7 @@ async function accountSingle(interaction, client, subcommand) {
 
   let description2 = "";
   if (mongoAcc && resultScan.status == "ok") {
-    description2 = await functions.getAccInfoDescriptionAccData(mongoAcc, formatLength = "long");
+    description2 = await functions.getAccInfoDescriptionAccData(mongoAcc, "long");
   };
   description2 += `\n`;
 
@@ -918,7 +926,7 @@ async function leagueStandings(interaction, client) {
   else if (iLeague == "j1") {
     const attachment = await fCanvas.standings(iLeague, mongoLeagueStats.standings, mongoLeagueStats);
     await interaction.followUp({ files: [attachment] });
-    const attachment2 = await fCanvas.standingsLandscape(iLeague, mongoLeagueStats.standings_gs, mongoLeagueStats, strRound = null);
+    const attachment2 = await fCanvas.standingsLandscape(iLeague, mongoLeagueStats.standings_gs, mongoLeagueStats, null);
     await interaction.followUp({ files: [attachment2] });
   }
   else {
@@ -1261,15 +1269,15 @@ async function zapQuake(interaction, client) {
     };
   });
 
+  /*
   embed.setDescription(description + description10Plus);
   await interaction.followUp({ embeds: [embed] });
+  */
 
-  /*
   embed.setDescription(description);
   await interaction.followUp({ embeds: [embed] });
   embed.setDescription(description10Plus);
   await interaction.followUp({ embeds: [embed] });
-  */
 
   let descriptionAdd = "";
   if (lvTH >= 14) {
@@ -1294,62 +1302,16 @@ async function zapQuake(interaction, client) {
   embed.setDescription(descriptionAdd);
   await interaction.followUp({ embeds: [embed] });
 
-  /*
-  for (let thLevel = 12; thLevel <= 17; thLevel++) {
+  for (let thLevel = config.rangeLvTH.min; thLevel <= config.rangeLvTH.max; thLevel++) {
     await fMongo.createZapQuakeTable(client.clientMongo, thLevel);
   };
-  */
-
-  /*
-  if (lvTH == null) {
-    title = "⚡️ **TH16** ⚡️";
-    description = "_since June 2024 update_";
-    name = "Arle";
-    avator = config.urlImage.arle;
-    urlAuthor = "https://twitter.com/arle_coc";
-    urlThumbnail = config.urlImage.th16;
-    urlImage = "https://cdn.discordapp.com/attachments/884266417812291645/1264922122728509511/IMG_1231.png";
-  }
-  else {
-    title = `⚡️ **TH${lvTH.toUpperCase()}** ⚡️`;
-    description = "_since December 2023 update_";
-    name = "Thorfinn | GaihaziBomber 2";
-    avator = config.urlImage.thorfinn;
-    urlAuthor = "https://ja.wikipedia.org/wiki/%E3%83%B4%E3%82%A3%E3%83%B3%E3%83%A9%E3%83%B3%E3%83%89%E3%83%BB%E3%82%B5%E3%82%AC";
-    let arrUrlThumbnail = {};
-    arrUrlThumbnail.th16 = config.urlImage.th16;
-    arrUrlThumbnail.th15 = config.urlImage.th15;
-    arrUrlThumbnail.th14 = config.urlImage.th14;
-    arrUrlThumbnail.th13 = config.urlImage.th13;
-    arrUrlThumbnail.th12 = config.urlImage.th12;
-    urlThumbnail = arrUrlThumbnail[`th${lvTH}`];
-    let arrUrlImage = {};
-    arrUrlImage.th16 = "https://cdn.discordapp.com/attachments/990991444749717605/1184810571175043072/TH16_202312_1.png";
-    arrUrlImage.th15 = "https://cdn.discordapp.com/attachments/990991444749717605/1184810532314820709/TH15_202312.png";
-    arrUrlImage.th14 = "https://cdn.discordapp.com/attachments/990991444749717605/1184810492640903188/TH14_202312_1.png";
-    arrUrlImage.th13 = "https://cdn.discordapp.com/attachments/990991444749717605/1184810456024621098/TH13_202312.png";
-    arrUrlImage.th12 = "https://cdn.discordapp.com/attachments/990991444749717605/1184810403721662504/TH12_202312.png";
-    urlImage = arrUrlImage[`th${lvTH}`];
-  };
-
-  let embed = new EmbedBuilder();
-  embed.setTitle(title);
-  embed.setDescription(description);
-  embed.setAuthor({ name: name, iconURL: avator, url: urlAuthor });
-  embed.setThumbnail(urlThumbnail);
-  embed.setImage(urlImage);
-  embed.setColor(config.color.main);
-  embed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
-
-  await interaction.followUp({ embeds: [embed] });
-  */
 };
 
 
 async function fireball(interaction, client) {
   const lvTH = interaction.options.getInteger("th_level") ?? config.lvTH;
   const thLevelStr = `th${lvTH}`;
-
+  const mode = interaction.options.getString("mode") ?? "eSports";
   const embed = new EmbedBuilder();
 
   let title = `${config_coc.emote.fireball} FIREBALL | TH${lvTH}`;
@@ -1362,12 +1324,12 @@ async function fireball(interaction, client) {
   embed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
 
   let description = "";
-  let arrDescription = ["", "", "", "", ""]; // eq0, eq1, eq2, eq3, heroes
-  const query = { name: "fireballTable" };
+  let arrDescription = ["", "", "", "", "", ""]; // eq0, eq1, eq2, eq3, eq99, heroes
+  const query = { name: `fireballTable_${mode}` };
   const fireballTable = await client.clientMongo.db("jwc").collection("config").findOne(query);
 
   fireballTable[thLevelStr].forEach((item, index) => {
-    if (item.numEq >= 0) {
+    if (item.numEq >= 0 && item.numEq != 99) {
       arrDescription[item.numEq] += `* ${item.name} ${item.emote} *${item.hp}*`;
       if (Math.abs(item.hpRemaining) < config_coc.buildings[4].repair[thLevelStr]) {
         arrDescription[item.numEq] += ` \*`;
@@ -1377,15 +1339,19 @@ async function fireball(interaction, client) {
       };
       arrDescription[item.numEq] += `\n`;
     }
-    else {
+    else if (item.numEq == 99) {
       arrDescription[4] += `* ${item.name} ${item.emote} *${item.hp}*\n`;
+      arrDescription[4] += `\n`;
+    }
+    else {
+      arrDescription[5] += `* ${item.name} ${item.emote} *${item.hp}*\n`;
       if (item.numLgCc < item.numLg) {
-        arrDescription[4] += `(CC) ${config_coc.emote.lightning} ${item.numLgCc}`;
+        arrDescription[5] += `(CC) ${config_coc.emote.lightning} ${item.numLgCc}`;
       }
       else {
-        arrDescription[4] += `${config_coc.emote.lightning} ${item.numLg}`;
+        arrDescription[5] += `${config_coc.emote.lightning} ${item.numLg}`;
       };
-      arrDescription[4] += `\n`;
+      arrDescription[5] += `\n`;
     };
   });
 
@@ -1395,6 +1361,9 @@ async function fireball(interaction, client) {
         description += `### x${index} ${config_coc.emote.earthquake}\n`;
       }
       else if (index == 4) {
+        description += `### UNBREAKABLE\n`;
+      }
+      else if (index == 5) {
         description += `### HEROES\n`;
       };
       description += item;
@@ -1412,12 +1381,22 @@ async function fireball(interaction, client) {
     descriptionAdd += `+${config_coc.buildings[4].repair[thLevelStr]} per hit\n`;
     descriptionAdd += `\n`;
   };
-  descriptionAdd += "### Hard Mode\n";
-  descriptionAdd += `* Level: ${config_coc.maxLevel.heroEquipmentsHardMode.epic[thLevelStr]}\n`;
-  descriptionAdd += "* Radius: 5 tiles\n";
+  let nameMode = "Normal/Expert/Master/Legend Mode";
+  let epicLevel = config_coc.maxLevel.heroEquipments.epic[thLevelStr];
+  let radius = 6;
+  if (mode == "eSports") {
+    nameMode = "eSports Mode";
+    radius = 5;
+    epicLevel = epicLevel - 6;
+  }
+  let damageFireball = config_coc.damage.fireball[`lv${epicLevel}`];
+
+  descriptionAdd += `### ${nameMode}\n`;
+  descriptionAdd += `* Level: ${epicLevel}\n`;
+  descriptionAdd += `* Radius: ${radius} tiles\n`;
   descriptionAdd += `\n`;
   descriptionAdd += `### Damage\n`;
-  descriptionAdd += `${config_coc.emote.fireball} ${config_coc.damage.fireball[thLevelStr]}\n`;
+  descriptionAdd += `${config_coc.emote.fireball} ${damageFireball}\n`;
   descriptionAdd += `${config_coc.emote.lightning} ${config_coc.damage.lightning[thLevelStr]}\n`;
   descriptionAdd += `${config_coc.emote.lightning} ${config_coc.damage.lightningDonated[thLevelStr]} (*donated*)\n`;
   descriptionAdd += `x1 ${config_coc.emote.earthquake} ${100 - Math.round(config_coc.damage.earthquake[1] * 100)}%\n`;
@@ -1434,11 +1413,10 @@ async function fireball(interaction, client) {
 
   await interaction.followUp({ embeds: [embed] });
 
-  /*
-  for (let thLevel = 12; thLevel <= 17; thLevel++) {
-    await fMongo.createFireballTable(client.clientMongo, thLevel);
+  for (let thLevel = config.rangeLvTH.min; thLevel <= config.rangeLvTH.max; thLevel++) {
+    await fMongo.createFireballTable(client.clientMongo, thLevel, "eSports");
+    await fMongo.createFireballTable(client.clientMongo, thLevel, "normal");
   };
-  */
 };
 
 
@@ -1532,7 +1510,7 @@ async function champions(interaction, client) {
     };
     description += ` _${history.year}_`;
     description += `\n`;
-    for (const champion of arrChampions[`s${history.season}`]) {
+    for (const champion of arrChampions[functions.seasonToString(history.season)]) {
       description += `${config.emote.place[champion.rank]} **${champion.name}**`;
       if (champion.note != "") {
         description += ` [${champion.note}]`;
@@ -1574,7 +1552,7 @@ async function streamer(interaction, client) {
     await Promise.all(mongoStreamers.map(async (acc, index) => {
       arrDescription[index] = index + 1;
       arrDescription[index] += ". ";
-      arrDescription[index] += await functions.getAccInfoDescriptionMain(acc, formatLength = "short");
+      arrDescription[index] += await functions.getAccInfoDescriptionMain(acc, "short");
       arrDescription[index] += `:bust_in_silhouette: <@${acc.pilotDC.id}>\n`;
       arrDescription[index] += `\n`;
     }));

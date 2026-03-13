@@ -1,8 +1,8 @@
-const { EmbedBuilder } = require("discord.js");
+import { EmbedBuilder } from "discord.js";
 
-const config = require("../config.js");
-const config_coc = require("../config_coc.js");
-const functions = require("./functions.js");
+import config from "../config/config.js";
+import config_coc from "../config/config_coc.js";
+import * as functions from "./functions.js";
 
 async function registerAcc(
   client,
@@ -123,7 +123,7 @@ async function registerAcc(
 
   return;
 }
-exports.registerAcc = registerAcc;
+export { registerAcc };
 
 async function updateAcc(client, tagAccount) {
   let mongoAcc = await client.clientMongo
@@ -146,9 +146,7 @@ async function updateAcc(client, tagAccount) {
       myEmbed.setDescription(description);
       myEmbed.setColor(config.color.red);
       myEmbed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
-      await client.channels.cache
-        .get(config.logch.freeBotRoom)
-        .send({ embeds: [myEmbed] });
+      await functions.safeSend(client, config.logch.freeBotRoom, { embeds: [myEmbed] }, "legends200:error");
     }
     return;
   }
@@ -225,7 +223,10 @@ async function updateAcc(client, tagAccount) {
     }
   }
 
-  listing.leagueTier = scPlayer.leagueTier;
+  listing.leagueTier = {
+    ...scPlayer.leagueTier,
+    history: mongoAcc?.leagueTier?.history || []
+  };
 
   // トロフィー履歴の更新
   /*const arrTrophies = await updateTrophyHistory(
@@ -456,7 +457,7 @@ async function updateAcc(client, tagAccount) {
 
   return;
 }
-exports.updateAcc = updateAcc;
+export { updateAcc };
 
 async function deleteRoster(clientMongo, league, playerTag) {
   let mongoAcc = await clientMongo
@@ -477,15 +478,49 @@ async function deleteRoster(clientMongo, league, playerTag) {
 
   return [result, mongoAcc];
 }
-exports.deleteRoster = deleteRoster;
+export { deleteRoster };
 
 async function legends200(client) {
   const name = "legends200";
   let listing = {};
-  listing.japan = await client.clientCoc.getPlayerRanks(
-    config_coc.locationId.japan,
-  );
+  // ランキング取得
+  listing.japan = await client.clientCoc.getPlayerRanks(config_coc.locationId.japan);
   listing.global = await client.clientCoc.getPlayerRanks("global");
+
+  // 取得したランキング200件について、Mongoのaccountsに登録済みかを照合し、
+  // 登録済みであれば homeClanAbbrを各要素に付与する
+  const enrichWithHomeClanAbbr = async (players) => {
+    if (!Array.isArray(players) || players.length === 0) return players;
+    const tags = players.map((p) => p.tag).filter(Boolean);
+    if (tags.length === 0) return players;
+
+    const cursor = client.clientMongo
+      .db("jwc")
+      .collection("accounts")
+      .find(
+        { tag: { $in: tags } },
+        { projection: { _id: 0, tag: 1, homeClanAbbr: 1 } },
+      );
+    const accs = await cursor.toArray();
+    await cursor.close();
+
+    const tagToHomeJ = new Map();
+    accs.forEach((acc) => {
+      const homeJ = acc?.homeClanAbbr?.j ?? "";
+      if (acc?.tag) tagToHomeJ.set(acc.tag, homeJ);
+    });
+
+    players.forEach((p) => {
+      const abbr = tagToHomeJ.get(p.tag);
+      if (abbr) {
+        p.homeClanAbbr = abbr; // 文字列（Jリーグの略称）を付与
+      }
+    });
+    return players;
+  };
+
+  listing.japan = await enrichWithHomeClanAbbr(listing.japan);
+  listing.global = await enrichWithHomeClanAbbr(listing.global);
   listing.date = new Date();
   listing.unixTimeRequest = Math.round(Date.now() / 1000);
   await client.clientMongo
@@ -495,7 +530,7 @@ async function legends200(client) {
   console.dir("done: legends200");
   return;
 }
-exports.legends200 = legends200;
+export { legends200 };
 
 async function standings(clientMongo, league) {
   const query = {
@@ -596,7 +631,7 @@ async function standings(clientMongo, league) {
 
   return;
 }
-exports.standings = standings;
+export { standings };
 
 async function standingsGroupStage(clientMongo, league, div1, div2) {
   const query = {
@@ -683,7 +718,7 @@ async function standingsGroupStage(clientMongo, league, div1, div2) {
 
   return;
 }
-exports.standingsGroupStage = standingsGroupStage;
+export { standingsGroupStage };
 
 async function teamList(clientMongo, league) {
   let listingUpdate = {};
@@ -765,7 +800,7 @@ async function teamList(clientMongo, league) {
 
   return;
 }
-exports.teamList = teamList;
+export { teamList };
 
 async function jwcAttacks(clientMongo, league) {
   const name = "jwcAttacks";
@@ -838,7 +873,7 @@ async function jwcAttacks(clientMongo, league) {
 
   return;
 }
-exports.jwcAttacks = jwcAttacks;
+export { jwcAttacks };
 
 async function getRankingAcc(clientMongo, lvTH, league, iAttackType) {
   let leagueM = "";
@@ -1137,7 +1172,7 @@ async function statsPlayer(clientMongo) {
   }
   return;
 }
-exports.statsPlayer = statsPlayer;
+export { statsPlayer };
 
 function calcStatsLeague(statsBefore, statsThis) {
   let statsAfter = {};
@@ -1291,6 +1326,7 @@ async function createZapQuakeTable(clientMongo, thLevel) {
       Object.entries(hero.hp).forEach(([th, hp]) => {
         let thLvelInt = Number(th.replace("th", ""));
         if (thLvelInt == thLevel) {
+          hp = Math.round(hp * 1.2);
           objHero.id = 90 + hero.id;
           objHero.emote = hero.emote;
           objHero.name = hero.name;
@@ -1328,14 +1364,23 @@ async function createZapQuakeTable(clientMongo, thLevel) {
 
   return;
 }
-exports.createZapQuakeTable = createZapQuakeTable;
+export { createZapQuakeTable };
 
-async function createFireballTable(clientMongo, thLevel) {
+async function createFireballTable(clientMongo, thLevel, mode) {
   const thLevelStr = `th${thLevel}`;
   const damageLightning = config_coc.damage.lightning[thLevelStr];
   const damageLightningDonated = config_coc.damage.lightningDonated[thLevelStr];
 
   let tableUpdate = [];
+
+  let damageFireball;
+  let epicLevel;
+  if (mode == "eSports") {
+    epicLevel = config_coc.maxLevel.heroEquipments.epic[thLevelStr] - 6;
+  } else {
+    epicLevel = config_coc.maxLevel.heroEquipments.epic[thLevelStr];
+  }
+  damageFireball = config_coc.damage.fireball[`lv${epicLevel}`];
 
   config_coc.buildings.forEach((building) => {
     let objBuilding = {};
@@ -1347,13 +1392,12 @@ async function createFireballTable(clientMongo, thLevel) {
         objBuilding.name = building.name;
         objBuilding.hp = hp;
 
-        let numEq = 0;
         let found = false;
         config_coc.damage.earthquake.forEach((percentageEq, index) => {
           if (!found) {
             const hpRemainingEq = percentageEq * hp;
             const hpRemaining = Math.ceil(
-              hpRemainingEq - config_coc.damage.fireball[thLevelStr],
+              hpRemainingEq - damageFireball,
             );
             if (hpRemaining < 0) {
               objBuilding.numEq = index;
@@ -1362,6 +1406,11 @@ async function createFireballTable(clientMongo, thLevel) {
             }
           }
         });
+
+        if (!found) {
+          objBuilding.numEq = 99;
+          objBuilding.hpRemaining = hp;
+        }
 
         tableUpdate.push(objBuilding);
       }
@@ -1375,12 +1424,15 @@ async function createFireballTable(clientMongo, thLevel) {
       Object.entries(hero.hp).forEach(([th, hp]) => {
         let thLvelInt = Number(th.replace("th", ""));
         if (thLvelInt == thLevel) {
+          if (mode == "eSports") {
+            hp = Math.round(hp * 1.2);
+          }
           objHero.id = 90 + hero.id;
           objHero.emote = hero.emote;
           objHero.name = hero.name;
           objHero.hp = hp;
 
-          const hpRemainingFb = hp - config_coc.damage.fireball[thLevelStr];
+          const hpRemainingFb = hp - damageFireball;
           const numLightning =
             hpRemainingFb < 0
               ? 0
@@ -1410,16 +1462,17 @@ async function createFireballTable(clientMongo, thLevel) {
   let listingUpdate = {};
   listingUpdate[thLevelStr] = tableUpdate;
 
-  const query = { name: "fireballTable" };
+  let name = `fireballTable_${mode}`;
+  const query = { name: name };
   await clientMongo
     .db("jwc")
     .collection("config")
     .updateOne(query, { $set: listingUpdate });
-  console.log(`Mongo: fireballTable has been updated.`);
+  console.log(`Mongo: ${name} has been updated.`);
 
   return;
 }
-exports.createFireballTable = createFireballTable;
+export { createFireballTable };
 
 // トロフィー履歴の更新
 /*
@@ -1486,27 +1539,29 @@ async function updateTrophyHistory(client, mongoAcc, scPlayer, diffAttackWins) {
 }
 */
 
-/*
-async function weekNow(clientMongo, weekNow) {
-  let name = 'weekNow';
-  let listing = weekNow;
-  listing.unixTimeRequest = Math.round(Date.now() / 1000);
-  await clientMongo.db('jwc').collection('config').updateOne({ name: name }, { $set: listing });
-  //console.log(`Mongo: ${name} has been updated.`);
-  return;
-};
-exports.weekNow = weekNow;
+async function getWeekNowFromDb(clientMongo) {
+  const doc = await clientMongo
+    .db("jwc")
+    .collection("config")
+    .findOne({ name: "weekNow" });
+  return doc;
+}
+export { getWeekNowFromDb };
 
-async function statusNow(clientMongo, status) {
-  let name = 'status';
-  let listing = status;
-  listing.unixTimeRequest = Math.round(Date.now() / 1000);
-  await clientMongo.db('jwc').collection('config').updateOne({ name: name }, { $set: listing });
-  //console.log(`Mongo: ${name} has been updated.`);
-  return;
-};
-exports.statusNow = statusNow;
-*/
+async function setWeekNowInDb(clientMongo, league, week) {
+  const updateField = {};
+  updateField[league] = week;
+  updateField.unixTimeRequest = Math.round(Date.now() / 1000);
+  await clientMongo
+    .db("jwc")
+    .collection("config")
+    .updateOne(
+      { name: "weekNow" },
+      { $set: updateField },
+      { upsert: true },
+    );
+}
+export { setWeekNowInDb };
 
 /*
 async function updateLegendDay(clientMongo, seasonId, isReset) {

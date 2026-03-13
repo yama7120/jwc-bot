@@ -1,11 +1,8 @@
-const { EmbedBuilder, SlashCommandBuilder } = require("discord.js");
-
-const config = require("../../config.js");
-const functions = require("../../functions/functions.js");
-const fMongo = require("../../functions/fMongo.js");
-const fRoster = require("../../functions/fRoster.js");
-
-const fetch = require("@replit/node-fetch");
+import { EmbedBuilder, SlashCommandBuilder } from "discord.js";
+import config from "../../config/config.js";
+import * as functions from "../../functions/functions.js";
+import * as fMongo from "../../functions/fMongo.js";
+import * as fRoster from "../../functions/fRoster.js";
 
 const nameCommand = "rep";
 let data = new SlashCommandBuilder()
@@ -336,7 +333,7 @@ config.choices.size.forEach((choice) => {
   data.options[0].options[5].addChoices(choice);
 });
 
-module.exports = {
+export default {
   data: data,
 
   async autocomplete(interaction, client) {
@@ -355,6 +352,21 @@ module.exports = {
           { projection: { league: 1, clan_abbr: 1, opponent_abbr: 1, _id: 0 } }
         );
 
+      if (!mongoWar) {
+        let description = '';
+        description += `*ERROR: No war found*\n`;
+        description += `channel: ${interaction.channel.id}\n`;
+        await interaction.respond([
+          {
+            name: description,
+            value: "error",
+          },
+        ]);
+        console.error(description);
+        console.error("No war found");
+        return;
+      }
+
       if (subcommand == "deal_war" && mongoWar.league == "five") {
         await interaction.respond([
           {
@@ -364,6 +376,7 @@ module.exports = {
         ]);
       }
 
+      let choices = [];
       if (focusedOption.name === "date") {
         // 動的に日付選択肢を生成
         const today = new Date();
@@ -396,7 +409,6 @@ module.exports = {
         
         await interaction.respond(dateChoices);
       } else if (focusedOption.name === "time") {
-        //console.dir(config.choices.time);
         if (subcommand == "deal_war") {
           choices = config.choices.time;
         } else if (subcommand == "deal_war_5v") {
@@ -634,11 +646,8 @@ async function addRoster(client, interaction, subcommand) {
 
   if (mongoAcc) {
     // データベース登録済み
-    title = await functions.getAccInfoTitle(mongoAcc, (formatLength = "long"));
-    description += await functions.getAccInfoDescriptionMain(
-      mongoAcc,
-      (formatLength = "long"),
-    );
+    title = await functions.getAccInfoTitle(mongoAcc, "long");
+    description += await functions.getAccInfoDescriptionMain(mongoAcc, "long");
     townHallLevel = mongoAcc.townHallLevel;
 
     if (
@@ -654,14 +663,8 @@ async function addRoster(client, interaction, subcommand) {
     let resultScan = await functions.scanAcc(client.clientCoc, playerTag);
 
     if (resultScan.status == "ok") {
-      title = await functions.getAccInfoTitle(
-        resultScan.scPlayer,
-        (formatLength = "long"),
-      );
-      description += await functions.getAccInfoDescriptionMain(
-        resultScan.scPlayer,
-        (formatLength = "long"),
-      );
+      title = await functions.getAccInfoTitle(resultScan.scPlayer, "long");
+      description += await functions.getAccInfoDescriptionMain(resultScan.scPlayer, "long");
       townHallLevel = resultScan.scPlayer.townHallLevel;
     } else if (resultScan.status == "notFound") {
       title = `**${resultScan.status}**`;
@@ -794,11 +797,8 @@ async function deleteRoster(client, interaction) {
   embed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
   embed.setTimestamp();
 
-  title = await functions.getAccInfoTitle(mongoAcc, (formatLength = "long"));
-  description += await functions.getAccInfoDescriptionMain(
-    mongoAcc,
-    (formatLength = "long"),
-  );
+  title = await functions.getAccInfoTitle(mongoAcc, "long");
+  description += await functions.getAccInfoDescriptionMain(mongoAcc, "long");
   description += `\n`;
   description += `:white_check_mark: *The account has been unregistered from the roster of* ${mongoTeam.clan_abbr.toUpperCase()} *team*. :wave:`;
 
@@ -1154,7 +1154,7 @@ async function dealWar(client, interaction) {
   });
 
   //db update
-  query = { nego_channel: iChId };
+  let query = { nego_channel: iChId };
   let deal = {};
   deal.date = dateJstLong;
   deal.time = iTimeMatch;
@@ -1218,21 +1218,21 @@ async function editTeamInformation(client, interaction) {
     .db("jwc")
     .collection("clans")
     .findOne({ rep_channel: interaction.channel.id });
-  let league = mongoTeam.league;
+  const league = mongoTeam.league;
 
-  let iTeam = await interaction.options.getString("team");
-  teamAbbr = iTeam.toLowerCase();
-  let iClanTag = interaction.options.getString("clan_tag");
-  let iTeamName = interaction.options.getString("team_name");
+  const iTeam = await interaction.options.getString("team");
+  const teamAbbr = String(iTeam).toLowerCase();
+  const iClanTag = await interaction.options.getString("clan_tag");
+  const iTeamName = await interaction.options.getString("team_name");
   //let league = interaction.options.getString('league');
-  let iDivision = interaction.options.getString("division");
-  let iUrlLogo = interaction.options.getString("logo_url");
-  let iRep1st = interaction.options.getUser("rep_1st");
-  let iRep2nd = interaction.options.getUser("rep_2nd");
-  let iRep3rd = interaction.options.getUser("rep_3rd");
-  let changeLeague = interaction.options.getString("change_league");
-  let iStatus = interaction.options.getString("status");
-  let flagRemove = interaction.options.getString("remove");
+  const iDivision = await interaction.options.getString("division");
+  const iUrlLogo = await interaction.options.getString("logo_url");
+  const iRep1st = await interaction.options.getUser("rep_1st");
+  const iRep2nd = await interaction.options.getUser("rep_2nd");
+  const iRep3rd = await interaction.options.getUser("rep_3rd");
+  const changeLeague = await interaction.options.getString("change_league");
+  const iStatus = await interaction.options.getString("status");
+  const flagRemove = await interaction.options.getString("remove");
 
   const iSenderId = interaction.user.id;
 
@@ -1376,18 +1376,11 @@ async function editTeamInformation(client, interaction) {
     listing.status = status;
   }
 
-  const result = await client.clientMongo
+  await client.clientMongo
     .db("jwc")
     .collection("clans")
     .updateOne({ clan_abbr: teamAbbr }, { $set: listing });
-  /*
-  if (result.matchedCount == 0) {
-    const result = await client.clientMongo.db('jwc').collection('clans')
-      .insertOne(listing);
-    console.log(`New listing created with the following id: ${result.insertedId}`);
-    fMongo.teamList(client.clientMongo, league);
-  };
-  */
+    
   await fMongo.teamList(client.clientMongo, league);
 
   await functions.sendClanInfo(interaction, client, teamAbbr);
@@ -1574,44 +1567,3 @@ async function editMyChannel(client, interaction) {
 
   await functions.sendClanInfo(interaction, client, teamAbbr);
 }
-
-/*
-async function rosterEditingForm(client, interaction) {
-  const iSenderId = interaction.user.id;
-  const iTeamAbbr = await interaction.options.getString('team');
-  let link = '';
-
-  const mongoTeam = await client.clientMongo.db('jwc').collection('clans')
-    .findOne({ clan_abbr: iTeamAbbr });
-
-  if (mongoTeam == null) {
-    await interaction.followUp({ content: '_Select your team._' });
-    return;
-  };
-
-  const idRep3rd = mongoTeam.rep_3rd ? mongoTeam.rep_3rd.id : null;
-
-  if (mongoTeam.rep_1st.id == iSenderId || mongoTeam.rep_2nd.id == iSenderId || idRep3rd == iSenderId) {
-    let teamAbbrRoster = mongoTeam.clan_abbr.toUpperCase().replace('-', '_');
-    link = client.config.link['rosterEditing'];
-    if (mongoTeam.league == 'j1' || mongoTeam.league == 'j2') {
-      teamAbbrRoster = 'J_' + teamAbbrRoster;
-    }
-    else if (mongoTeam.league == 'five') {
-      teamAbbrRoster = teamAbbrRoster.replace('5V', 'F');
-      link = client.config.link['rosterEditing5v'];
-    };
-    interaction.user.send(link);
-    console.dir(teamAbbrRoster);
-    let password = client.config.ssId[teamAbbrRoster].substr(8, 8);
-    interaction.user.send('_password for editing roster:_');
-    interaction.user.send(`${password}`);
-    await interaction.followUp({ content: '_Check your DM_' });
-  }
-  else {
-    await interaction.followUp({ content: '_Only reps can edit the roster._' });
-  };
-
-  return;
-};
-*/

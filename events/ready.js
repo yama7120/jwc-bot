@@ -1,13 +1,10 @@
-const { Events, EmbedBuilder, ActivityType } = require("discord.js");
+import { Events, EmbedBuilder, ActivityType } from "discord.js";
+import config from "../config/config.js";
+import * as fMongo from "../functions/fMongo.js";
+import * as fCron from "../functions/fCron.js";
+import cron from "node-cron";
 
-const config = require("../config.js");
-const functions = require("../functions/functions.js");
-const fMongo = require("../functions/fMongo.js");
-const fCron = require("../functions/fCron.js");
-
-const cron = require("node-cron");
-
-module.exports = {
+export default {
   name: Events.ClientReady,
   once: true, // true -> 一度だけ
 
@@ -30,17 +27,35 @@ module.exports = {
     readyEmbed.setColor(config.color.main);
     readyEmbed.setTimestamp();
 
-    client.channels.cache.get(config.logch.ready).send({
-      embeds: [readyEmbed],
-    });
-    console.log(`Logged in as ${client.user.tag}!`);
+    try {
+      const chReady =
+        client.channels.cache.get(config.logch.ready) ||
+        (await client.channels.fetch(config.logch.ready).catch(() => null));
+      if (chReady?.isTextBased()) {
+        await chReady.send({ embeds: [readyEmbed] });
+      } else {
+        console.warn("ready channel not found or not text-based:", config.logch.ready);
+      }
+    } catch (e) {
+      console.error("Failed to send ready embed:", e);
+    }
+    console.log(`✅ Logged in as ${client.user.tag}! ✅`);
 
-    // JWC wars
-    await cronWar(client, "j1", "*/2 * * * *");
-    await cronWar(client, "j2", "*/3 * * * *");
-    await cronWar(client, "swiss", "*/7 * * * *");
-    await cronWar(client, "mix", "*/5 * * * *");
-    await cronWar(client, "five", "*/33 * * * * *");
+    // JWC wars (config.cronWarStatus が "on" のリーグのみ実行)
+    const cronWarSchedules = {
+      j1: "*/2 * * * *",
+      j2: "*/3 * * * *",
+      swiss: "*/7 * * * *",
+      mix: "*/5 * * * *",
+      five: "*/1 * * * *",
+    };
+    for (const [league, schedule] of Object.entries(cronWarSchedules)) {
+      if (config.cronWarStatus?.[league] === "on") {
+        await cronWar(client, league, schedule);
+      } else {
+        console.log(`⏭️ cronWar skipped: ${league} (status: ${config.cronWarStatus?.[league] ?? "undefined"})`);
+      }
+    }
 
     // 13:58pm
     cron.schedule("00 58 04 * * *", async () => {
@@ -54,8 +69,8 @@ module.exports = {
       console.log("END: fCron.cronUpdate2pm");
     });
 
-    // 毎週月曜 14:10
-    cron.schedule("00 10 05 * * 1", async () => {
+    // 毎週火曜 8:00（月曜 32:00：23:00 UTC）
+    cron.schedule("00 00 23 * * 1", async () => {
       await fCron.rankedBattles(client);
       console.log("END: fCron.rankedBattles");
     });

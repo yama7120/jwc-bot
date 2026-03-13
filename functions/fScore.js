@@ -1,61 +1,62 @@
-const config = require('../config.js');
-const functions = require('./functions.js');
-const ss = require('simple-statistics');
+import config from "../config/config.js";
+import * as functions from "./functions.js";
+import * as ss from "simple-statistics";
 
 async function autoUpdate(clientMongo, league) {
-  let rtn_description = '';
+  let rtn_description = "";
 
-  const cursor = clientMongo.db('jwc').collection('clans').find({ league: league, [`status.s${config.season[league]}`]: 'true' });
+  const cursor = clientMongo.db("jwc").collection("clans")
+    .find({ league: league, [`status.${functions.seasonToString(config.season[league])}`]: "true" });
   let mongoClans = await cursor.toArray();
   await cursor.close();
 
   // リーグ内全チームスコア更新
-  rtn_description += '* **Score**\n';
+  rtn_description += "* **Score**\n";
   let arrDescription = [];
   await Promise.all(mongoClans.map(async (mongoClan, index) => {
     await updateScore(clientMongo, league, mongoClan);
     arrDescription[index] = `${mongoClan.team_name}\n`;
   }));
 
-  arrDescription.forEach(function(description) {
+  arrDescription.forEach(function (description) {
     rtn_description += description;
   });
 
   // リーグ全体スタッツ更新
-  rtn_description += '* **Stats in League**\n';
-  let mongoLeague = await clientMongo.db('jwc').collection('leagues').findOne(
+  rtn_description += "* **Stats in League**\n";
+  let mongoLeague = await clientMongo.db("jwc").collection("leagues").findOne(
     { league: league },
     { projection: { stats: 1, _id: 0 } }
   );
   const statsLeague = await calcStatsLeague(clientMongo, mongoClans, league, mongoLeague);
   if (mongoLeague == null) { // 初回登録
-    listing = { league: league, stats: statsLeague };
-    await clientMongo.db('jwc').collection('leagues').insertOne(listing);
-    rtn_description += '_Added_\n';
+    const listing = { league: league, stats: statsLeague };
+    await clientMongo.db("jwc").collection("leagues").insertOne(listing);
+    rtn_description += "_Added_\n";
   }
   else {
-    await clientMongo.db('jwc').collection('leagues').updateOne({ league: league }, { $set: { stats: statsLeague } });
-    rtn_description += '_Updated_\n';
+    await clientMongo.db("jwc").collection("leagues").updateOne({ league: league }, { $set: { stats: statsLeague } });
+    rtn_description += "_Updated_\n";
   };
 
   // リーグ内全チーム偏差値更新
-  rtn_description += '* **T Score**\n';
-  mongoLeague = await clientMongo.db('jwc').collection('leagues').findOne(
+  rtn_description += "* **T Score**\n";
+  let mongoLeagueUpdated = await clientMongo.db("jwc").collection("leagues").findOne(
     { league: league },
     { projection: { stats: 1, _id: 0 } }
   );
   await Promise.all(mongoClans.map(async (mongoClan, index) => {
-    await calcTScore(clientMongo, mongoClan, mongoLeague);
+    await calcTScore(clientMongo, mongoClan, mongoLeagueUpdated);
     arrDescription[index] = `${mongoClan.team_name}\n`;
   }));
 
-  arrDescription.forEach(function(description) {
+  arrDescription.forEach(function (description) {
     rtn_description += description;
   });
 
   return rtn_description;
 };
-exports.autoUpdate = autoUpdate;
+export { autoUpdate };
 
 
 async function calcTScore(clientMongo, mongoClan, mongoLeague) {
@@ -65,18 +66,18 @@ async function calcTScore(clientMongo, mongoClan, mongoLeague) {
 
   if (objScore) {
     Object.keys(objScore).forEach((key) => {
-      if (key != 'penalty' && key != 'add' && key != 'w0') {
+      if (key != "penalty" && key != "add" && key != "w0") {
         let scoreClan = objScore[key].clan;
         tScore[key] = {};
-        tScore[key].allAttackTypes = objTScore(scoreClan, mongoLeague.stats[key], 'allAttackTypes', 'hitrate');
-        tScore[key].fresh = objTScore(scoreClan, mongoLeague.stats[key], 'fresh', 'hitrate');
-        tScore[key].cleanup = objTScore(scoreClan, mongoLeague.stats[key], 'cleanup', 'hitrate');
-        tScore[key].overkill = objTScore(scoreClan, mongoLeague.stats[key], 'overkill', 'hitrate');
+        tScore[key].allAttackTypes = objTScore(scoreClan, mongoLeague.stats[key], "allAttackTypes", "hitrate");
+        tScore[key].fresh = objTScore(scoreClan, mongoLeague.stats[key], "fresh", "hitrate");
+        tScore[key].cleanup = objTScore(scoreClan, mongoLeague.stats[key], "cleanup", "hitrate");
+        tScore[key].overkill = objTScore(scoreClan, mongoLeague.stats[key], "overkill", "hitrate");
         tScoreDef[key] = {};
-        tScoreDef[key].allAttackTypes = objTScore(scoreClan, mongoLeague.stats[key], 'allAttackTypes', 'defrate');
-        tScoreDef[key].fresh = objTScore(scoreClan, mongoLeague.stats[key], 'fresh', 'defrate');
-        tScoreDef[key].cleanup = objTScore(scoreClan, mongoLeague.stats[key], 'cleanup', 'defrate');
-        tScoreDef[key].overkill = objTScore(scoreClan, mongoLeague.stats[key], 'overkill', 'defrate');
+        tScoreDef[key].allAttackTypes = objTScore(scoreClan, mongoLeague.stats[key], "allAttackTypes", "defrate");
+        tScoreDef[key].fresh = objTScore(scoreClan, mongoLeague.stats[key], "fresh", "defrate");
+        tScoreDef[key].cleanup = objTScore(scoreClan, mongoLeague.stats[key], "cleanup", "defrate");
+        tScoreDef[key].overkill = objTScore(scoreClan, mongoLeague.stats[key], "overkill", "defrate");
       };
     });
   };
@@ -85,14 +86,14 @@ async function calcTScore(clientMongo, mongoClan, mongoLeague) {
   stats.tScore = tScore;
   stats.tScoreDef = tScoreDef;
 
-  clientMongo.db('jwc').collection('clans')
+  clientMongo.db("jwc").collection("clans")
     .updateOne({ clan_abbr: mongoClan.clan_abbr }, { $set: { stats: stats } });
 };
 
 
 function objTScore(scoreClan, statsLeague, attackType, action) {
   let objTScore = {};
-  objTScore.total = ss_tScore(scoreClan, statsLeague, attackType, 'total', action);
+  objTScore.total = ss_tScore(scoreClan, statsLeague, attackType, "total", action);
   for (let iTH = config.rangeLvTH.min; iTH <= config.rangeLvTH.max; iTH++) {
     let keyLvTH = `th${iTH}`;
     objTScore[keyLvTH] = ss_tScore(scoreClan, statsLeague, attackType, keyLvTH, action);
@@ -108,12 +109,12 @@ function ss_tScore(scoreClan, statsLeague, attackType, lvTH, action) {
   let value = scoreClan[attackType][action][lvTH];
   let mean = statsLeague[attackType][action][lvTH];
   let sd = 0;
-  if (action == 'hitrate') {
+  if (action == "hitrate") {
     sd = statsLeague[attackType].sd[lvTH];
   }
   else {
     sd = statsLeague[attackType].sdDef[lvTH];
-  };
+  }
   let tScore = 50 + 10 * ss.zScore(value, mean, sd);
   tScore = Math.round(tScore * 100) / 100;
   return tScore;
@@ -121,7 +122,7 @@ function ss_tScore(scoreClan, statsLeague, attackType, lvTH, action) {
 
 
 async function calcStatsLeague(clientMongo, mongoClans, league, mongoLeague) {
-  const arrWeeks = ['sum', 'sumQ', 'w1', 'w2', 'w3', 'w4', 'w5', 'w6', 'w7', 'w8', 'w9', 'w10', 'w11', 'w12', 'w13', 'w14', 'w15'];
+  const arrWeeks = ["sum", "sumQ", "w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11", "w12", "w13", "w14", "w15"];
   let statsLeague = {};
   let weekNow = await functions.getWeekNow(league);
 
@@ -162,38 +163,38 @@ async function calcStatsLeagueWeek(mongoClans, weekStr) {
   let sd = {};
   let sdDef = {};
 
-  obj_nAt.total = returnArr(mongoClans, weekStr, 'allAttackTypes', 'nAt', 'total');
+  obj_nAt.total = returnArr(mongoClans, weekStr, "allAttackTypes", "nAt", "total");
   nAt.total = ss.sum(obj_nAt.total);
-  obj_nTriple.total = returnArr(mongoClans, weekStr, 'allAttackTypes', 'nTriple', 'total');
+  obj_nTriple.total = returnArr(mongoClans, weekStr, "allAttackTypes", "nTriple", "total");
   nTriple.total = ss.sum(obj_nTriple.total);
-  obj_nDef.total = returnArr(mongoClans, weekStr, 'allAttackTypes', 'nDef', 'total');
+  obj_nDef.total = returnArr(mongoClans, weekStr, "allAttackTypes", "nDef", "total");
   nDef.total = ss.sum(obj_nDef.total);
-  obj_nDefTriple.total = returnArr(mongoClans, weekStr, 'allAttackTypes', 'nDefTriple', 'total');
+  obj_nDefTriple.total = returnArr(mongoClans, weekStr, "allAttackTypes", "nDefTriple", "total");
   nDefTriple.total = ss.sum(obj_nDefTriple.total);
 
-  obj_hitrate.total = returnArr(mongoClans, weekStr, 'allAttackTypes', 'hitrate', 'total');
+  obj_hitrate.total = returnArr(mongoClans, weekStr, "allAttackTypes", "hitrate", "total");
   hitrate.total = Math.round((nTriple.total / nAt.total) * 100 * 100) / 100;
   if (obj_hitrate.total.length != 0) sd.total = Math.round(ss.standardDeviation(obj_hitrate.total) * 100) / 100;
-  obj_defrate.total = returnArr(mongoClans, weekStr, 'allAttackTypes', 'defrate', 'total');
+  obj_defrate.total = returnArr(mongoClans, weekStr, "allAttackTypes", "defrate", "total");
   defrate.total = Math.round((100 - (nDefTriple.total / nDef.total) * 100) * 100) / 100;
   if (obj_defrate.total.length != 0) sdDef.total = Math.round(ss.standardDeviation(obj_defrate.total) * 100) / 100;
 
   for (let iTH = config.rangeLvTH.min; iTH <= config.rangeLvTH.max; iTH++) {
     let keyLvTH = `th${iTH}`;
 
-    obj_nAt[keyLvTH] = returnArr(mongoClans, weekStr, 'allAttackTypes', 'nAt', keyLvTH);
+    obj_nAt[keyLvTH] = returnArr(mongoClans, weekStr, "allAttackTypes", "nAt", keyLvTH);
     nAt[keyLvTH] = ss.sum(obj_nAt[keyLvTH]);
-    obj_nTriple[keyLvTH] = returnArr(mongoClans, weekStr, 'allAttackTypes', 'nTriple', keyLvTH);
+    obj_nTriple[keyLvTH] = returnArr(mongoClans, weekStr, "allAttackTypes", "nTriple", keyLvTH);
     nTriple[keyLvTH] = ss.sum(obj_nTriple[keyLvTH]);
-    obj_nDef[keyLvTH] = returnArr(mongoClans, weekStr, 'allAttackTypes', 'nDef', keyLvTH);
+    obj_nDef[keyLvTH] = returnArr(mongoClans, weekStr, "allAttackTypes", "nDef", keyLvTH);
     nDef[keyLvTH] = ss.sum(obj_nDef[keyLvTH]);
-    obj_nDefTriple[keyLvTH] = returnArr(mongoClans, weekStr, 'allAttackTypes', 'nDefTriple', keyLvTH);
+    obj_nDefTriple[keyLvTH] = returnArr(mongoClans, weekStr, "allAttackTypes", "nDefTriple", keyLvTH);
     nDefTriple[keyLvTH] = ss.sum(obj_nDefTriple[keyLvTH]);
 
-    obj_hitrate[keyLvTH] = returnArr(mongoClans, weekStr, 'allAttackTypes', 'hitrate', keyLvTH);
+    obj_hitrate[keyLvTH] = returnArr(mongoClans, weekStr, "allAttackTypes", "hitrate", keyLvTH);
     hitrate[keyLvTH] = Math.round((nTriple[keyLvTH] / nAt[keyLvTH]) * 100 * 100) / 100;
     if (obj_hitrate[keyLvTH].length != 0) sd[keyLvTH] = Math.round(ss.standardDeviation(obj_hitrate[keyLvTH]) * 100) / 100;
-    obj_defrate[keyLvTH] = returnArr(mongoClans, weekStr, 'allAttackTypes', 'defrate', keyLvTH);
+    obj_defrate[keyLvTH] = returnArr(mongoClans, weekStr, "allAttackTypes", "defrate", keyLvTH);
     defrate[keyLvTH] = Math.round((100 - (nDefTriple[keyLvTH] / nDef[keyLvTH]) * 100) * 100) / 100;
     if (obj_defrate[keyLvTH].length != 0) sdDef[keyLvTH] = Math.round(ss.standardDeviation(obj_defrate[keyLvTH]) * 100) / 100;
   };
@@ -227,38 +228,38 @@ async function calcStatsLeagueWeek(mongoClans, weekStr) {
   let sdFresh = {};
   let sdDefFresh = {};
 
-  obj_nFresh.total = returnArr(mongoClans, weekStr, 'fresh', 'nAt', 'total');
+  obj_nFresh.total = returnArr(mongoClans, weekStr, "fresh", "nAt", "total");
   nFresh.total = ss.sum(obj_nFresh.total);
-  obj_nTripleFresh.total = returnArr(mongoClans, weekStr, 'fresh', 'nTriple', 'total');
+  obj_nTripleFresh.total = returnArr(mongoClans, weekStr, "fresh", "nTriple", "total");
   nTripleFresh.total = ss.sum(obj_nTripleFresh.total);
-  obj_nDefFresh.total = returnArr(mongoClans, weekStr, 'fresh', 'nDef', 'total');
+  obj_nDefFresh.total = returnArr(mongoClans, weekStr, "fresh", "nDef", "total");
   nDefFresh.total = ss.sum(obj_nDefFresh.total);
-  obj_nDefTripleFresh.total = returnArr(mongoClans, weekStr, 'fresh', 'nDefTriple', 'total');
+  obj_nDefTripleFresh.total = returnArr(mongoClans, weekStr, "fresh", "nDefTriple", "total");
   nDefTripleFresh.total = ss.sum(obj_nDefTripleFresh.total);
 
-  obj_hitrateFresh.total = returnArr(mongoClans, weekStr, 'fresh', 'hitrate', 'total');
+  obj_hitrateFresh.total = returnArr(mongoClans, weekStr, "fresh", "hitrate", "total");
   hitrateFresh.total = Math.round((nTripleFresh.total / nFresh.total) * 100 * 100) / 100;
   if (obj_hitrateFresh.total.length != 0) sdFresh.total = Math.round(ss.standardDeviation(obj_hitrateFresh.total) * 100) / 100;
   defrateFresh.total = Math.round((100 - (nDefTripleFresh.total / nDefFresh.total) * 100) * 100) / 100;
-  obj_defrateFresh.total = returnArr(mongoClans, weekStr, 'fresh', 'defrate', 'total');
+  obj_defrateFresh.total = returnArr(mongoClans, weekStr, "fresh", "defrate", "total");
   if (obj_defrateFresh.total.length != 0) sdDefFresh.total = Math.round(ss.standardDeviation(obj_defrateFresh.total) * 100) / 100;
 
   for (let iTH = config.rangeLvTH.min; iTH <= config.rangeLvTH.max; iTH++) {
     let keyLvTH = `th${iTH}`;
 
-    obj_nFresh[keyLvTH] = returnArr(mongoClans, weekStr, 'fresh', 'nAt', keyLvTH);
+    obj_nFresh[keyLvTH] = returnArr(mongoClans, weekStr, "fresh", "nAt", keyLvTH);
     nFresh[keyLvTH] = ss.sum(obj_nFresh[keyLvTH]);
-    obj_nTripleFresh[keyLvTH] = returnArr(mongoClans, weekStr, 'fresh', 'nTriple', keyLvTH);
+    obj_nTripleFresh[keyLvTH] = returnArr(mongoClans, weekStr, "fresh", "nTriple", keyLvTH);
     nTripleFresh[keyLvTH] = ss.sum(obj_nTripleFresh[keyLvTH]);
-    obj_nDefFresh[keyLvTH] = returnArr(mongoClans, weekStr, 'fresh', 'nDef', keyLvTH);
+    obj_nDefFresh[keyLvTH] = returnArr(mongoClans, weekStr, "fresh", "nDef", keyLvTH);
     nDefFresh[keyLvTH] = ss.sum(obj_nDefFresh[keyLvTH]);
-    obj_nDefTripleFresh[keyLvTH] = returnArr(mongoClans, weekStr, 'fresh', 'nDefTriple', keyLvTH);
+    obj_nDefTripleFresh[keyLvTH] = returnArr(mongoClans, weekStr, "fresh", "nDefTriple", keyLvTH);
     nDefTripleFresh[keyLvTH] = ss.sum(obj_nDefTripleFresh[keyLvTH]);
 
-    obj_hitrateFresh[keyLvTH] = returnArr(mongoClans, weekStr, 'fresh', 'hitrate', keyLvTH);
+    obj_hitrateFresh[keyLvTH] = returnArr(mongoClans, weekStr, "fresh", "hitrate", keyLvTH);
     hitrateFresh[keyLvTH] = Math.round((nTripleFresh[keyLvTH] / nFresh[keyLvTH]) * 100 * 100) / 100;
     if (obj_hitrateFresh[keyLvTH].length != 0) sdFresh[keyLvTH] = Math.round(ss.standardDeviation(obj_hitrateFresh[keyLvTH]) * 100) / 100;
-    obj_defrateFresh[keyLvTH] = returnArr(mongoClans, weekStr, 'fresh', 'defrate', keyLvTH);
+    obj_defrateFresh[keyLvTH] = returnArr(mongoClans, weekStr, "fresh", "defrate", keyLvTH);
     defrateFresh[keyLvTH] = Math.round((100 - (nDefTripleFresh[keyLvTH] / nDefFresh[keyLvTH]) * 100) * 100) / 100;
     if (obj_defrateFresh[keyLvTH].length != 0) sdDefFresh[keyLvTH] = Math.round(ss.standardDeviation(obj_defrateFresh[keyLvTH]) * 100) / 100;
   };
@@ -292,38 +293,38 @@ async function calcStatsLeagueWeek(mongoClans, weekStr) {
   let sdCleanup = {};
   let sdDefCleanup = {};
 
-  obj_nCleanup.total = returnArr(mongoClans, weekStr, 'cleanup', 'nAt', 'total');
+  obj_nCleanup.total = returnArr(mongoClans, weekStr, "cleanup", "nAt", "total");
   nCleanup.total = ss.sum(obj_nCleanup.total);
-  obj_nTripleCleanup.total = returnArr(mongoClans, weekStr, 'cleanup', 'nTriple', 'total');
+  obj_nTripleCleanup.total = returnArr(mongoClans, weekStr, "cleanup", "nTriple", "total");
   nTripleCleanup.total = ss.sum(obj_nTripleCleanup.total);
-  obj_nDefCleanup.total = returnArr(mongoClans, weekStr, 'cleanup', 'nDef', 'total');
+  obj_nDefCleanup.total = returnArr(mongoClans, weekStr, "cleanup", "nDef", "total");
   nDefCleanup.total = ss.sum(obj_nDefCleanup.total);
-  obj_nDefTripleCleanup.total = returnArr(mongoClans, weekStr, 'cleanup', 'nDefTriple', 'total');
+  obj_nDefTripleCleanup.total = returnArr(mongoClans, weekStr, "cleanup", "nDefTriple", "total");
   nDefTripleCleanup.total = ss.sum(obj_nDefTripleCleanup.total);
 
-  obj_hitrateCleanup.total = returnArr(mongoClans, weekStr, 'cleanup', 'hitrate', 'total');
+  obj_hitrateCleanup.total = returnArr(mongoClans, weekStr, "cleanup", "hitrate", "total");
   hitrateCleanup.total = Math.round((nTripleCleanup.total / nCleanup.total) * 100 * 100) / 100;
   if (obj_hitrateCleanup.total.length != 0) sdCleanup.total = Math.round(ss.standardDeviation(obj_hitrateCleanup.total) * 100) / 100;
   defrateCleanup.total = Math.round((100 - (nDefTripleCleanup.total / nDefCleanup.total) * 100) * 100) / 100;
-  obj_defrateCleanup.total = returnArr(mongoClans, weekStr, 'cleanup', 'defrate', 'total');
+  obj_defrateCleanup.total = returnArr(mongoClans, weekStr, "cleanup", "defrate", "total");
   if (obj_defrateCleanup.total.length != 0) sdDefCleanup.total = Math.round(ss.standardDeviation(obj_defrateCleanup.total) * 100) / 100;
 
   for (let iTH = config.rangeLvTH.min; iTH <= config.rangeLvTH.max; iTH++) {
     let keyLvTH = `th${iTH}`;
 
-    obj_nCleanup[keyLvTH] = returnArr(mongoClans, weekStr, 'cleanup', 'nAt', keyLvTH);
+    obj_nCleanup[keyLvTH] = returnArr(mongoClans, weekStr, "cleanup", "nAt", keyLvTH);
     nCleanup[keyLvTH] = ss.sum(obj_nCleanup[keyLvTH]);
-    obj_nTripleCleanup[keyLvTH] = returnArr(mongoClans, weekStr, 'cleanup', 'nTriple', keyLvTH);
+    obj_nTripleCleanup[keyLvTH] = returnArr(mongoClans, weekStr, "cleanup", "nTriple", keyLvTH);
     nTripleCleanup[keyLvTH] = ss.sum(obj_nTripleCleanup[keyLvTH]);
-    obj_nDefCleanup[keyLvTH] = returnArr(mongoClans, weekStr, 'cleanup', 'nDef', keyLvTH);
+    obj_nDefCleanup[keyLvTH] = returnArr(mongoClans, weekStr, "cleanup", "nDef", keyLvTH);
     nDefCleanup[keyLvTH] = ss.sum(obj_nDefCleanup[keyLvTH]);
-    obj_nDefTripleCleanup[keyLvTH] = returnArr(mongoClans, weekStr, 'cleanup', 'nDefTriple', keyLvTH);
+    obj_nDefTripleCleanup[keyLvTH] = returnArr(mongoClans, weekStr, "cleanup", "nDefTriple", keyLvTH);
     nDefTripleCleanup[keyLvTH] = ss.sum(obj_nDefTripleCleanup[keyLvTH]);
 
-    obj_hitrateCleanup[keyLvTH] = returnArr(mongoClans, weekStr, 'cleanup', 'hitrate', keyLvTH);
+    obj_hitrateCleanup[keyLvTH] = returnArr(mongoClans, weekStr, "cleanup", "hitrate", keyLvTH);
     hitrateCleanup[keyLvTH] = Math.round((nTripleCleanup[keyLvTH] / nCleanup[keyLvTH]) * 100 * 100) / 100;
     if (obj_hitrateCleanup[keyLvTH].length != 0) sdCleanup[keyLvTH] = Math.round(ss.standardDeviation(obj_hitrateCleanup[keyLvTH]) * 100) / 100;
-    obj_defrateCleanup[keyLvTH] = returnArr(mongoClans, weekStr, 'cleanup', 'defrate', keyLvTH);
+    obj_defrateCleanup[keyLvTH] = returnArr(mongoClans, weekStr, "cleanup", "defrate", keyLvTH);
     defrateCleanup[keyLvTH] = Math.round((100 - (nDefTripleCleanup[keyLvTH] / nDefCleanup[keyLvTH]) * 100) * 100) / 100;
     if (obj_defrateCleanup[keyLvTH].length != 0) sdDefCleanup[keyLvTH] = Math.round(ss.standardDeviation(obj_defrateCleanup[keyLvTH]) * 100) / 100;
   };
@@ -356,38 +357,38 @@ async function calcStatsLeagueWeek(mongoClans, weekStr) {
   let obj_defrateOverkill = {};
   let sdDefOverkill = {};
 
-  obj_nOverkill.total = returnArr(mongoClans, weekStr, 'overkill', 'nAt', 'total');
+  obj_nOverkill.total = returnArr(mongoClans, weekStr, "overkill", "nAt", "total");
   nOverkill.total = ss.sum(obj_nOverkill.total);
-  obj_nTripleOverkill.total = returnArr(mongoClans, weekStr, 'overkill', 'nTriple', 'total');
+  obj_nTripleOverkill.total = returnArr(mongoClans, weekStr, "overkill", "nTriple", "total");
   nTripleOverkill.total = ss.sum(obj_nTripleOverkill.total);
-  obj_nDefOverkill.total = returnArr(mongoClans, weekStr, 'overkill', 'nDef', 'total');
+  obj_nDefOverkill.total = returnArr(mongoClans, weekStr, "overkill", "nDef", "total");
   nDefOverkill.total = ss.sum(obj_nDefOverkill.total);
-  obj_nDefTripleOverkill.total = returnArr(mongoClans, weekStr, 'overkill', 'nDefTriple', 'total');
+  obj_nDefTripleOverkill.total = returnArr(mongoClans, weekStr, "overkill", "nDefTriple", "total");
   nDefTripleOverkill.total = ss.sum(obj_nDefTripleOverkill.total);
 
-  obj_hitrateOverkill.total = returnArr(mongoClans, weekStr, 'overkill', 'hitrate', 'total');
+  obj_hitrateOverkill.total = returnArr(mongoClans, weekStr, "overkill", "hitrate", "total");
   hitrateOverkill.total = Math.round((nTripleOverkill.total / nOverkill.total) * 100 * 100) / 100;
   if (obj_hitrateOverkill.total.length != 0) sdOverkill.total = Math.round(ss.standardDeviation(obj_hitrateOverkill.total) * 100) / 100;
-  obj_defrateOverkill.total = returnArr(mongoClans, weekStr, 'overkill', 'defrate', 'total');
+  obj_defrateOverkill.total = returnArr(mongoClans, weekStr, "overkill", "defrate", "total");
   defrateOverkill.total = Math.round((100 - (nDefTripleOverkill.total / nDefOverkill.total) * 100) * 100) / 100;
   if (obj_defrateOverkill.total.length != 0) sdDefOverkill.total = Math.round(ss.standardDeviation(obj_defrateOverkill.total) * 100) / 100;
 
   for (let iTH = config.rangeLvTH.min; iTH <= config.rangeLvTH.max; iTH++) {
     let keyLvTH = `th${iTH}`;
 
-    obj_nOverkill[keyLvTH] = returnArr(mongoClans, weekStr, 'overkill', 'nAt', keyLvTH);
+    obj_nOverkill[keyLvTH] = returnArr(mongoClans, weekStr, "overkill", "nAt", keyLvTH);
     nOverkill[keyLvTH] = ss.sum(obj_nOverkill[keyLvTH]);
-    obj_nTripleOverkill[keyLvTH] = returnArr(mongoClans, weekStr, 'overkill', 'nTriple', keyLvTH);
+    obj_nTripleOverkill[keyLvTH] = returnArr(mongoClans, weekStr, "overkill", "nTriple", keyLvTH);
     nTripleOverkill[keyLvTH] = ss.sum(obj_nTripleOverkill[keyLvTH]);
-    obj_nDefOverkill[keyLvTH] = returnArr(mongoClans, weekStr, 'overkill', 'nDef', keyLvTH);
+    obj_nDefOverkill[keyLvTH] = returnArr(mongoClans, weekStr, "overkill", "nDef", keyLvTH);
     nDefOverkill[keyLvTH] = ss.sum(obj_nDefOverkill[keyLvTH]);
-    obj_nDefTripleOverkill[keyLvTH] = returnArr(mongoClans, weekStr, 'overkill', 'nDefTriple', keyLvTH);
+    obj_nDefTripleOverkill[keyLvTH] = returnArr(mongoClans, weekStr, "overkill", "nDefTriple", keyLvTH);
     nDefTripleOverkill[keyLvTH] = ss.sum(obj_nDefTripleOverkill[keyLvTH]);
 
-    obj_hitrateOverkill[keyLvTH] = returnArr(mongoClans, weekStr, 'overkill', 'hitrate', keyLvTH);
+    obj_hitrateOverkill[keyLvTH] = returnArr(mongoClans, weekStr, "overkill", "hitrate", keyLvTH);
     hitrateOverkill[keyLvTH] = Math.round((nTripleOverkill[keyLvTH] / nOverkill[keyLvTH]) * 100 * 100) / 100;
     if (obj_hitrateOverkill[keyLvTH].length != 0) sdOverkill[keyLvTH] = Math.round(ss.standardDeviation(obj_hitrateOverkill[keyLvTH]) * 100) / 100;
-    obj_defrateOverkill[keyLvTH] = returnArr(mongoClans, weekStr, 'overkill', 'defrate', keyLvTH);
+    obj_defrateOverkill[keyLvTH] = returnArr(mongoClans, weekStr, "overkill", "defrate", keyLvTH);
     defrateOverkill[keyLvTH] = Math.round((100 - (nDefTripleOverkill[keyLvTH] / nDefOverkill[keyLvTH]) * 100) * 100) / 100;
     if (obj_defrateOverkill[keyLvTH].length != 0) sdDefOverkill[keyLvTH] = Math.round(ss.standardDeviation(obj_defrateOverkill[keyLvTH]) * 100) / 100;
   };
@@ -404,7 +405,7 @@ async function calcStatsLeagueWeek(mongoClans, weekStr) {
   // ********** overkill **********
 
   let statsLeagueWeek = {};
-  const arr_destruction = returnArr(mongoClans, weekStr, 'destruction', '', '');
+  const arr_destruction = returnArr(mongoClans, weekStr, "destruction", "", "");
   if (arr_destruction.length == 0) {
     return;
   };
@@ -420,11 +421,11 @@ async function calcStatsLeagueWeek(mongoClans, weekStr) {
 
 
 function returnArr(mongoClans, weekStr, term1, term2, term3) {
-  let arr = mongoClans.map(function(mongoClan) {
+  let arr = mongoClans.map(function (mongoClan) {
     if (mongoClan.score !== null) {
       if (mongoClan.score[weekStr] !== undefined) {
         if (mongoClan.score[weekStr].clan[term1] !== undefined) {
-          if (term2 == '') {
+          if (term2 == "") {
             return mongoClan.score[weekStr].clan[term1];
           }
           else {
@@ -443,7 +444,7 @@ async function updateScore(clientMongo, league, mongoClan) {
   const clanAbbr = mongoClan.clan_abbr;
   const query = { season: config.season[league], league: league, week: { $gt: 0 } };
   const options = {};
-  const myColl = clientMongo.db('jwc').collection('wars');
+  const myColl = clientMongo.db("jwc").collection("wars");
   const cursor = myColl.find(query, options);
   let mongoWars = await cursor.toArray();
   await cursor.close();
@@ -489,165 +490,167 @@ async function updateScore(clientMongo, league, mongoClan) {
     let point = 0;
 
     if (mongoWar.clan_abbr == clanAbbr || mongoWar.opponent_abbr == clanAbbr) {
-      if (mongoWar.result.state == 'warEnded' || mongoWar.result.state == 'forfeited') {
-        if (mongoWar.clan_abbr == clanAbbr) {
-          [point, win, tie, loss] = calcPoint(mongoWar, 'clan', 'opponent');
-          /*
-          if (league == 'mix') {
-            [point, win, tie, loss] = calcPointMix(mongoWar, 'clan', 'opponent');
-          }
-          else {
-            [point, win, tie, loss] = calcPoint(mongoWar, 'clan', 'opponent');
-          };
-          */
-        }
-        else if (mongoWar.opponent_abbr == clanAbbr) {
-          [point, win, tie, loss] = calcPoint(mongoWar, 'opponent', 'clan');
-          /*
-          if (league == 'mix') {
-            [point, win, tie, loss] = calcPointMix(mongoWar, 'opponent', 'clan');
-          }
-          else {
-            [point, win, tie, loss] = calcPoint(mongoWar, 'opponent', 'clan');
-          };
-          */
-        };
-
-        // 合計・平均計算
-        nWar += 1;
-        nWin += win;
-        nTie += tie;
-        nLoss += loss;
-        sumPoint += point;
-        if (mongoWar.result.state != 'forfeited') {
-          nWarF += 1;
-        };
-
-        if (league == 'j1' || league == 'j2') {
-          if (week <= config.weeksQ[league]) {
-            nWarQ += 1;
-            nWinQ += win;
-            nTieQ += tie;
-            nLossQ += loss;
-            sumPointQ += point;
-            if (mongoWar.result.state != 'forfeited') {
-              nWarQF += 1;
-            };
-          };
-        }
-        else if (league == 'swiss' || league == 'mix') {
-          if (week <= config.weeksQ[league]) {
-            nWarQ += 1;
-            nWinQ += win;
-            nTieQ += tie;
-            nLossQ += loss;
-            sumPointQ += point;
-            if (mongoWar.result.state != 'forfeited') {
-              nWarQF += 1;
-            };
-          };
-        }
-        else if (league == 'five') {
-          if (week <= config.weeksQ[league]) {
-            nWarQ += 1;
-            nWinQ += win;
-            nTieQ += tie;
-            nLossQ += loss;
-            sumPointQ += point;
-            if (mongoWar.result.state != 'forfeited') {
-              nWarQF += 1;
-            };
-          }
-          else if (config.weeksGS.start <= week && week <= config.weeksGS.end) {
-            nWarGS += 1;
-            nWinGS += win;
-            nTieGS += tie;
-            nLossGS += loss;
-            sumPointGS += point;
-            if (mongoWar.result.state != 'forfeited') {
-              nWarGSf += 1;
-            };
-          };
-        };
-
-        let scoreClan = {};
-        let scoreOpp = {};
-
-        if (mongoWar.result.state == 'warEnded') {
+      if (mongoWar.result) {
+        if (mongoWar.result.state == "warEnded" || mongoWar.result.state == "forfeited") {
           if (mongoWar.clan_abbr == clanAbbr) {
-            scoreClan = mongoWar.result.clan;
-            scoreOpp = mongoWar.result.opponent;
-            scoreOpp.teamAbbr = mongoWar.opponent_abbr;
-            sumScoreClan = await sumResult(sumScoreClan, mongoWar, 'clan');
-            sumScoreOpp = await sumResult(sumScoreOpp, mongoWar, 'opponent');
-            if (league == 'j1' || league == 'j2') {
-              if (week <= config.weeksQ[league]) {
-                sumScoreClanQ = await sumResult(sumScoreClanQ, mongoWar, 'clan');
-                sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, 'opponent');
-              };
+            [point, win, tie, loss] = calcPoint(mongoWar, "clan", "opponent");
+            /*
+            if (league == "mix") {
+              [point, win, tie, loss] = calcPointMix(mongoWar, "clan", "opponent");
             }
-            else if (league == 'swiss' || league == 'mix') {
-              if (week <= config.weeksQ[league]) {
-                sumScoreClanQ = await sumResult(sumScoreClanQ, mongoWar, 'clan');
-                sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, 'opponent');
-              };
-            }
-            else if (league == 'five') {
-              if (week <= config.weeksQ[league]) {
-                sumScoreClanQ = await sumResult(sumScoreClanQ, mongoWar, 'clan');
-                sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, 'opponent');
-              }
-              else if (config.weeksGS.start <= week && week <= config.weeksGS.end) {
-                sumScoreClanGS = await sumResult(sumScoreClanGS, mongoWar, 'clan');
-                sumScoreOppGS = await sumResult(sumScoreOppGS, mongoWar, 'opponent');
-              };
+            else {
+              [point, win, tie, loss] = calcPoint(mongoWar, "clan", "opponent");
             };
+            */
           }
           else if (mongoWar.opponent_abbr == clanAbbr) {
-            scoreClan = mongoWar.result.opponent;
-            scoreOpp = mongoWar.result.clan;
-            scoreOpp.teamAbbr = mongoWar.clan_abbr;
-            sumScoreClan = await sumResult(sumScoreClan, mongoWar, 'opponent');
-            sumScoreOpp = await sumResult(sumScoreOpp, mongoWar, 'clan');
-            if (league == 'j1' || league == 'j2') {
-              if (week <= config.weeksQ[league]) {
-                sumScoreClanQ = await sumResult(sumScoreClanQ, mongoWar, 'opponent');
-                sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, 'clan');
+            [point, win, tie, loss] = calcPoint(mongoWar, "opponent", "clan");
+            /*
+            if (league == "mix") {
+              [point, win, tie, loss] = calcPointMix(mongoWar, "opponent", "clan");
+            }
+            else {
+              [point, win, tie, loss] = calcPoint(mongoWar, "opponent", "clan");
+            };
+            */
+          };
+
+          // 合計・平均計算
+          nWar += 1;
+          nWin += win;
+          nTie += tie;
+          nLoss += loss;
+          sumPoint += point;
+          if (mongoWar.result.state != "forfeited") {
+            nWarF += 1;
+          };
+
+          if (league == "j1" || league == "j2") {
+            if (week <= config.weeksQ[league]) {
+              nWarQ += 1;
+              nWinQ += win;
+              nTieQ += tie;
+              nLossQ += loss;
+              sumPointQ += point;
+              if (mongoWar.result.state != "forfeited") {
+                nWarQF += 1;
+              };
+            };
+          }
+          else if (league == "swiss" || league == "mix") {
+            if (week <= config.weeksQ[league]) {
+              nWarQ += 1;
+              nWinQ += win;
+              nTieQ += tie;
+              nLossQ += loss;
+              sumPointQ += point;
+              if (mongoWar.result.state != "forfeited") {
+                nWarQF += 1;
+              };
+            };
+          }
+          else if (league == "five") {
+            if (week <= config.weeksQ[league]) {
+              nWarQ += 1;
+              nWinQ += win;
+              nTieQ += tie;
+              nLossQ += loss;
+              sumPointQ += point;
+              if (mongoWar.result.state != "forfeited") {
+                nWarQF += 1;
               };
             }
-            else if (league == 'swiss' || league == 'mix') {
-              if (week <= config.weeksQ[league]) {
-                sumScoreClanQ = await sumResult(sumScoreClanQ, mongoWar, 'opponent');
-                sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, 'clan');
-              };
-            }
-            else if (league == 'five') {
-              if (week <= config.weeksQ[league]) {
-                sumScoreClanQ = await sumResult(sumScoreClanQ, mongoWar, 'opponent');
-                sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, 'clan');
-              }
-              else if (config.weeksGS.start <= week && week <= config.weeksGS.end) {
-                sumScoreClanGS = await sumResult(sumScoreClanGS, mongoWar, 'opponent');
-                sumScoreOppGS = await sumResult(sumScoreOppGS, mongoWar, 'clan');
+            else if (config.weeksGS.start <= week && week <= config.weeksGS.end) {
+              nWarGS += 1;
+              nWinGS += win;
+              nTieGS += tie;
+              nLossGS += loss;
+              sumPointGS += point;
+              if (mongoWar.result.state != "forfeited") {
+                nWarGSf += 1;
               };
             };
           };
+
+          let scoreClan = {};
+          let scoreOpp = {};
+
+          if (mongoWar.result.state == "warEnded") {
+            if (mongoWar.clan_abbr == clanAbbr) {
+              scoreClan = mongoWar.result.clan;
+              scoreOpp = mongoWar.result.opponent;
+              scoreOpp.teamAbbr = mongoWar.opponent_abbr;
+              sumScoreClan = await sumResult(sumScoreClan, mongoWar, "clan");
+              sumScoreOpp = await sumResult(sumScoreOpp, mongoWar, "opponent");
+              if (league == "j1" || league == "j2") {
+                if (week <= config.weeksQ[league]) {
+                  sumScoreClanQ = await sumResult(sumScoreClanQ, mongoWar, "clan");
+                  sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, "opponent");
+                };
+              }
+              else if (league == "swiss" || league == "mix") {
+                if (week <= config.weeksQ[league]) {
+                  sumScoreClanQ = await sumResult(sumScoreClanQ, mongoWar, "clan");
+                  sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, "opponent");
+                };
+              }
+              else if (league == "five") {
+                if (week <= config.weeksQ[league]) {
+                  sumScoreClanQ = await sumResult(sumScoreClanQ, mongoWar, "clan");
+                  sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, "opponent");
+                }
+                else if (config.weeksGS.start <= week && week <= config.weeksGS.end) {
+                  sumScoreClanGS = await sumResult(sumScoreClanGS, mongoWar, "clan");
+                  sumScoreOppGS = await sumResult(sumScoreOppGS, mongoWar, "opponent");
+                };
+              };
+            }
+            else if (mongoWar.opponent_abbr == clanAbbr) {
+              scoreClan = mongoWar.result.opponent;
+              scoreOpp = mongoWar.result.clan;
+              scoreOpp.teamAbbr = mongoWar.clan_abbr;
+              sumScoreClan = await sumResult(sumScoreClan, mongoWar, "opponent");
+              sumScoreOpp = await sumResult(sumScoreOpp, mongoWar, "clan");
+              if (league == "j1" || league == "j2") {
+                if (week <= config.weeksQ[league]) {
+                  sumScoreClanQ = await sumResult(sumScoreClanQ, mongoWar, "opponent");
+                  sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, "clan");
+                };
+              }
+              else if (league == "swiss" || league == "mix") {
+                if (week <= config.weeksQ[league]) {
+                  sumScoreClanQ = await sumResult(sumScoreClanQ, mongoWar, "opponent");
+                  sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, "clan");
+                };
+              }
+              else if (league == "five") {
+                if (week <= config.weeksQ[league]) {
+                  sumScoreClanQ = await sumResult(sumScoreClanQ, mongoWar, "opponent");
+                  sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, "clan");
+                }
+                else if (config.weeksGS.start <= week && week <= config.weeksGS.end) {
+                  sumScoreClanGS = await sumResult(sumScoreClanGS, mongoWar, "opponent");
+                  sumScoreOppGS = await sumResult(sumScoreOppGS, mongoWar, "clan");
+                };
+              };
+            };
+          }
+          else if (mongoWar.result.state == "forfeited") {
+            scoreClan = "N/A";
+            scoreOpp = "N/A";
+          };
+
+          const scoreThisWar = {
+            state: mongoWar.result.state,
+            point: point,
+            clan: scoreClan,
+            opponent: scoreOpp,
+          };
+
+          scoreAll[weekStr] = scoreThisWar;
         }
-        else if (mongoWar.result.state == 'forfeited') {
-          scoreClan = 'N/A';
-          scoreOpp = 'N/A';
-        };
-
-        const scoreThisWar = {
-          state: mongoWar.result.state,
-          point: point,
-          clan: scoreClan,
-          opponent: scoreOpp,
-        };
-
-        scoreAll[weekStr] = scoreThisWar;
-      };
-    };
+      }
+    }
   }));
 
   sumScoreClan.sumDestruction = (nWarF > 0) ? Math.round(sumScoreClan.sumDestruction * 100) / 100 : 0;
@@ -670,7 +673,7 @@ async function updateScore(clientMongo, league, mongoClan) {
 
   let starDifferenceGS = 0;
 
-  if (league == 'five') {
+  if (league == "five") {
     sumScoreClanGS.sumDestruction = (nWarGSf > 0) ? Math.round(sumScoreClanGS.sumDestruction * 100) / 100 : 0;
     sumScoreOppGS.sumDestruction = (nWarGSf > 0) ? Math.round(sumScoreOppGS.sumDestruction * 100) / 100 : 0;
     sumScoreClanGS.destruction = (nWarGSf > 0) ? Math.round(sumScoreClanGS.sumDestruction / nWarGSf * 100) / 100 : NaN;
@@ -694,7 +697,7 @@ async function updateScore(clientMongo, league, mongoClan) {
     };
   };
 
-  scoreSum = {
+  const scoreSum = {
     nWar: nWar,
     nWin: nWin,
     nTie: nTie,
@@ -708,7 +711,7 @@ async function updateScore(clientMongo, league, mongoClan) {
   };
   scoreAll.sum = scoreSum;
 
-  scoreSumQ = {
+  const scoreSumQ = {
     nWar: nWarQ,
     nWin: nWinQ,
     nTie: nTieQ,
@@ -723,8 +726,8 @@ async function updateScore(clientMongo, league, mongoClan) {
   };
   scoreAll.sumQ = scoreSumQ;
 
-  if (league == 'five') {
-    scoreSumGS = {
+  if (league == "five") {
+    const scoreSumGS = {
       nWar: nWarGS,
       nWin: nWinGS,
       nTie: nTieGS,
@@ -738,9 +741,9 @@ async function updateScore(clientMongo, league, mongoClan) {
     scoreAll.sumGS = scoreSumGS;
   };
 
-  clientMongo.db('jwc').collection('clans').updateOne({ clan_abbr: mongoClan.clan_abbr }, { $set: { score: scoreAll } });
+  clientMongo.db("jwc").collection("clans").updateOne({ clan_abbr: mongoClan.clan_abbr }, { $set: { score: scoreAll } });
 };
-exports.updateScore = updateScore;
+export { updateScore };
 
 
 function calcPoint(mongoWar, myClan, myOpponent) {
@@ -748,8 +751,8 @@ function calcPoint(mongoWar, myClan, myOpponent) {
   let nWin = 0;
   let nTie = 0;
   let nLoss = 0;
-  if (mongoWar.result.state == 'forfeited') {
-    if (mongoWar.result[myClan] == 'win') {
+  if (mongoWar.result.state == "forfeited") {
+    if (mongoWar.result[myClan] == "win") {
       point = 2;
       nWin = 1;
     }
@@ -799,8 +802,8 @@ function calcPointMix(mongoWar, myClan, myOpponent) {
   let nWin = 0;
   let nTie = 0;
   let nLoss = 0;
-  if (mongoWar.result.state == 'forfeited') {
-    if (mongoWar.result[myClan] == 'win') {
+  if (mongoWar.result.state == "forfeited") {
+    if (mongoWar.result[myClan] == "win") {
       point = 2;
       nWin = 1;
     }
@@ -885,12 +888,12 @@ async function sumResult(scoreSum, mongoWar, myClan) {
 
   scoreSum.allAttackTypes = { nAt: nAt, nTriple: nTriple, nDef: nDef, nDefTriple: nDefTriple, hitrate: hitrate, defrate: defrate };
 
-  nAt = {};
-  nTriple = {};
-  nDef = {};
-  nDefTriple = {};
-  hitrate = {};
-  defrate = {};
+  let nAt = {};
+  let nTriple = {};
+  let nDef = {};
+  let nDefTriple = {};
+  let hitrate = {};
+  let defrate = {};
 
   if (!scoreSum.fresh) {
     nAt.total = 0;
@@ -930,12 +933,12 @@ async function sumResult(scoreSum, mongoWar, myClan) {
 
   scoreSum.fresh = { nAt: nAt, nTriple: nTriple, nDef: nDef, nDefTriple: nDefTriple, hitrate: hitrate, defrate: defrate };
 
-  nAt = {};
-  nTriple = {};
-  nDef = {};
-  nDefTriple = {};
-  hitrate = {};
-  defrate = {};
+  let nAt = {};
+  let nTriple = {};
+  let nDef = {};
+  let nDefTriple = {};
+  let hitrate = {};
+  let defrate = {};
 
   if (!scoreSum.cleanup) {
     nAt.total = 0;
@@ -975,12 +978,12 @@ async function sumResult(scoreSum, mongoWar, myClan) {
 
   scoreSum.cleanup = { nAt: nAt, nTriple: nTriple, nDef: nDef, nDefTriple: nDefTriple, hitrate: hitrate, defrate: defrate };
 
-  nAt = {};
-  nTriple = {};
-  nDef = {};
-  nDefTriple = {};
-  hitrate = {};
-  defrate = {};
+  let nAt = {};
+  let nTriple = {};
+  let nDef = {};
+  let nDefTriple = {};
+  let hitrate = {};
+  let defrate = {};
 
   if (!scoreSum.overkill) {
     nAt.total = 0;
@@ -1031,7 +1034,7 @@ async function sumResult(scoreSum, mongoWar, myClan) {
   scoreSum.sumDestruction = mySum(scoreSum.sumDestruction, warResult.destruction);
   scoreSum.sumPtDef = mySum(scoreSum.sumPtDef, warResult.ptDefSum);
 
-  const attackTypes = ['allAttackTypes', 'fresh', 'cleanup', 'overkill'];
+  const attackTypes = ["allAttackTypes", "fresh", "cleanup", "overkill"];
 
   for (const attackType of attackTypes) {
     scoreSum[attackType] = sumAttackTypeResults(scoreSum[attackType], warResult[attackType]);
@@ -1137,20 +1140,20 @@ async function updateScoreAccs(clientMongo, season, league, week, members, membe
   if (!members) {
     return;
   }
-  
+
   // ********** attacks **********
   let playerTags = [];
   await Promise.all(members.map(async (member, index) => {
     let playerTag = member.tag;
     playerTags[index] = playerTag;
-    mongoAcc = await clientMongo.db('jwc').collection('accounts').findOne({ tag: playerTag });
+    let mongoAcc = await clientMongo.db("jwc").collection("accounts").findOne({ tag: playerTag });
     if (mongoAcc != null) {
       let attacks = mongoAcc.attacks;
       let numAtBefore = attacks ? attacks.length : 0;
       let attacksNew = [];
       if (member.attacks == null) {
         attacksNew[0] = {};
-        attacksNew[0].attackType = 'remaining';
+        attacksNew[0].attackType = "remaining";
         attacksNew[0].season = season;
         attacksNew[0].league = league;
         attacksNew[0].week = week;
@@ -1159,7 +1162,7 @@ async function updateScoreAccs(clientMongo, season, league, week, members, membe
       else {
         if (member.attacks[0] === undefined) {
           attacksNew[0] = {};
-          attacksNew[0].attackType = 'remaining';
+          attacksNew[0].attackType = "remaining";
           attacksNew[0].season = season;
           attacksNew[0].league = league;
           attacksNew[0].week = week;
@@ -1173,10 +1176,10 @@ async function updateScoreAccs(clientMongo, season, league, week, members, membe
           attacksNew[0].attackNo = 1;
         };
       };
-      if (league != 'swiss') {
+      if (league != "swiss") {
         if (member.attacks == null) {
           attacksNew[1] = {};
-          attacksNew[1].attackType = 'remaining';
+          attacksNew[1].attackType = "remaining";
           attacksNew[1].season = season;
           attacksNew[1].league = league;
           attacksNew[1].week = week;
@@ -1185,7 +1188,7 @@ async function updateScoreAccs(clientMongo, season, league, week, members, membe
         else {
           if (member.attacks[1] === undefined) {
             attacksNew[1] = {};
-            attacksNew[1].attackType = 'remaining';
+            attacksNew[1].attackType = "remaining";
             attacksNew[1].season = season;
             attacksNew[1].league = league;
             attacksNew[1].week = week;
@@ -1203,7 +1206,7 @@ async function updateScoreAccs(clientMongo, season, league, week, members, membe
       if (attacks == null) {
         attacks = [];
         attacks.push(attacksNew[0]);
-        if (league != 'swiss') {
+        if (league != "swiss") {
           attacks.push(attacksNew[1]);
         };
       };
@@ -1211,7 +1214,7 @@ async function updateScoreAccs(clientMongo, season, league, week, members, membe
         let checkDuplication = attacks.some(attack => attack.season === attacksNew[0].season && attack.league === attacksNew[0].league && attack.week === attacksNew[0].week);
         if (!checkDuplication) { // 重複なし　→　追加登録
           attacks.push(attacksNew[0]);
-          if (league != 'swiss') {
+          if (league != "swiss") {
             attacks.push(attacksNew[1]);
           };
         }
@@ -1221,7 +1224,7 @@ async function updateScoreAccs(clientMongo, season, league, week, members, membe
               attacks[index] = attacksNew[0];
               console.dir(attacksNew[0]);
             };
-            if (league != 'swiss') {
+            if (league != "swiss") {
               if (attack.season === attacksNew[1].season && attack.league === attacksNew[1].league && attack.week === attacksNew[1].week && playerTag === attacksNew[1].attackerTag && attack.attackNo === attacksNew[1].attackNo && attack.attackType !== attacksNew[1].attackType) {
                 attacks[index] = attacksNew[1];
                 console.dir(attacksNew[1]);
@@ -1232,7 +1235,7 @@ async function updateScoreAccs(clientMongo, season, league, week, members, membe
       };
       let listing = {};
       listing.attacks = attacks;
-      const mongo = await clientMongo.db('jwc').collection('accounts').updateOne({ tag: playerTag }, { $set: listing });
+      const mongo = await clientMongo.db("jwc").collection("accounts").updateOne({ tag: playerTag }, { $set: listing });
       //if (mongo.modifiedCount > 0) {
       //  console.log(member.name);
       //};
@@ -1256,7 +1259,7 @@ async function updateScoreAccs(clientMongo, season, league, week, members, membe
       defenseNew.week = week;
       arrDefensesNew.push(defenseNew);
     };
-    if (league != 'swiss') {
+    if (league != "swiss") {
       if (memberOpp.attacks == null) {
         ;
       }
@@ -1277,7 +1280,7 @@ async function updateScoreAccs(clientMongo, season, league, week, members, membe
 
   let defensesPlayer = [];
   await Promise.all(playerTags.map(async (playerTag, index) => {
-    mongoAcc = await clientMongo.db('jwc').collection('accounts').findOne(
+    let mongoAcc = await clientMongo.db("jwc").collection("accounts").findOne(
       { tag: playerTag },
       { projection: { attacks: 1, _id: 0 } }
     );
@@ -1319,20 +1322,20 @@ async function updateScoreAccs(clientMongo, season, league, week, members, membe
     let playerTagDef = defenses[0].defenderTag;
     let listing = {};
     listing.defenses = defenses;
-    const mongo = await clientMongo.db('jwc').collection('accounts').updateOne({ tag: playerTagDef }, { $set: listing });
+    const mongo = await clientMongo.db("jwc").collection("accounts").updateOne({ tag: playerTagDef }, { $set: listing });
   }));
   // ********** defenses **********
 
   return;
 };
-exports.updateScoreAccs = updateScoreAccs;
+export { updateScoreAccs };
 
 
 async function calcStatsAccs(clientMongo, league, clanAbbr, season) {
   const query = { [`homeClanAbbr.${config.leagueM[league]}`]: clanAbbr };
   const projection = { tag: 1, attacks: 1, defenses: 1, stats: 1 };
   const options = { projection: projection };
-  const cursor = clientMongo.db('jwc').collection('accounts').find(query, options);
+  const cursor = clientMongo.db("jwc").collection("accounts").find(query, options);
   let mongoAccs = await cursor.toArray();
   await cursor.close();
 
@@ -1352,7 +1355,7 @@ async function calcStatsAccs(clientMongo, league, clanAbbr, season) {
     if (mongoAcc.attacks != null) {
       mongoAcc.attacks.forEach((attack) => {
         if (attack.league == league && Number(attack.season) === Number(season) && attack.week >= 1) {
-          if (attack.attackType == 'fresh') {
+          if (attack.attackType == "fresh") {
             fresh[0] += 1;
             if (attack.stars == 3) {
               fresh[1] += 1;
@@ -1360,7 +1363,7 @@ async function calcStatsAccs(clientMongo, league, clanAbbr, season) {
             };
             fresh[2] += attack.destruction;
           }
-          else if (attack.attackType == 'cleanup') {
+          else if (attack.attackType == "cleanup") {
             cleanup[0] += 1;
             if (attack.stars == 3) {
               cleanup[1] += 1;
@@ -1368,7 +1371,7 @@ async function calcStatsAccs(clientMongo, league, clanAbbr, season) {
             };
             cleanup[2] += attack.destruction;
           }
-          else if (attack.attackType == 'overkill') {
+          else if (attack.attackType == "overkill") {
             overkill[0] += 1;
             if (attack.stars == 3) {
               overkill[1] += 1;
@@ -1469,7 +1472,7 @@ async function calcStatsAccs(clientMongo, league, clanAbbr, season) {
       attacks2.overkill = objOverkill2;
     }
     else {
-      attacks = 'no attack';
+      attacks = "no attack";
     };
 
     let defenses = {};
@@ -1480,7 +1483,7 @@ async function calcStatsAccs(clientMongo, league, clanAbbr, season) {
     if (mongoAcc.defenses != null) {
       mongoAcc.defenses.forEach((defense) => {
         if (defense.league == league && defense.season == season && defense.week >= 1) {
-          if (defense.attackType == 'fresh') {
+          if (defense.attackType == "fresh") {
             fresh[0] += 1;
             if (defense.stars == 3) {
               fresh[1] += 1;
@@ -1488,7 +1491,7 @@ async function calcStatsAccs(clientMongo, league, clanAbbr, season) {
             };
             fresh[2] += defense.destruction;
           }
-          else if (defense.attackType == 'cleanup') {
+          else if (defense.attackType == "cleanup") {
             cleanup[0] += 1;
             if (defense.stars == 3) {
               cleanup[1] += 1;
@@ -1496,7 +1499,7 @@ async function calcStatsAccs(clientMongo, league, clanAbbr, season) {
             };
             cleanup[2] += defense.destruction;
           }
-          else if (defense.attackType == 'overkill') {
+          else if (defense.attackType == "overkill") {
             overkill[0] += 1;
             if (defense.stars == 3) {
               overkill[1] += 1;
@@ -1545,12 +1548,12 @@ async function calcStatsAccs(clientMongo, league, clanAbbr, season) {
       defenses.overkill = objOverkill;
     }
     else {
-      defenses = 'no defense';
+      defenses = "no defense";
     };
 
     let stats = {};
     if (mongoAcc.stats == null) {
-      stats = { j1: '', j2: '', swiss: '', mix: '', five: '' };
+      stats = { j1: "", j2: "", swiss: "", mix: "", five: "" };
     }
     else {
       stats = mongoAcc.stats;
@@ -1564,8 +1567,8 @@ async function calcStatsAccs(clientMongo, league, clanAbbr, season) {
     let listing = {};
     listing.stats = stats;
 
-    await clientMongo.db('jwc').collection('accounts')
+    await clientMongo.db("jwc").collection("accounts")
       .updateOne({ tag: mongoAcc.tag }, { $set: listing });
   }));
 };
-exports.calcStatsAccs = calcStatsAccs;
+export { calcStatsAccs };
