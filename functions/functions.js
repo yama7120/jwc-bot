@@ -524,6 +524,12 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
             `th${scPlayer.townHallLevel}`
           ];
       }
+      if (hero.name == "Dragon Duke") {
+        hallMaxLevel =
+          config_coc.maxLevel.heroes.dragonDuke[
+            `th${scPlayer.townHallLevel}`
+          ] ?? hero.hallMaxLevel;
+      }
       if (hero.level == hallMaxLevel) {
         description += ` **${hero.level}/${hallMaxLevel}**`;
       } else {

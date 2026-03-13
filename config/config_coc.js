@@ -1089,9 +1089,10 @@ export default {
     2. fRanking.rankingMain 編集
     3. ranking.js 編集
     */
-    maxLevel: {
+      maxLevel: {
       heroes: {
         minionPrince: { th18: 95, th17: 90, th16: 80, th15: 70, th14: 60, th13: 50, th12: 40, th11: 30, th10: 20, th9: 10 },
+        dragonDuke: { th18: 25, th17: 20, th16: 15, th15: 10 },
       },
       heroEquipments: {
         common: { th18: 18, th17: 18, th16: 18, th15: 18, th14: 18, th13: 15, th12: 15, th11: 12, th10: 12, th9: 9, th8: 9 },
