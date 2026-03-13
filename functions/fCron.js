@@ -1,33 +1,35 @@
-import { EmbedBuilder } from "discord.js";
+const { EmbedBuilder, embedLength } = require('discord.js');
 
-import config from "../config/config.js";
-import schedule from "../config/schedule.js";
-import config_coc from "../config/config_coc.js";
+const config = require('../config.js');
+const schedule = require('../schedule.js');
+const querystring = require('querystring');
+const fetch = require('@replit/node-fetch');
+const config_coc = require('../config_coc.js');
 
-import * as functions from "./functions.js";
-import * as fMongo from "./fMongo.js";
-import * as fGetWars from "./fGetWars.js";
-import * as fRanking from "./fRanking.js";
-import * as fCanvas from "./fCanvas.js";
+const functions = require('./functions.js');
+const fMongo = require('./fMongo.js');
+const fGetWars = require('./fGetWars.js');
+const fRanking = require('./fRanking.js');
+const fCanvas = require('./fCanvas.js');
 
 
 async function cronWarAutoUpdate(client, league) {
   const unixTime = Math.floor(Date.now() / 1000);
   const status = config.cronWarStatus[league];
   const weekNow = config.weekNow[league];
-  if (status == "on") {
+  if (status == 'on') {
     await autoUpdateWar(client, league, weekNow);
   }
-  if (league == "j1") { // 通信料削減のためJ1のときだけbot status更新
+  if (league == 'j1') { // 通信料削減のためJ1のときだけbot status更新
     functions.updateStatusInfo(client, unixTime);
   }
 }
-export { cronWarAutoUpdate };
+exports.cronWarAutoUpdate = cronWarAutoUpdate;
 
 
 async function autoUpdateWar(client, league, week) {
-  const cursor = client.clientMongo.db("jwc").collection("wars")
-    .find({ season: config.season[league], league: league, week: week, "result.state": { $ne: "warEnded" } });
+  const cursor = client.clientMongo.db('jwc').collection('wars')
+    .find({ season: config.season[league], league: league, week: week, 'result.state': { $ne: 'warEnded' } });
   const mongoWars = await cursor.toArray();
   await cursor.close();
 
@@ -43,8 +45,8 @@ async function autoUpdateWar(client, league, week) {
     functions.updateWarInfo(client, league, week);
   }
 
-  const cursor2 = client.clientMongo.db("jwc").collection("wars")
-    .find({ season: config.season[league], league: league, week: { $in: [week, week + 1] }, "result.state": { $ne: "warEnded" } });
+  const cursor2 = client.clientMongo.db('jwc').collection('wars')
+    .find({ season: config.season[league], league: league, week: { $in: [week, week + 1] }, 'result.state': { $ne: 'warEnded' } });
   const mongoWars2 = await cursor2.toArray();
   await cursor2.close();
 
@@ -62,17 +64,17 @@ async function autoUpdateWar(client, league, week) {
 }
 
 async function sendReminderMain(client, mongoWar) {
-  const mongoClanA = await client.clientMongo.db("jwc").collection("clans").findOne({ clan_abbr: mongoWar.clan_abbr });
-  const mongoClanB = await client.clientMongo.db("jwc").collection("clans").findOne({ clan_abbr: mongoWar.opponent_abbr });
+  const mongoClanA = await client.clientMongo.db('jwc').collection('clans').findOne({ clan_abbr: mongoWar.clan_abbr });
+  const mongoClanB = await client.clientMongo.db('jwc').collection('clans').findOne({ clan_abbr: mongoWar.opponent_abbr });
 
   if (!mongoWar.deal.remainder) {
     const result = await sendReminder(client, mongoWar.nego_channel, mongoWar, mongoClanA, mongoClanB);
 
-    if (mongoClanA.log?.deal?.switch == "on") {
+    if (mongoClanA.log?.deal?.switch == 'on') {
       await sendReminder(client, mongoClanA.log.deal.channel_id, mongoWar, mongoClanA, mongoClanB);
     }
 
-    if (mongoClanB.log?.deal?.switch == "on") {
+    if (mongoClanB.log?.deal?.switch == 'on') {
       await sendReminder(client, mongoClanB.log.deal.channel_id, mongoWar, mongoClanA, mongoClanB);
     }
 
@@ -83,9 +85,9 @@ async function sendReminderMain(client, mongoWar) {
           remainder: true
         }
       };
-      await client.clientMongo.db("jwc").collection("wars").updateOne({ _id: mongoWar._id }, { $set: listingUpdate });
+      await client.clientMongo.db('jwc').collection('wars').updateOne({ _id: mongoWar._id }, { $set: listingUpdate });
     } else {
-      console.error("Failed to send reminder message");
+      console.error('Failed to send reminder message');
     }
   }
 }
@@ -98,12 +100,12 @@ async function sendReminder(client, channelId, mongoWar, mongoClanA, mongoClanB)
 
   const myEmbed = new EmbedBuilder();
 
-  const title = `:bell: **REMINDER**${isBotDataFetchOK ? " :white_check_mark:" : ""}`;
+  const title = `:bell: **REMINDER**${isBotDataFetchOK ? ' :white_check_mark:' : ''}`;
 
   const descriptionLines = [
     `* ${config.league[mongoWar.league]}`,
     `* WEEK ${mongoWar.week}`,
-    `* ${mongoWar.name_match || schedule.match["m" + mongoWar.match]}`,
+    `* ${mongoWar.name_match || schedule.match['m' + mongoWar.match]}`,
     ``,
     `**${mongoClanA.team_name} :vs: ${mongoClanB.team_name}**`,
     ``,
@@ -111,7 +113,7 @@ async function sendReminder(client, channelId, mongoWar, mongoClanA, mongoClanB)
     `:hourglass_flowing_sand:  ${mongoWar.deal.prep_time}  /  :crossed_swords:  ${mongoWar.deal.battle_time}`
   ];
 
-  const description = descriptionLines.join("\n");
+  const description = descriptionLines.join('\n');
   const footer = config.footer;
 
   myEmbed.setTitle(title);
@@ -120,23 +122,30 @@ async function sendReminder(client, channelId, mongoWar, mongoClanA, mongoClanB)
   myEmbed.setFooter({ text: footer, iconURL: config.urlImage.jwc });
   myEmbed.setTimestamp();
 
+  let channelName = 'unknown';
   try {
-    const channel = client.channels.cache.get(channelId);
+    let channel = client.channels.cache.get(channelId);
+    if (!channel) {
+      channel = await client.channels.fetch(channelId).catch(() => null);
+    }
+    channelName = channel?.name || 'unknown';
+
+    if (!channel || !channel.isTextBased()) {
+      throw new Error('Channel not found or not text-based');
+    }
+
     const result = await channel.send({
       embeds: [myEmbed]
     });
 
     // isBotDataFetchOKがfalseのとき、yamaにメンションで別途メッセージを送信
     if (!isBotDataFetchOK) {
-      const guildId = channel?.guild?.id;
-      if (guildId === config.guildId.jwcReps) {
-        await channel.send(`<@!${config.yamaId}> Please update the current week setting.`);
-      }
+      await channel.send(`<@!${config.yamaId}> Please update the current week setting.`);
     }
 
     return result;
   } catch (error) {
-    console.error(`Failed to send reminder to channel ${channelId}:`, error);
+    console.error(`Failed to send reminder to channel ${channelId} (${channelName}):`, error);
     return null;
   }
 }
@@ -155,7 +164,7 @@ async function rankedBattles(client) {
         leagueTier: 1 
       } 
     };
-    const cursor = client.clientMongo.db("jwc").collection("accounts").find(query, options);
+    const cursor = client.clientMongo.db('jwc').collection('accounts').find(query, options);
     const mongoAccs = await cursor.toArray();
     await cursor.close();
 
@@ -187,24 +196,17 @@ async function rankedBattles(client) {
             day: currentTime.getDate()
           };
           
-          // leagueTier.history配列が存在しない場合は初期化
-          if (!mongoAcc.leagueTier?.history) {
-            await client.clientMongo.db("jwc").collection("accounts").updateOne(
-              { tag: mongoAcc.tag },
-              { 
-                $set: { 
-                  "leagueTier.history": []
-                }
-              }
-            );
-          }
-
           // 1回のMongoDB操作でleagueTier更新と履歴追加を同時実行
-          await client.clientMongo.db("jwc").collection("accounts").updateOne(
+          await client.clientMongo.db('jwc').collection('accounts').updateOne(
             { tag: mongoAcc.tag },
             { 
+              $set: { 
+                'leagueTier.name': scPlayer.leagueTier.name,
+                'leagueTier.id': scPlayer.leagueTier.id,
+                'leagueTier.icon': scPlayer.leagueTier.icon
+              },
               $push: { 
-                "leagueTier.history": historyEntry
+                'leagueTier.history': historyEntry
               }
             }
           );
@@ -212,11 +214,11 @@ async function rankedBattles(client) {
           console.log(`[${i + 1}/${mongoAccs.length}] leagueTier情報なし: ${mongoAcc.name} (${mongoAcc.tag})`);
         }
       } catch (error) {
-        if (error.reason === "inMaintenance") {
+        if (error.reason === 'inMaintenance') {
           console.log(`[${i + 1}/${mongoAccs.length}] メンテナンス中: ${mongoAcc.name} (${mongoAcc.tag})`);
-        } else if (error.reason === "notFound") {
+        } else if (error.reason === 'notFound') {
           console.log(`[${i + 1}/${mongoAccs.length}] アカウントが見つかりません: ${mongoAcc.name} (${mongoAcc.tag})`);
-        } else if (error.reason === "requestThrottled") {
+        } else if (error.reason === 'requestThrottled') {
           console.log(`[${i + 1}/${mongoAccs.length}] リクエスト制限: ${mongoAcc.name} (${mongoAcc.tag})`);
         } else {
           console.error(`[${i + 1}/${mongoAccs.length}] エラー: ${mongoAcc.name} (${mongoAcc.tag}) - ${error.reason}`);
@@ -237,7 +239,7 @@ async function rankedBattles(client) {
     console.error("rankedBattles エラー:", error);
   }
 }
-export { rankedBattles };
+exports.rankedBattles = rankedBattles;
 
 
 async function cronUpdate2pm(client) {
@@ -245,7 +247,7 @@ async function cronUpdate2pm(client) {
   const seasonData = functions.calculateSeasonValues(client, currentDate, true);
   const nAccs = await autoUpdateAcc(client);
 
-  await sendLogUpdated(client, nAccs);
+  await sendLogUpdated(client, nAccs, seasonData);
 
   await fRanking.rankingMain(client.clientMongo);
 
@@ -258,20 +260,20 @@ async function cronUpdate2pm(client) {
   functions.updateStatusInfoLegend(client, seasonData);
 
   // 新しいdayオブジェクトをlegend.days配列の先頭に追加
-  await addNewDayToLegendAccounts(client.clientMongo, seasonData);
+  await addNewDayToLegendAccounts(client, seasonData);
 }
-export { cronUpdate2pm };
+exports.cronUpdate2pm = cronUpdate2pm;
 
-async function addNewDayToLegendAccounts(clientMongo, seasonData) {
+async function addNewDayToLegendAccounts(client, seasonData) {
   try {
     // rankedBattlesSeasonの設定値を取得
-    const configData = await clientMongo
-      .db("jwc")
-      .collection("config")
-      .findOne({ name: "rankedBattlesSeason" });
+    const configData = await client.clientMongo
+      .db('jwc')
+      .collection('config')
+      .findOne({ name: 'rankedBattlesSeason' });
 
     if (!configData) {
-      console.log("rankedBattlesSeason config not found, using seasonData values");
+      console.log('rankedBattlesSeason config not found, using seasonData values');
       // 設定が見つからない場合はseasonDataの値を使用
       var seasonId = seasonData.seasonId;
       var currentDay = seasonData.daysNow;
@@ -283,12 +285,12 @@ async function addNewDayToLegendAccounts(clientMongo, seasonData) {
     // legend.days配列があるアカウントを検索
     const query = {
       status: true,
-      "legend.days": { $exists: true, $ne: null }
+      'legend.days': { $exists: true, $ne: null }
     };
 
-    const accounts = await clientMongo
-      .db("jwc")
-      .collection("accounts")
+    const accounts = await client.clientMongo
+      .db('jwc')
+      .collection('accounts')
       .find(query)
       .toArray();
 
@@ -298,27 +300,27 @@ async function addNewDayToLegendAccounts(clientMongo, seasonData) {
     const newDayObject = {
       season: seasonId,
       day: currentDay,
-      trophies: "NaN",
-      diffTrophies: "NaN",
-      attacks: "NaN",
-      defenses: "NaN",
-      triples: "NaN",
-      defTriples: "NaN",
-      attackTrophies: "NaN",
-      defenseTrophies: "NaN"
+      trophies: 0,
+      diffTrophies: 0,
+      attacks: 0,
+      defenses: 0,
+      triples: 0,
+      defTriples: 0,
+      attackTrophies: 0,
+      defenseTrophies: 0
     };
 
     // 各アカウントに対して新しいdayオブジェクトを先頭に追加
     for (const account of accounts) {
       try {
-        await clientMongo
-          .db("jwc")
-          .collection("accounts")
+        await client.clientMongo
+          .db('jwc')
+          .collection('accounts')
           .updateOne(
             { tag: account.tag },
             {
               $push: {
-                "legend.days": {
+                'legend.days': {
                   $each: [newDayObject],
                   $position: 0
                 }
@@ -330,9 +332,9 @@ async function addNewDayToLegendAccounts(clientMongo, seasonData) {
       }
     }
 
-    console.log("Successfully added new day objects to legend accounts");
+    console.log('Successfully added new day objects to legend accounts');
   } catch (error) {
-    console.error("Error in addNewDayToLegendAccounts:", error);
+    console.error('Error in addNewDayToLegendAccounts:', error);
   }
 }
 
@@ -342,7 +344,7 @@ async function autoUpdateAcc(client) {
   const query = { status: true };
   const options = { projection: { _id: 0, tag: 1 } };
   const sort = { trophies: -1 };
-  const cursor = client.clientMongo.db("jwc").collection("accounts").find(query, options).sort(sort);
+  const cursor = client.clientMongo.db('jwc').collection('accounts').find(query, options).sort(sort);
   const accountsAll = await cursor.toArray();
   await cursor.close();
   console.log(`accountsAll: ${accountsAll.length}`);
@@ -367,12 +369,11 @@ async function autoUpdateAcc(client) {
   return accountsAll.length;
 }
 
-async function sendLogUpdated(client, nAccs) {
-  const query = { status: true, "leagueTier.id": config_coc.leagueId.legend };
+async function sendLogUpdated(client, nAccs, seasonData) {
+  const query = { status: true, 'legend.days': { $ne: null } };
   const options = {
     projection: {
       _id: 0,
-      tag: 1,
       name: 1,
       trophies: 1,
       townHallLevel: 1,
@@ -383,126 +384,61 @@ async function sendLogUpdated(client, nAccs) {
     }
   };
   const sort = { trophies: -1 };
-  const cursor = client.clientMongo.db("jwc").collection("accounts").find(query, options).sort(sort).limit(10);
+  const cursor = client.clientMongo.db('jwc').collection('accounts').find(query, options).sort(sort).limit(10);
   const accounts = await cursor.toArray();
   await cursor.close();
-
-  const mongoLegends200 = await client.clientMongo
-    .db("jwc")
-    .collection("ranking")
-    .findOne({ name: "legends200" }, { projection: { global: 1, japan: 1, _id: 0 } });
 
   const myEmbed = new EmbedBuilder();
   const title = `:white_check_mark: **UPDATED**`;
 
-  // TOP 10 LEGEND PLAYERS
   const descriptionLines = [
     `<t:${Math.round(accounts[0].unixTimeRequest)}:t> (<t:${Math.round(accounts[0].unixTimeRequest)}:R>)`,
-    "*The data for all JWC accounts has been successfully updated.*",
+    '*The data for all JWC accounts has been successfully updated.*',
     `*${nAccs} accounts*`,
     ``,
     `${config.emote.legend} **TOP 10 LEGEND PLAYERS**`
   ];
+
   accounts.forEach((acc, index) => {
     let dayStats = acc.legend.days[0];
     const diffTrophies = dayStats.diffTrophies >= 0 ? `+${dayStats.diffTrophies}` : `${dayStats.diffTrophies}`;
     const emoteTH = config.emote.thn[acc.townHallLevel];
     const nameAcc = `**${functions.nameReplacer(acc.name)}**`;
-    const clanInfo = acc.homeClanAbbr.j != ""
+    const clanInfo = acc.homeClanAbbr.j != ''
       ? ` | ${config.emote.jwc} ${String(acc.homeClanAbbr.j).toUpperCase()}`
-      : "";
-    let globalRank = "";
-    if (mongoLegends200 && mongoLegends200.global) {
-      const globalRankIndex = mongoLegends200.global.findIndex(player => player.tag === acc.tag);
-      if (globalRankIndex !== -1) {
-        globalRank = `:earth_asia:#${globalRankIndex + 1}`;
-      }
-    }
+      : '';
+
     descriptionLines.push(
       [
         `${index + 1}.`,
         `**${dayStats.trophies}**`,
         `[${diffTrophies}]`,
-        `${config.emote.sword}${dayStats.attackTrophies}`,
-        `${config.emote.shield}${dayStats.defenseTrophies}`,
-        globalRank,
+        `:boom:`,
+        `**${dayStats.triples}**/${dayStats.attacks}`,
         `${emoteTH}`,
         `${nameAcc}${clanInfo}`
-      ].filter(Boolean).join(" ")
+      ].filter(Boolean).join(' ')
     );
   });
-    
-  // リーグIDから絵文字を取得する関数
-  const getLeagueEmote = (leagueId) => {
-    const league = config_coc.leagueTiers.find(tier => tier.id === leagueId);
-    return league ? league.emote : '';
-  };
 
-  // legends200.global
-  if (mongoLegends200 && mongoLegends200.global && mongoLegends200.global.length >= 200) {
-    descriptionLines.push(
-      ``,
-      `:earth_asia: **GLOBAL LEGENDS**`,
-    );
-    const firstPlace = mongoLegends200.global[0];
-    const firstPlaceEmote = getLeagueEmote(firstPlace.leagueTier.id);
-    descriptionLines.push(
-      `1st **${firstPlace.trophies}** ${firstPlaceEmote} **${firstPlace.name}**`
-    );
-    const hundredthPlace = mongoLegends200.global[99];
-    const hundredthPlaceEmote = getLeagueEmote(hundredthPlace.leagueTier.id);
-    descriptionLines.push(
-      `100th **${hundredthPlace.trophies}** ${hundredthPlaceEmote} **${hundredthPlace.name}**`
-    );
-    const twoHundredthPlace = mongoLegends200.global[199];
-    const twoHundredthPlaceEmote = getLeagueEmote(twoHundredthPlace.leagueTier.id);
-    descriptionLines.push(
-      `200th **${twoHundredthPlace.trophies}** ${twoHundredthPlaceEmote} **${twoHundredthPlace.name}**`
-    );
-  }
-
-  // legends200.japan
-  if (mongoLegends200 && mongoLegends200.japan && mongoLegends200.japan.length >= 200) {
-    descriptionLines.push(
-      ``,
-      `:flag_jp: **JAPANESE LEGENDS**`,
-    );
-    const firstPlace = mongoLegends200.japan[0];
-    const firstPlaceEmote = getLeagueEmote(firstPlace.leagueTier.id);
-    descriptionLines.push(
-      `1st **${firstPlace.trophies}** ${firstPlaceEmote} **${firstPlace.name}**`
-    );
-    const hundredthPlace = mongoLegends200.japan[99];
-    const hundredthPlaceEmote = getLeagueEmote(hundredthPlace.leagueTier.id);
-    descriptionLines.push(
-      `100th **${hundredthPlace.trophies}** ${hundredthPlaceEmote} **${hundredthPlace.name}**`
-    );
-    const twoHundredthPlace = mongoLegends200.japan[199];
-    const twoHundredthPlaceEmote = getLeagueEmote(twoHundredthPlace.leagueTier.id);
-    descriptionLines.push(
-      `200th **${twoHundredthPlace.trophies}** ${twoHundredthPlaceEmote} **${twoHundredthPlace.name}**`
-    );
-  }
-
-  // USEFUL COMMANDS
   descriptionLines.push(
     ``,
     `${config.emote.discord} **USEFUL COMMANDS**`,
-    `</ranking account_data:${config.command["ranking"].id}>`,
-    `</ranking legend:${config.command["ranking"].id}>`,
-    `</legend global:${config.command["legend"].id}>`,
-    `</legend japan_local:${config.command["legend"].id}>`,
-    `</help commands:${config.command["help"].id}>`
+    `</ranking account_data:${config.command['ranking'].id}>`,
+    `</ranking legend:${config.command['ranking'].id}>`,
+    `</legend global:${config.command['legend'].id}>`,
+    `</legend japan_local:${config.command['legend'].id}>`,
+    `</help commands:${config.command['help'].id}>`
   );
 
-  const description = descriptionLines.join("\n");
+  const description = descriptionLines.join('\n');
   const footer = config.footer;
 
   myEmbed.setTitle(title);
   myEmbed.setDescription(description);
   myEmbed.setColor(config.color.main);
   myEmbed.setFooter({ text: footer, iconURL: config.urlImage.jwc });
-  await functions.safeSend(client, config.logch.freeBotRoom, { embeds: [myEmbed] }, "cronUpdate2pm");
+  await client.channels.cache.get(config.logch.freeBotRoom).send({ embeds: [myEmbed] });
 }
 
 async function sendLogLegendDay(client, seasonData) {
@@ -515,22 +451,22 @@ async function sendLogLegendDay(client, seasonData) {
     `*${seasonData.daysEnd} days to go.*`
   ];
 
-  const description = descriptionLines.join("\n");
+  const description = descriptionLines.join('\n');
   const footer = `SEASON ${seasonData.seasonId}`;
 
   myEmbed.setTitle(title);
   myEmbed.setDescription(description);
   myEmbed.setColor(config.color.legend);
   myEmbed.setFooter({ text: footer, iconURL: config.urlImage.legend });
-  await functions.safeSend(client, config.logch.freeBotRoom, { embeds: [myEmbed] }, "sendLogLegendDay");
+  await client.channels.cache.get(config.logch.freeBotRoom).send({ embeds: [myEmbed] });
 }
 
 
 async function sendLegendResult(client, seasonData) {
   const query = {
     status: true,
-    "legend.logSettings.result": "true",
-    "legend.current": { $ne: null }
+    'legend.logSettings.result': 'true',
+    'legend.current': { $ne: null }
   };
   const options = {
     projection: {
@@ -545,9 +481,17 @@ async function sendLegendResult(client, seasonData) {
     }
   };
 
-  const cursor = client.clientMongo.db("jwc").collection("accounts").find(query, options);
+  const cursor = client.clientMongo.db('jwc').collection('accounts').find(query, options);
   const mongoAccs = await cursor.toArray();
   await cursor.close();
+
+  const legends200 = await client.clientMongo.db('jwc').collection('ranking').findOne(
+    { name: 'legends200' },
+    { projection: { _id: 0, japan: 1, global: 1 } }
+  );
+  const japanRankMap = new Map((legends200?.japan ?? []).map(player => [player.tag, player.rank]));
+  const globalRankMap = new Map((legends200?.global ?? []).map(player => [player.tag, player.rank]));
+  const summaryByPilot = new Map();
 
   console.log(`sendLegendResult: ${mongoAccs.length}`);
 
@@ -558,8 +502,13 @@ async function sendLegendResult(client, seasonData) {
     console.log(`[${i + 1}/${mongoAccs.length}] アカウント処理中: ${mongoAcc.name} (${mongoAcc.tag}) ${mongoAcc.leagueTier.name}`);
     if (mongoAcc.leagueTier.id == config_coc.leagueId.legend) {
       try {
-        const resultR1 = await fCanvas.legendStatsR1(client, mongoAcc, "previous");
-        await sendLogAttachment(client, mongoAcc, resultR1, seasonData);
+        const resultR1 = await fCanvas.legendStatsR1(client, mongoAcc, 'previous');
+        const rankInfo = {
+          global: globalRankMap.get(mongoAcc.tag) ?? mongoAcc.legend?.current?.rank ?? null,
+          japan: japanRankMap.get(mongoAcc.tag) ?? null
+        };
+        await sendLogAttachment(client, mongoAcc, resultR1, seasonData, rankInfo);
+        collectLegendSummary(summaryByPilot, mongoAcc, resultR1, rankInfo);
 
         await functions.sleep(500); // 0.5秒待機
       } catch (error) {
@@ -569,21 +518,50 @@ async function sendLegendResult(client, seasonData) {
     }
   }
 
-  console.log("end: sendLegendResult");
+  await sendLegendSummaryByPilot(client, seasonData, summaryByPilot);
+  console.log('end: sendLegendResult');
 }
 
-async function sendLogAttachment(client, mongoAcc, result, seasonData) {
+async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo = {}) {
   const embed = new EmbedBuilder();
-  const title = `${config.emote.legend} RESULT OF ${seasonData.daysNow == 1 ? "THE LAST DAY" : `DAY ${seasonData.daysNow - 1}`}`;
+  const title = `${config.emote.legend} RESULT OF ${seasonData.daysNow == 1 ? 'THE LAST DAY' : `DAY ${seasonData.daysNow - 1}`}`;
   embed.setTitle(title);
   let description = `${config.emote.thn[mongoAcc.townHallLevel]} **${mongoAcc.name}**`;
+  const dayStats = result?.dayStats ?? {};
+  const startTrophies = mongoAcc?.legend?.previousDay?.trophies ?? null;
+  const endTrophies = dayStats?.trophies ?? null;
+  const diffTrophies = dayStats?.diffTrophies ?? null;
+  const attackTrophies = dayStats?.attackTrophies ?? null;
+  const defenseTrophies = dayStats?.defenseTrophies ?? null;
+  const globalRank = rankInfo.global ?? null;
+  const japanRank = rankInfo.japan ?? null;
+
+  const formattedStart = Number.isFinite(startTrophies) ? `**${startTrophies}**` : '*N/A*';
+  const formattedEnd = Number.isFinite(endTrophies) ? `**${endTrophies}**` : '*N/A*';
+  const formattedDiff = Number.isFinite(diffTrophies)
+    ? (diffTrophies >= 0 ? `**+${diffTrophies}**` : `**${diffTrophies}**`)
+    : '*N/A*';
+  const formattedDiffWithArrow = Number.isFinite(diffTrophies)
+    ? `${diffTrophies >= 0 ? config.emote.up : config.emote.down} ${formattedDiff}`
+    : formattedDiff;
+  const formattedAttackTrophies = Number.isFinite(attackTrophies) ? `**+${attackTrophies}**` : '*N/A*';
+  const formattedDefenseTrophies = Number.isFinite(defenseTrophies) ? `**${defenseTrophies}**` : '*N/A*';
+  const formattedGlobalRank = Number.isFinite(globalRank) ? `**#${globalRank}**` : '*N/A*';
+  const formattedJapanRank = Number.isFinite(japanRank) ? `**#${japanRank}**` : '*N/A*';
+
   if (result.isPerfect) {
     description += `\n\n:boom: **8 TRIPLES** 🎉\n`;
     description += `*Congratulations on achieving the maximum possible trophies in a single day!*`;
   }
   else {
-    description += `\n\n:boom: **${result.dayStats.triples}**/${result.dayStats.attacks}`;
+    description += `\n\n:boom: **${dayStats.triples}**/${dayStats.attacks}`;
   }
+  description += `\n\n:trophy: Start: ${formattedStart}`;
+  description += `\n:trophy: End: ${formattedEnd} [${formattedDiffWithArrow}]`;
+  description += `\n${config.emote.sword} Attack Trophies: ${formattedAttackTrophies}`;
+  description += `\n${config.emote.shield} Defense Trophies: ${formattedDefenseTrophies}`;
+  description += `\n:globe_with_meridians: Global Rank: ${formattedGlobalRank}`;
+  description += `\n:flag_jp: Japan Rank: ${formattedJapanRank}`;
   embed.setDescription(description);
   embed.setColor(config.color.legend);
   const footer = `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
@@ -592,16 +570,16 @@ async function sendLogAttachment(client, mongoAcc, result, seasonData) {
   const attachmentHistory = await fCanvas.legendHistory(mongoAcc);
 
   try {
-    if (mongoAcc.legend.logSettings.post === "channel") {
+    if (mongoAcc.legend.logSettings.post === 'channel') {
       const channel = client.channels.cache.get(mongoAcc.legend.logSettings.channel);
       if (!channel) {
-        throw new Error("チャンネルが見つからないか、テキストチャンネルではありません。");
+        throw new Error('チャンネルが見つからないか、テキストチャンネルではありません。');
       }
       await channel.send({ embeds: [embed] });
       await channel.send({ files: [result.attachment] });
       await channel.send({ files: [attachmentHistory] });
     }
-    else if (mongoAcc.legend.logSettings.post === "dm") {
+    else if (mongoAcc.legend.logSettings.post === 'dm') {
       const pilot = await client.users.fetch(mongoAcc.pilotDC.id);
       await pilot.send({ embeds: [embed] });
       await pilot.send({ files: [result.attachment] });
@@ -611,9 +589,108 @@ async function sendLogAttachment(client, mongoAcc, result, seasonData) {
     console.error(`メッセージの送信中にエラーが発生しました: ${mongoAcc.name}`, error);
   }
   // log
-  await functions.safeSend(client, config.logch.legend, { embeds: [embed] }, "legendLog");
-  await functions.safeSend(client, config.logch.legend, { files: [result.attachment] }, "legendLog");
-  await functions.safeSend(client, config.logch.legend, { files: [attachmentHistory] }, "legendLog");
+  client.channels.cache.get(config.logch.legend).send({ embeds: [embed] });
+  client.channels.cache.get(config.logch.legend).send({ files: [result.attachment] });
+  client.channels.cache.get(config.logch.legend).send({ files: [attachmentHistory] });
 }
 
+function collectLegendSummary(summaryByPilot, mongoAcc, result, rankInfo) {
+  const pilotId = mongoAcc?.pilotDC?.id;
+  if (!pilotId) {
+    return;
+  }
 
+  if (!summaryByPilot.has(pilotId)) {
+    summaryByPilot.set(pilotId, []);
+  }
+
+  summaryByPilot.get(pilotId).push({
+    tag: mongoAcc.tag,
+    name: mongoAcc.name,
+    townHallLevel: mongoAcc.townHallLevel,
+    startTrophies: mongoAcc?.legend?.previousDay?.trophies ?? null,
+    endTrophies: result?.dayStats?.trophies ?? null,
+    diffTrophies: result?.dayStats?.diffTrophies ?? null,
+    attackTrophies: result?.dayStats?.attackTrophies ?? null,
+    defenseTrophies: result?.dayStats?.defenseTrophies ?? null,
+    globalRank: rankInfo.global ?? null,
+    japanRank: rankInfo.japan ?? null,
+    post: mongoAcc?.legend?.logSettings?.post ?? 'NA',
+    channel: mongoAcc?.legend?.logSettings?.channel ?? null
+  });
+}
+
+async function sendLegendSummaryByPilot(client, seasonData, summaryByPilot) {
+  for (const [pilotId, itemsRaw] of summaryByPilot.entries()) {
+    if (itemsRaw.length < 2) {
+      continue;
+    }
+
+    const items = [...itemsRaw].sort((a, b) => (b.endTrophies ?? 0) - (a.endTrophies ?? 0));
+    const destinations = getSummaryDestinations(items, pilotId);
+    if (destinations.length === 0) {
+      continue;
+    }
+
+    const embed = createLegendSummaryEmbed(items, seasonData);
+
+    for (const destination of destinations) {
+      try {
+        if (destination.type === 'channel') {
+          const channel = client.channels.cache.get(destination.id);
+          if (channel) {
+            await channel.send({ embeds: [embed] });
+          }
+        } else if (destination.type === 'dm') {
+          const pilot = await client.users.fetch(destination.id);
+          await pilot.send({ embeds: [embed] });
+        }
+      } catch (error) {
+        console.error(`まとめ通知の送信中にエラーが発生しました: pilot=${pilotId}`, error);
+      }
+    }
+  }
+}
+
+function getSummaryDestinations(items, pilotId) {
+  const destinationMap = new Map();
+
+  items.forEach(item => {
+    if (item.post === 'channel' && item.channel) {
+      destinationMap.set(`channel:${item.channel}`, { type: 'channel', id: item.channel });
+    } else if (item.post === 'dm') {
+      destinationMap.set(`dm:${pilotId}`, { type: 'dm', id: pilotId });
+    }
+  });
+
+  return Array.from(destinationMap.values());
+}
+
+function createLegendSummaryEmbed(items, seasonData) {
+  const embed = new EmbedBuilder();
+  const title = `${config.emote.legend} SUMMARY OF ${seasonData.daysNow == 1 ? 'THE LAST DAY' : `DAY ${seasonData.daysNow - 1}`}`;
+  embed.setTitle(title);
+  embed.setColor(config.color.legend);
+  const footer = `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
+  embed.setFooter({ text: footer, iconURL: config.urlImage.legend });
+
+  const lines = [];
+  items.forEach((item, index) => {
+    const end = Number.isFinite(item.endTrophies) ? item.endTrophies : 'N/A';
+    const diff = Number.isFinite(item.diffTrophies)
+      ? `${item.diffTrophies >= 0 ? config.emote.up : config.emote.down} ${item.diffTrophies >= 0 ? `+${item.diffTrophies}` : item.diffTrophies}`
+      : 'N/A';
+    const atk = Number.isFinite(item.attackTrophies) ? `+${item.attackTrophies}` : 'N/A';
+    const def = Number.isFinite(item.defenseTrophies) ? `${item.defenseTrophies}` : 'N/A';
+    const gRank = Number.isFinite(item.globalRank) ? `#${item.globalRank}` : 'N/A';
+    const jRank = Number.isFinite(item.japanRank) ? `#${item.japanRank}` : 'N/A';
+    lines.push(
+      `${index + 1}. ${config.emote.thn[item.townHallLevel]} **${item.name}**`
+      + `\n:trophy: ${end} [${diff}] | ${config.emote.sword} ${atk} | ${config.emote.shield} ${def}`
+      + `\n:globe_with_meridians: ${gRank} | :flag_jp: ${jRank}`
+    );
+  });
+
+  embed.setDescription(lines.join('\n\n'));
+  return embed;
+}
