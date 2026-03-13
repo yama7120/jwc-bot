@@ -625,6 +625,8 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
     });
 
     if (hasHeroEquipments == true) {
+      description += "\n";
+      description += "* **HERO EQUIPMENTS**\n";
       const renderOrder = [
         ...heroOrder,
         ...Object.keys(equipmentsByHero).filter(
@@ -640,7 +642,6 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
           description += `${heroEmote} ${equipmentsByHero[heroName].join(" ")}\n`;
         }
       });
-      description += `\n`;
     }
   }
 
