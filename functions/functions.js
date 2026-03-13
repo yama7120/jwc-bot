@@ -511,6 +511,11 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
       const foundEquipment = config_coc.heroes.find(
         (hero_config) => hero_config.name == hero.name,
       );
+      if (!foundEquipment) {
+        console.warn(`[getAccInfoDescriptionHeroes] unknown hero: ${hero.name}`);
+        description += `[${hero.name}] `;
+        return;
+      }
       description += foundEquipment.emote;
       let hallMaxLevel = hero.hallMaxLevel;
       if (hero.name == "Minion Prince") {
