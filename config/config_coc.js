@@ -931,7 +931,7 @@ export default {
         hp: { th18: 4510, th17: 4358, th16: 3728, th15: 3098, th14: 2678, th13: 2258, th12: 1838 },
       },
       {
-        id: 10, name: 'Dragon Duke', emote: ':dragon:',
+        id: 10, name: 'Dragon Duke', emote: '<:Dragon_Duke:1481905103710720031>',
         hp: { th18: 9100, th17: 9100, th16: 9100, th15: 9100 },
       },
     ],
