@@ -930,6 +930,10 @@ export default {
         id: 9, name: 'Minion Prince', emote: '<:MP:1311196351685460038>',
         hp: { th18: 4510, th17: 4358, th16: 3728, th15: 3098, th14: 2678, th13: 2258, th12: 1838 },
       },
+      {
+        id: 10, name: 'Dragon Duke', emote: ':dragon:',
+        hp: { th18: 9100, th17: 9100, th16: 9100, th15: 9100 },
+      },
     ],
     heroEquipments: [
       // Barbarian King
