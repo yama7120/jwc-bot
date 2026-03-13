@@ -129,15 +129,40 @@ async function sendReminder(client, channelId, mongoWar, mongoClanA, mongoClanB)
     if (!channel || !channel.isTextBased()) {
       throw new Error("Channel not found or not text-based");
     }
+    const botMember = channel.guild?.members?.me ?? null;
+    const permissions = botMember ? channel.permissionsFor(botMember) : null;
+    if (
+      permissions &&
+      (!permissions.has("ViewChannel") || !permissions.has("SendMessages"))
+    ) {
+      console.warn(
+        `[sendReminder] missing permission for channel ${channelId} (${channelName})`,
+      );
+      return null;
+    }
 
     const result = await channel.send({ embeds: [myEmbed] });
 
     if (!isBotDataFetchOK) {
-      await channel.send(`<@!${config.yamaId}> Please update the current week setting.`);
+      try {
+        await channel.send(
+          `<@!${config.yamaId}> Please update the current week setting.`,
+        );
+      } catch (mentionError) {
+        console.warn(
+          `[sendReminder] failed to send week-setting mention in ${channelId} (${channelName}): ${mentionError.message}`,
+        );
+      }
     }
 
     return result;
   } catch (error) {
+    if (error?.code === 50001) {
+      console.warn(
+        `[sendReminder] missing access to channel ${channelId} (${channelName})`,
+      );
+      return null;
+    }
     console.error(`Failed to send reminder to channel ${channelId} (${channelName}):`, error);
     return null;
   }
