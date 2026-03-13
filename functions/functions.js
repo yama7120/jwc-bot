@@ -581,6 +581,7 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
   }
 
   if (showAllEquipment == true) {
+    let equipmentCountInLine = 0;
     scPlayer.heroEquipment.map((equipment) => {
       //console.log(equipment.name);
       if (arrEqName.includes(equipment.name) == false) {
@@ -605,8 +606,12 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
         } else {
           description += ` ${equipment.level}/${hallMaxLevel}`;
         }
+        equipmentCountInLine += 1;
+        if (equipmentCountInLine % 6 == 0) {
+          description += `\n`;
+        }
+        hasHeroEquipments = true;
       }
-      hasHeroEquipments = true;
     });
     if (hasHeroEquipments == true) {
       description += `\n`;
