@@ -375,7 +375,7 @@ export default {
           maxLevel: {
             th3: 2, th4: 2, th5: 3, th6: 3, th7: 4, th8: 5, th9: 6, th10: 7,
             th11: 8, th12: 9, th13: 9, th14: 10, th15: 11, 
-            th16: 12, th17: 13, th18: 13,
+            th16: 12, th17: 13, th18: 14,
           },
         },
         {
@@ -447,7 +447,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 2, th10: 4,
             th11: 5, th12: 6, th13: 7, th14: 8, th15: 9, 
-            th16: 10, th17: 11, th18: 11,
+            th16: 10, th17: 11, th18: 12,
           },
         },
         {
@@ -487,7 +487,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 0,
             th11: 0, th12: 0, th13: 0, th14: 2, th15: 3, 
-            th16: 4, th17: 4, th18: 4,
+            th16: 4, th17: 4, th18: 5,
           },
         },
         {
@@ -529,7 +529,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 0, th5: 0, th6: 0, th7: 2, th8: 4, th9: 5, th10: 6,
             th11: 7, th12: 9, th13: 10, th14: 11, th15: 12, 
-            th16: 13, th17: 14, th18: 14,
+            th16: 13, th17: 14, th18: 15,
           },
         },
         {
@@ -553,7 +553,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 2, th10: 3,
             th11: 4, th12: 5, th13: 5, th14: 5, th15: 6, 
-            th16: 7, th17: 7, th18: 7,
+            th16: 7, th17: 7, th18: 8,
           },
         },
         {
@@ -561,7 +561,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 2, th10: 3,
             th11: 4, th12: 5, th13: 6, th14: 6, th15: 6, 
-            th16: 7, th17: 7, th18: 7,
+            th16: 7, th17: 7, th18: 8,
           },
         },
         {
@@ -609,7 +609,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 0,
             th11: 0, th12: 0, th13: 0, th14: 0, th15: 2, 
-            th16: 3, th17: 4, th18: 4,
+            th16: 3, th17: 4, th18: 5,
           },
         },
       ],
@@ -645,7 +645,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 2, th10: 3,
             th11: 3, th12: 3, th13: 4, th14: 4, th15: 5, 
-            th16: 5, th17: 5, th18: 5,
+            th16: 5, th17: 5, th18: 8,
           },
         },
         {
@@ -860,7 +860,7 @@ export default {
         maxLevel: {
           th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 0,
           th11: 0, th12: 3, th13: 4, th14: 4, th15: 5, 
-          th16: 5, th17: 5, th18: 5,
+          th16: 5, th17: 5, th18: 6,
         },
       },
       {
@@ -950,7 +950,7 @@ export default {
         emote: '<:eqSnakeBracelet:1337413842409619567>'
       },
       {
-        id: 913, name: 'Stick Fire Horse', hero: 'Barbarian King', type: 'epic',
+        id: 913, name: 'Stick Horse', hero: 'Barbarian King', type: 'epic',
         emote: '<:eqStickFireHorse:1470688423458373703>'
       },
       {
@@ -1083,15 +1083,15 @@ export default {
       },
       // Dragon Duke
       {
-        id: 961, name: 'Flame Heart', hero: 'Dragon Duke', type: 'common',
+        id: 961, name: 'Fire Heart', hero: 'Dragon Duke', type: 'common',
         emote: '<:qFlameHeart:1481908629576613981>'
       },
       {
-        id: 962, name: 'Flame Breath', hero: 'Dragon Duke', type: 'common',
+        id: 962, name: 'Flame Blower', hero: 'Dragon Duke', type: 'common',
         emote: '<:eqFlameBreath:1481908680902447145>'
       },
       {
-        id: 963, name: 'Stun Blast', hero: 'Dragon Duke', type: 'common',
+        id: 963, name: 'Stun Blaster', hero: 'Dragon Duke', type: 'common',
         emote: '<:eqStunBlast:1481908726972809357>'
       },
     ],
