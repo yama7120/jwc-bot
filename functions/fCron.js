@@ -556,15 +556,15 @@ async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo 
   if (result.isPerfect) {
     description += `\n\n:boom: **8 TRIPLES** 🎉\n`;
     description += `*Congratulations on achieving the maximum possible trophies in a single day!*`;
-  } else {
-    description += `\n\n:boom: **${dayStats.triples}**/${dayStats.attacks}`;
   }
   description += `\n\n:trophy: Start: ${formattedStart}`;
   description += `\n:trophy: End: ${formattedEnd} [${formattedDiffWithArrow}]`;
   description += `\n${config.emote.sword} Attack Trophies: ${formattedAttackTrophies}`;
   description += `\n${config.emote.shield} Defense Trophies: ${formattedDefenseTrophies}`;
   description += `\n:globe_with_meridians: Global Rank: ${formattedGlobalRank}`;
-  description += `\n:flag_jp: Japan Rank: ${formattedJapanRank}`;
+  if (Number.isFinite(japanRank)) {
+    description += `\n:flag_jp: Japan Rank: ${formattedJapanRank}`;
+  }
   embed.setDescription(description);
   embed.setColor(config.color.legend);
   const footer = `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
@@ -582,7 +582,11 @@ async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo 
       await channel.send({ files: [result.attachment] });
       await channel.send({ files: [attachmentHistory] });
     } else if (mongoAcc.legend.logSettings.post === "dm") {
-      const pilot = await client.users.fetch(mongoAcc.pilotDC.id);
+      const pilotId = extractPilotId(mongoAcc);
+      if (!pilotId) {
+        throw new Error("pilotDC.id is missing for DM destination");
+      }
+      const pilot = await client.users.fetch(pilotId);
       await pilot.send({ embeds: [embed] });
       await pilot.send({ files: [result.attachment] });
       await pilot.send({ files: [attachmentHistory] });
@@ -590,14 +594,20 @@ async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo 
   } catch (error) {
     console.error(`メッセージの送信中にエラーが発生しました: ${mongoAcc.name}`, error);
   }
-  // log
-  client.channels.cache.get(config.logch.legend).send({ embeds: [embed] });
-  client.channels.cache.get(config.logch.legend).send({ files: [result.attachment] });
-  client.channels.cache.get(config.logch.legend).send({ files: [attachmentHistory] });
+  // 14時のresult系バックアップ通知先
+  let backupChannel = client.channels.cache.get(config.logch.legend_result);
+  if (!backupChannel) {
+    backupChannel = await client.channels.fetch(config.logch.legend_result).catch(() => null);
+  }
+  if (backupChannel) {
+    await backupChannel.send({ embeds: [embed] });
+    await backupChannel.send({ files: [result.attachment] });
+    await backupChannel.send({ files: [attachmentHistory] });
+  }
 }
 
 function collectLegendSummary(summaryByPilot, mongoAcc, result, rankInfo) {
-  const pilotId = mongoAcc?.pilotDC?.id;
+  const pilotId = extractPilotId(mongoAcc);
   if (!pilotId) return;
 
   if (!summaryByPilot.has(pilotId)) {
@@ -633,7 +643,10 @@ async function sendLegendSummaryByPilot(client, seasonData, summaryByPilot) {
     for (const destination of destinations) {
       try {
         if (destination.type === "channel") {
-          const channel = client.channels.cache.get(destination.id);
+          let channel = client.channels.cache.get(destination.id);
+          if (!channel) {
+            channel = await client.channels.fetch(destination.id).catch(() => null);
+          }
           if (channel) await channel.send({ embeds: [embed] });
         } else if (destination.type === "dm") {
           const pilot = await client.users.fetch(destination.id);
@@ -660,6 +673,15 @@ function getSummaryDestinations(items, pilotId) {
   return Array.from(destinationMap.values());
 }
 
+function extractPilotId(mongoAcc) {
+  const pilotDC = mongoAcc?.pilotDC;
+  if (!pilotDC) return null;
+  if (typeof pilotDC === "string") {
+    return pilotDC;
+  }
+  return pilotDC.id ?? null;
+}
+
 function createLegendSummaryEmbed(items, seasonData) {
   const embed = new EmbedBuilder();
   const title = `${config.emote.legend} SUMMARY OF ${seasonData.daysNow == 1 ? "THE LAST DAY" : `DAY ${seasonData.daysNow - 1}`}`;
@@ -677,11 +699,15 @@ function createLegendSummaryEmbed(items, seasonData) {
     const atk = Number.isFinite(item.attackTrophies) ? `+${item.attackTrophies}` : "N/A";
     const def = Number.isFinite(item.defenseTrophies) ? `${item.defenseTrophies}` : "N/A";
     const gRank = Number.isFinite(item.globalRank) ? `#${item.globalRank}` : "N/A";
-    const jRank = Number.isFinite(item.japanRank) ? `#${item.japanRank}` : "N/A";
+    const hasJapanRank = Number.isFinite(item.japanRank);
+    const jRank = hasJapanRank ? `#${item.japanRank}` : null;
+    const rankLine = hasJapanRank
+      ? `:globe_with_meridians: ${gRank} | :flag_jp: ${jRank}`
+      : `:globe_with_meridians: ${gRank}`;
     lines.push(
       `${index + 1}. ${config.emote.thn[item.townHallLevel]} **${item.name}**`
       + `\n:trophy: ${end} [${diff}] | ${config.emote.sword} ${atk} | ${config.emote.shield} ${def}`
-      + `\n:globe_with_meridians: ${gRank} | :flag_jp: ${jRank}`
+      + `\n${rankLine}`
     );
   });
 

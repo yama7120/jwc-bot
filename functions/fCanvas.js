@@ -2879,7 +2879,7 @@ async function drawImageStars(ctx, stars, posH, posV) {
 async function legendHistory(mongoAcc) {
   // ***** CANVAS ***** //
   const widthCanvas = 1920;
-  const heightCanvas = 2880;
+  const heightCanvas = 2530;
   let myCanvas = Canvas.createCanvas(widthCanvas, heightCanvas);
   let ctx = myCanvas.getContext("2d");
 
@@ -3032,24 +3032,25 @@ async function legendHistory(mongoAcc) {
 
   // データ準備（直近10日を取得）
   const last10 = legendDaysSorted.slice(-10);
+  const nDays10 = last10.length;
   let sumAttacks10 = 0;
   let sumDefenses10 = 0;
-  let sumTriples10 = 0;
-  let sumDefTriples10 = 0;
+  let sumAttackTrophies10 = 0;
+  let sumDefenseTrophies10 = 0;
   last10.forEach((d) => {
     sumAttacks10 += Number(d.attacks || 0);
     sumDefenses10 += Number(d.defenses || 0);
-    sumTriples10 += Number(d.triples || 0);
-    sumDefTriples10 += Number(d.defTriples || 0);
+    sumAttackTrophies10 += Number(d.attackTrophies || 0);
+    sumDefenseTrophies10 += Number(d.defenseTrophies || 0);
   });
-  const rateAttack =
-    sumAttacks10 > 0
-      ? Math.round((sumTriples10 / sumAttacks10) * 1000) / 10
-      : 0;
-  const rateDefense =
-    sumDefenses10 > 0
-      ? Math.round((sumDefTriples10 / sumDefenses10) * 1000) / 10
-      : 0;
+  const avgPerDayAttackTrophies =
+    nDays10 > 0 ? Math.round((sumAttackTrophies10 / nDays10) * 10) / 10 : 0;
+  const avgPerDayDefenseTrophies =
+    nDays10 > 0 ? Math.round((sumDefenseTrophies10 / nDays10) * 10) / 10 : 0;
+  const avgPerAttackAttackTrophies =
+    sumAttacks10 > 0 ? Math.round((sumAttackTrophies10 / sumAttacks10) * 10) / 10 : 0;
+  const avgPerDefenseDefenseTrophies =
+    sumDefenses10 > 0 ? Math.round((sumDefenseTrophies10 / sumDefenses10) * 10) / 10 : 0;
 
   // ※ サマリーの描画は四つのグラフ配置後、最下段に行う（座標は後段で計算）
 
@@ -3498,16 +3499,10 @@ async function legendHistory(mongoAcc) {
 
   const yTopLine = 300; // Trophies（線）
   const yTopStack = 850; // 攻防トロフィーの積み上げ
-  const yTopBars = 1300; // Triples/Defense（棒）
-  const yTopBarsAD = 1650; // Attacks/Defenses（棒）
+  const yTopBarsAD = 1300; // Attacks/Defenses（棒）
   const heightLine = 500;
   const heightStack = 400;
-  const heightBars = 300;
   const heightBarsAD = 300;
-  const chartBars = new ChartJSNodeCanvas({
-    width: widthChart - 15,
-    height: heightBars,
-  });
   const chartLine = new ChartJSNodeCanvas({
     width: widthChart,
     height: heightLine,
@@ -3521,11 +3516,6 @@ async function legendHistory(mongoAcc) {
     height: heightBarsAD,
   });
 
-  const configurationBars = {
-    type: "bar",
-    data: chartDataBars,
-    options: chartOptionsBars,
-  };
   const configurationLine = {
     type: "line",
     data: chartDataLine,
@@ -3542,12 +3532,10 @@ async function legendHistory(mongoAcc) {
     options: chartOptionsBarsAD,
   };
 
-  const urlChartBars = await chartBars.renderToDataURL(configurationBars);
   const urlChartLine = await chartLine.renderToDataURL(configurationLine);
   const urlChartStack = await chartStack.renderToDataURL(configurationStack);
   const urlChartBarsAD = await chartBarsAD.renderToDataURL(configurationBarsAD);
 
-  const imgChartBars = await Canvas.loadImage(urlChartBars);
   const imgChartLine = await Canvas.loadImage(urlChartLine);
   const imgChartStack = await Canvas.loadImage(urlChartStack);
   const imgChartBarsAD = await Canvas.loadImage(urlChartBarsAD);
@@ -3565,13 +3553,6 @@ async function legendHistory(mongoAcc) {
     yTopStack,
     widthChart,
     heightStack,
-  );
-  ctx.drawImage(
-    imgChartBars,
-    marginLeftChart + 35,
-    yTopBars,
-    widthChart - 35,
-    heightBars,
   );
   ctx.drawImage(
     imgChartBarsAD,
@@ -3618,11 +3599,19 @@ async function legendHistory(mongoAcc) {
   yCursor += 100;
   setFontJP(ctx, config.canvasFontSize.xxSmall, FONTS.SC);
   ctx.fillStyle = config.rgb.darkOrange;
-  ctx.fillText("TRIPLES / DEF TRIPLES", xCenter, yCursor);
+  ctx.fillText("AVG TROPHIES / DAY", xCenter, yCursor);
   setFontJP(ctx, config.canvasFontSize.xSmall, FONTS.SC, "bold");
   ctx.fillStyle = config.rgb.silverWhite;
-  ctx.fillText(String(sumTriples10), h71, yCursor);
-  ctx.fillText(String(sumDefTriples10), h72, yCursor);
+  ctx.fillText(
+    `${avgPerDayAttackTrophies >= 0 ? "+" : ""}${avgPerDayAttackTrophies}`,
+    h71,
+    yCursor,
+  );
+  ctx.fillText(
+    `${avgPerDayDefenseTrophies >= 0 ? "+" : ""}${avgPerDayDefenseTrophies}`,
+    h72,
+    yCursor,
+  );
 
   yCursor += 100;
   setFontJP(ctx, config.canvasFontSize.xxSmall, FONTS.SC);
@@ -3636,16 +3625,19 @@ async function legendHistory(mongoAcc) {
   yCursor += 100;
   setFontJP(ctx, config.canvasFontSize.xxSmall, FONTS.SC);
   ctx.fillStyle = config.rgb.darkOrange;
-  ctx.fillText("RATE", xCenter, yCursor);
+  ctx.fillText("AVG TROPHIES / ATTACK", xCenter, yCursor);
   setFontJP(ctx, config.canvasFontSize.xSmall, FONTS.SC, "bold");
   ctx.fillStyle = config.rgb.silverWhite;
-  ctx.textAlign = "right";
-  ctx.fillText(`${rateAttack}`, h71 + 30, yCursor);
-  ctx.fillText(`${rateDefense}`, h72 + 30, yCursor);
-  setFontJP(ctx, config.canvasFontSize.xxSmall, FONTS.SC);
-  ctx.textAlign = "left";
-  ctx.fillText(`%`, h71 + 30, yCursor);
-  ctx.fillText(`%`, h72 + 30, yCursor);
+  ctx.fillText(
+    `${avgPerAttackAttackTrophies >= 0 ? "+" : ""}${avgPerAttackAttackTrophies}`,
+    h71,
+    yCursor,
+  );
+  ctx.fillText(
+    `${avgPerDefenseDefenseTrophies >= 0 ? "+" : ""}${avgPerDefenseDefenseTrophies}`,
+    h72,
+    yCursor,
+  );
   ctx.restore();
 
   const pngData = await myCanvas.encode("png");
