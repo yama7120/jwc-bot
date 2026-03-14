@@ -3030,8 +3030,9 @@ async function legendHistory(mongoAcc) {
     return a.day - b.day;
   });
 
-  // データ準備（直近10日を取得）
-  const last10 = legendDaysSorted.slice(-10);
+  // データ準備（当日を除いた直近10日を取得）
+  const legendDaysForSummary = legendDaysSorted.slice(0, -1);
+  const last10 = legendDaysForSummary.slice(-10);
   const nDays10 = last10.length;
   let sumAttacks10 = 0;
   let sumDefenses10 = 0;
@@ -3259,6 +3260,21 @@ async function legendHistory(mongoAcc) {
 
   // 攻撃/防衛トロフィーの積み上げ棒（上下対称）
   // diffTrophies（= 攻撃 + 防衛）の折れ線を重ねる
+  const gainedBarColors = cdpDiffTrophies.map((value) => {
+    const diff = Number(value);
+    if (!Number.isFinite(diff)) return config.rgb.orange.four;
+    if (diff > 0) return config.rgb.orange.seven;
+    if (diff < 0) return config.rgb.orange.three;
+    return config.rgb.orange.four;
+  });
+  const lostBarColors = cdpDiffTrophies.map((value) => {
+    const diff = Number(value);
+    if (!Number.isFinite(diff)) return config.rgb.gray.half;
+    if (diff > 0) return config.rgb.gray.three;
+    if (diff < 0) return config.rgb.gray.seven;
+    return config.rgb.gray.half;
+  });
+
   const chartDataStack = {
     labels: chartLabels,
     datasets: [
@@ -3266,7 +3282,7 @@ async function legendHistory(mongoAcc) {
         label: "Attack Trophies",
         data: cdpAtkTrophies,
         type: "bar",
-        backgroundColor: config.rgb.orange.four,
+        backgroundColor: gainedBarColors,
         yAxisID: "y",
         stack: "trophiesStack",
         borderSkipped: false,
@@ -3276,7 +3292,7 @@ async function legendHistory(mongoAcc) {
         label: "Defense Trophies",
         data: cdpDefTrophies,
         type: "bar",
-        backgroundColor: config.rgb.gray.half,
+        backgroundColor: lostBarColors,
         yAxisID: "y",
         stack: "trophiesStack",
         borderSkipped: false,
