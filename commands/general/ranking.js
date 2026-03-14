@@ -230,6 +230,10 @@ export default {
     if (focusedOption.name === 'team') {
       const focusedValue = interaction.options.getFocused();
       const iLeague = await interaction.options.getString('league');
+      if (!iLeague) {
+        await interaction.respond([]);
+        return;
+      }
       const teamList = await client.clientMongo.db('jwc').collection('config').findOne({ _id: 'teamList' });
       //console.dir(teamList);
 
@@ -237,7 +241,8 @@ export default {
         await interaction.respond([{ name: 'ENTIRE JWC BOT', value: 'entire' }]);
       }
       else {
-        let teams = teamList[iLeague].filter(function(team) { return team.team_abbr.includes(focusedValue) });
+        const leagueTeams = Array.isArray(teamList?.[iLeague]) ? teamList[iLeague] : [];
+        let teams = leagueTeams.filter(function(team) { return team.team_abbr.includes(focusedValue) });
         if (iLeague == 'j1' || iLeague == 'j2') {
           if (subcommandGroup == 'jwc') {
             teams = [{ team_abbr: 'Entire', clan_name: config.league[iLeague], team_name: config.league[iLeague], division: '' }].concat(teams);
