@@ -442,6 +442,15 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
   const updatedDayData = aggregateDaysFromEvents(allTargetDayEvents).find(
     (d) => d.season === targetSeason && d.day === targetDay,
   );
+  const existingDayData = Array.isArray(mongoAcc?.legend?.days)
+    ? mongoAcc.legend.days.find(
+      (d) => d.season === targetSeason && d.day === targetDay,
+    )
+    : null;
+  if (updatedDayData) {
+    updatedDayData.globalRank = existingDayData?.globalRank ?? null;
+    updatedDayData.japanRank = existingDayData?.japanRank ?? null;
+  }
 
   // 4. 1回のデータベースアクセスでeventsとdaysを同時に更新
   const result = await client.clientMongo
@@ -559,6 +568,8 @@ function aggregateDaysFromEvents(events) {
         defenses: 0,
         triples: 0,
         defTriples: 0,
+          globalRank: null,
+          japanRank: null,
       });
     }
 

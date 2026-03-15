@@ -314,7 +314,9 @@ async function addNewDayToLegendAccounts(client, seasonData) {
       triples: 0,
       defTriples: 0,
       attackTrophies: 0,
-      defenseTrophies: 0
+      defenseTrophies: 0,
+      globalRank: null,
+      japanRank: null
     };
 
     for (const account of accounts) {
@@ -511,6 +513,7 @@ async function sendLegendResult(client, seasonData) {
           global: globalRankMap.get(mongoAcc.tag) ?? mongoAcc.legend?.current?.rank ?? null,
           japan: japanRankMap.get(mongoAcc.tag) ?? null
         };
+        await saveLegendRankHistoryForDay(client, mongoAcc.tag, resultR1?.dayStats, rankInfo);
         await sendLogAttachment(client, mongoAcc, resultR1, seasonData, rankInfo);
         collectLegendSummary(summaryByPilot, mongoAcc, resultR1, rankInfo);
 
@@ -604,6 +607,28 @@ async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo 
     await backupChannel.send({ files: [result.attachment] });
     await backupChannel.send({ files: [attachmentHistory] });
   }
+}
+
+async function saveLegendRankHistoryForDay(client, tag, dayStats, rankInfo) {
+  const season = dayStats?.season;
+  const day = dayStats?.day;
+  if (!season || !Number.isFinite(day)) {
+    return;
+  }
+  const globalRank = Number.isFinite(rankInfo?.global) ? rankInfo.global : null;
+  const japanRank = Number.isFinite(rankInfo?.japan) ? rankInfo.japan : null;
+  await client.clientMongo.db("jwc").collection("accounts").updateOne(
+    { tag },
+    {
+      $set: {
+        "legend.days.$[target].globalRank": globalRank,
+        "legend.days.$[target].japanRank": japanRank
+      }
+    },
+    {
+      arrayFilters: [{ "target.season": season, "target.day": day }]
+    }
+  );
 }
 
 function collectLegendSummary(summaryByPilot, mongoAcc, result, rankInfo) {
