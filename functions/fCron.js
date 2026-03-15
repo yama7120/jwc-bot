@@ -549,7 +549,7 @@ async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo 
     ? (diffTrophies >= 0 ? `**+${diffTrophies}**` : `**${diffTrophies}**`)
     : "*N/A*";
   const formattedDiffWithArrow = Number.isFinite(diffTrophies)
-    ? `${diffTrophies >= 0 ? config.emote.up : config.emote.down} ${formattedDiff}`
+    ? `${diffTrophies >= 0 ? config.emote.up : config.emote.down}${formattedDiff}`
     : formattedDiff;
   const formattedAttackTrophies = Number.isFinite(attackTrophies) ? `**+${attackTrophies}**` : "*N/A*";
   const formattedDefenseTrophies = Number.isFinite(defenseTrophies) ? `**${defenseTrophies}**` : "*N/A*";
@@ -558,7 +558,7 @@ async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo 
 
   if (result.isPerfect) {
     description += `\n\n:boom: **8 TRIPLES** 🎉\n`;
-    description += `*Congratulations on achieving the maximum possible trophies in a single day!*`;
+    description += `*Perfect day!*`;
   }
   description += `\n\n:trophy: Start: ${formattedStart}`;
   description += `\n:trophy: End: ${formattedEnd} [${formattedDiffWithArrow}]`;
