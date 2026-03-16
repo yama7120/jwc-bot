@@ -643,6 +643,7 @@ async function accountData(interaction, client) {
       arrDescription[index] += ` ${config_coc.heroes[2].emote} ${acc[iItem].GW}`;
       arrDescription[index] += ` ${config_coc.heroes[3].emote} ${acc[iItem].RC}`;
       arrDescription[index] += ` ${config_coc.heroes[4].emote} ${acc[iItem].MP}`;
+      arrDescription[index] += ` ${config_coc.heroes[5].emote} ${acc[iItem].DD ?? 0}`;
       arrDescription[index] += `\n`;
       arrDescription[index] += `\n`;
 

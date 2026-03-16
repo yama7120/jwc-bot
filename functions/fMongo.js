@@ -317,16 +317,32 @@ async function updateAcc(client, tagAccount) {
   listing.lvSpells = lvSpells;
 
   // ヒーロー
-  let lvHeroes = { level: 0, maxLevel: 0, BK: 0, AQ: 0, GW: 0, RC: 0, MP: 0 };
+  let lvHeroes = {
+    level: 0,
+    maxLevel: 0,
+    BK: 0,
+    AQ: 0,
+    GW: 0,
+    RC: 0,
+    MP: 0,
+    DD: 0,
+  };
+  const homeHeroNames = new Set(config_coc.heroes.map((hero) => hero.name));
   if (scPlayer.heroes != null) {
     scPlayer.heroes.map((hero) => {
-      if (hero.village == "home") {
+      const isHomeHero = hero.village == "home" || homeHeroNames.has(hero.name);
+      if (isHomeHero) {
         lvHeroes.level += hero.level;
         if (hero.name == "Minion Prince") {
           lvHeroes.maxLevel +=
             config_coc.maxLevel.heroes.minionPrince[
               `th${scPlayer.townHallLevel}`
             ] ?? 0;
+        } else if (hero.name == "Dragon Duke") {
+          lvHeroes.maxLevel +=
+            config_coc.maxLevel.heroes.dragonDuke[
+              `th${scPlayer.townHallLevel}`
+            ] ?? hero.hallMaxLevel ?? 0;
         } else {
           lvHeroes.maxLevel += hero.hallMaxLevel ?? 0;
         }
@@ -341,6 +357,8 @@ async function updateAcc(client, tagAccount) {
         lvHeroes.RC = hero.level;
       } else if (hero.name == "Minion Prince") {
         lvHeroes.MP = hero.level;
+      } else if (hero.name == "Dragon Duke") {
+        lvHeroes.DD = hero.level;
       }
     });
   }
