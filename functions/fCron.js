@@ -408,7 +408,11 @@ async function sendLogUpdated(client, nAccs, seasonData) {
 
   accounts.forEach((acc, index) => {
     let dayStats = acc.legend.days[0];
-    const diffTrophies = dayStats.diffTrophies >= 0 ? `+${dayStats.diffTrophies}` : `${dayStats.diffTrophies}`;
+    const attackTrophies = dayStats.attackTrophies ?? 0;
+    const defenseTrophies = dayStats.defenseTrophies ?? 0;
+    const attackTrophiesText = attackTrophies >= 0 ? `+${attackTrophies}` : `${attackTrophies}`;
+    const defenseTrophiesText =
+      defenseTrophies >= 0 ? `+${defenseTrophies}` : `${defenseTrophies}`;
     const emoteTH = config.emote.thn[acc.townHallLevel];
     const nameAcc = `**${functions.nameReplacer(acc.name)}**`;
     const clanInfo = acc.homeClanAbbr.j != ""
@@ -419,9 +423,8 @@ async function sendLogUpdated(client, nAccs, seasonData) {
       [
         `${index + 1}.`,
         `**${dayStats.trophies}**`,
-        `[${diffTrophies}]`,
-        `:boom:`,
-        `**${dayStats.triples}**/${dayStats.attacks}`,
+        `${config.emote.sword}${attackTrophiesText}`,
+        `${config.emote.shield}${defenseTrophiesText}`,
         `${emoteTH}`,
         `${nameAcc}${clanInfo}`
       ].filter(Boolean).join(" ")
