@@ -10,6 +10,7 @@
   "scripts": {
     "start": "node index.js",
     "dc": "node deploy_commands.js",
+    "sync": "bash ./scripts/syncbot.sh",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
