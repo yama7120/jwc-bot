@@ -242,13 +242,12 @@ export default {
         const filteredAccs = accs.filter(acc => 
           String(acc.name).includes(focusedValue)
         );
-        
-        if (filteredAccs.length > 0) {
-          await interaction.respond(filteredAccs.map(acc => ({
-            name: `[TH${acc.townHallLevel}] ${acc.name}`,
-            value: acc.tag
-          })));
-        }
+        await interaction.respond(filteredAccs.map(acc => ({
+          name: `[TH${acc.townHallLevel}] ${acc.name}`,
+          value: acc.tag
+        })));
+      } else {
+        await interaction.respond([]);
       }
     }
     else if (focusedOption.name === "team") {
@@ -260,14 +259,20 @@ export default {
       );
 
       if (!teamList) {
-        await interaction.respond([{ name: "ERROR", value: "error" }]);
+        await interaction.respond([]);
+        return;
       }
       
       if (iLeague == "entire") {
         await interaction.respond([{ name: "ENTIRE JWC BOT", value: "entire" }]);
       }
       else {
-        teams = teamList[iLeague].filter(function(team) { return team.team_abbr.includes(focusedValue) });
+        const leagueTeams = teamList?.[iLeague];
+        if (!Array.isArray(leagueTeams)) {
+          await interaction.respond([]);
+          return;
+        }
+        let teams = leagueTeams.filter(function(team) { return team.team_abbr.includes(focusedValue) });
         if (teams.length >= 25) {
           teams = teams.filter(function(clan, index) { return index < 25 });
         };

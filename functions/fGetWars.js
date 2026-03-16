@@ -178,11 +178,13 @@ async function getClanWarUpdateDB(client, mongoWar) {
       // 更新前攻撃回数取得
       const nAtBefore = { clan: 0, opponent: 0 };
       const isWarActive = ["inWar", "warEnded"].includes(clanWar.state);
-      const hasValidResult = mongoWar.result?.clan && mongoWar.result?.opponent;
+      const hasValidResult =
+        mongoWar.result?.clan?.allAttackTypes?.nAt?.total != null &&
+        mongoWar.result?.opponent?.allAttackTypes?.nAt?.total != null;
       
       if (isWarActive && hasValidResult) {
-        nAtBefore.clan = mongoWar.result.clan.allAttackTypes.nAt.total;
-        nAtBefore.opponent = mongoWar.result.opponent.allAttackTypes.nAt.total;
+        nAtBefore.clan = mongoWar.result.clan.allAttackTypes.nAt.total ?? 0;
+        nAtBefore.opponent = mongoWar.result.opponent.allAttackTypes.nAt.total ?? 0;
       }
       // state 判定 -> return
       // ********** マッチング完了（初回） -> データベース更新、通知 **********

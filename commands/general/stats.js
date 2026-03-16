@@ -124,8 +124,13 @@ export default {
       const focusedValue = interaction.options.getFocused();
       const iLeague = await interaction.options.getString('league');
       let teamList = await client.clientMongo.db('jwc').collection('config').findOne({ _id: 'teamList' });
+      const teamsByLeague = teamList?.[iLeague];
+      if (!Array.isArray(teamsByLeague)) {
+        await interaction.respond([]);
+        return;
+      }
 
-      teamList = teamList[iLeague].filter(function(team) { return team.team_abbr.includes(focusedValue) });
+      teamList = teamsByLeague.filter(function(team) { return team.team_abbr.includes(focusedValue) });
       if (teamList.length >= 25) {
         teamList = teamList.filter(function(team, index) { return index < 25 });
       };
@@ -157,12 +162,10 @@ export default {
       if (accs.length >= 25) {
         accs = accs.filter(function(acc, index) { return index < 25 });
       };
-      if (accs.length > 0) {
-        await interaction.respond(accs.map(acc => ({
-          name: `${acc.tag} (${acc.name}, TH${acc.townHallLevel})`,
-          value: acc.tag
-        })));
-      };
+      await interaction.respond(accs.map(acc => ({
+        name: `${acc.tag} (${acc.name}, TH${acc.townHallLevel})`,
+        value: acc.tag
+      })));
     };
   },
 

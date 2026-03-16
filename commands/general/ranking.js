@@ -231,14 +231,14 @@ export default {
       const focusedValue = interaction.options.getFocused();
       const iLeague = await interaction.options.getString('league');
       if (!iLeague) {
-        await interaction.respond([]);
+        await safeAutocompleteRespond(interaction, []);
         return;
       }
       const teamList = await client.clientMongo.db('jwc').collection('config').findOne({ _id: 'teamList' });
       //console.dir(teamList);
 
       if (iLeague == 'entire') {
-        await interaction.respond([{ name: 'ENTIRE JWC BOT', value: 'entire' }]);
+        await safeAutocompleteRespond(interaction, [{ name: 'ENTIRE JWC BOT', value: 'entire' }]);
       }
       else {
         const leagueTeams = Array.isArray(teamList?.[iLeague]) ? teamList[iLeague] : [];
@@ -263,7 +263,8 @@ export default {
         if (teams.length >= 25) {
           teams = teams.filter(function(team, index) { return index < 25 });
         };
-        await interaction.respond(
+        await safeAutocompleteRespond(
+          interaction,
           teams.map(team => (
             { name: `${team.team_abbr.toUpperCase()}: ${team.clan_name} | ${team.team_name}`, value: team.team_abbr }
           )),
@@ -293,6 +294,15 @@ export default {
   }
 };
 
+async function safeAutocompleteRespond(interaction, choices) {
+  try {
+    await interaction.respond(choices);
+  } catch (error) {
+    if (error?.code === 10062 || error?.code === 40060) return;
+    throw error;
+  }
+}
+
 
 async function legend(interaction, client) {
   let iItem = await interaction.options.getString('item');
@@ -314,6 +324,10 @@ async function legend(interaction, client) {
   };
 
   let mongoRanking = await client.clientMongo.db('jwc').collection('ranking').findOne({ name: iItem });
+  if (!mongoRanking || !Array.isArray(mongoRanking.accounts)) {
+    await interaction.followUp({ content: '*ranking data is not available*', ephemeral: true });
+    return;
+  }
   let arrRanking = mongoRanking.accounts;
 
   let accs = [];
@@ -529,6 +543,10 @@ async function accountData(interaction, client) {
   };
 
   let mongoRanking = await client.clientMongo.db('jwc').collection('ranking').findOne({ name: iItem });
+  if (!mongoRanking || !Array.isArray(mongoRanking.accounts)) {
+    await interaction.followUp({ content: '*ranking data is not available*', ephemeral: true });
+    return;
+  }
   let arrRanking = mongoRanking.accounts;
 
   let accs = [];

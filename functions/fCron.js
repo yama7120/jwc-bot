@@ -558,7 +558,7 @@ async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo 
 
   if (result.isPerfect) {
     description += `\n\n:boom: **8 TRIPLES** 🎉\n`;
-    description += `*Perfect day!*`;
+    description += `*Perfect Legend Day!*`;
   }
   description += `\n\n:trophy: Start: ${formattedStart}`;
   description += `\n:trophy: End: ${formattedEnd} [${formattedDiffWithArrow}]`;

@@ -57,12 +57,10 @@ export default {
         accs = accs.filter(function(acc, index) { return index < 25 });
       };
 
-      if (accs.length > 0) {
-        await interaction.respond(accs.map(acc => ({
-          name: `[TH${acc.townHallLevel}] ${acc.name}`,
-          value: acc.tag
-        })));
-      };
+      await interaction.respond(accs.map(acc => ({
+        name: `[TH${acc.townHallLevel}] ${acc.name}`,
+        value: acc.tag
+      })));
     };
   },
 
@@ -161,10 +159,21 @@ async function unregister(interaction, client) {
   const playerTag = functions.tagReplacer(iPlayerTag);
 
   let mongoAcc = await client.clientMongo.db("jwc").collection("accounts").findOne({ tag: playerTag });
+  if (!mongoAcc) {
+    const embed = new EmbedBuilder()
+      .setColor(config.color.main)
+      .setFooter({ text: config.footer, iconURL: config.urlImage.jwc })
+      .setTimestamp()
+      .setTitle(":x: **not found**")
+      .setDescription("*The account is not registered in the JWC bot database.*");
+    await interaction.followUp({ embeds: [embed], ephemeral: true });
+    return;
+  }
 
   let isConfermed = false;
+  const pilotDcId = mongoAcc?.pilotDC?.id ?? null;
 
-  if (iSenderId == mongoAcc.pilotDC.id || Object.values(config.adminId).includes(iSenderId) == true) { // 自分の or admins -> OK
+  if ((pilotDcId != null && iSenderId == pilotDcId) || Object.values(config.adminId).includes(iSenderId) == true) { // 自分の or admins -> OK
     isConfermed = true;
   }
   else {

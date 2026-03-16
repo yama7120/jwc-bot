@@ -25,6 +25,7 @@ export default {
       try {
         await command.autocomplete(interaction, client);
       } catch (error) {
+        if (error?.code === 10062) return; // Unknown interaction (timeout/expired)
         console.error(error);
       }
     } else if (interaction.isChatInputCommand()) {
