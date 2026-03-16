@@ -451,6 +451,32 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
     updatedDayData.globalRank = existingDayData?.globalRank ?? null;
     updatedDayData.japanRank = existingDayData?.japanRank ?? null;
   }
+  const baseLegendDaysArray = {
+    $filter: {
+      input: { $ifNull: ["$legend.days", []] },
+      cond: { $ne: ["$$this", null] },
+    },
+  };
+  const mergedLegendDays = updatedDayData
+    ? {
+      $concatArrays: [
+        {
+          $filter: {
+            input: baseLegendDaysArray,
+            cond: {
+              $not: {
+                $and: [
+                  { $eq: ["$$this.season", targetSeason] },
+                  { $eq: ["$$this.day", targetDay] },
+                ],
+              },
+            },
+          },
+        },
+        [updatedDayData],
+      ],
+    }
+    : baseLegendDaysArray;
 
   // 4. 1回のデータベースアクセスでeventsとdaysを同時に更新
   const result = await client.clientMongo
@@ -485,24 +511,7 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
         },
         {
           $set: {
-            "legend.days": {
-              $concatArrays: [
-                {
-                  $filter: {
-                    input: { $ifNull: ["$legend.days", []] },
-                    cond: {
-                      $not: {
-                        $and: [
-                          { $eq: ["$$this.season", targetSeason] },
-                          { $eq: ["$$this.day", targetDay] },
-                        ],
-                      },
-                    },
-                  },
-                },
-                [updatedDayData],
-              ],
-            },
+            "legend.days": mergedLegendDays,
           },
         },
         {

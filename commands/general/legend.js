@@ -371,6 +371,14 @@ async function settings(interaction, client) {
       defensesCurrent: resultScan.scPlayer.defenseWins,
       diffAttackWins: 0,
       diffDefenseWins: 0,
+      leagueId:
+        resultScan.scPlayer?.leagueTier?.id ??
+        resultScan.scPlayer?.league?.id ??
+        null,
+      leagueName:
+        resultScan.scPlayer?.leagueTier?.name ??
+        resultScan.scPlayer?.league?.name ??
+        null,
     };
     await fLegend.writeLogLegendR2(client, mongoAcc, "new", eventData);
   };
