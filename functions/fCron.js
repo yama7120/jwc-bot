@@ -408,6 +408,10 @@ async function sendLogUpdated(client, nAccs, seasonData) {
 
   accounts.forEach((acc, index) => {
     let dayStats = acc.legend.days[0];
+    const diffTrophies =
+      dayStats.diffTrophies >= 0
+        ? `+${dayStats.diffTrophies}`
+        : `${dayStats.diffTrophies}`;
     const attackTrophies = dayStats.attackTrophies ?? 0;
     const defenseTrophies = dayStats.defenseTrophies ?? 0;
     const attackTrophiesText = attackTrophies >= 0 ? `+${attackTrophies}` : `${attackTrophies}`;
@@ -423,6 +427,7 @@ async function sendLogUpdated(client, nAccs, seasonData) {
       [
         `${index + 1}.`,
         `**${dayStats.trophies}**`,
+        `[${diffTrophies}]`,
         `${config.emote.sword}${attackTrophiesText}`,
         `${config.emote.shield}${defenseTrophiesText}`,
         `${emoteTH}`,
