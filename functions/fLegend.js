@@ -871,13 +871,22 @@ async function createLogLegendAttack(
   myEmbed.setTitle(
     `${config.emote.sword} ${createDescriptionLegend(eventData.diffTrophies)}`,
   );
+  const leagueTierConfig = config_coc.leagueTiers.find(
+    (tier) => tier.id === scPlayer.leagueTier.id,
+  );
+  const maxBattles = leagueTierConfig?.nBattles ?? 0;
   let footer = '';
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     footer =
       `#${nToday.attacks - nEvents + i + 1} | ` +
       `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | ${scPlayer.leagueTier.name.toUpperCase()}`;
   } else {
-    footer = `${scPlayer.leagueTier.name.toUpperCase()}`;
+    const attackOrder = Math.max(0, nWeek.attacks - nEvents + i + 1);
+    if (maxBattles > 0) {
+      footer = `ATTACK ${attackOrder}/${maxBattles} | ${scPlayer.leagueTier.name.toUpperCase()}`;
+    } else {
+      footer = `ATTACK ${attackOrder} | ${scPlayer.leagueTier.name.toUpperCase()}`;
+    }
   }
   myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
   myEmbed.setColor(config.color.attack);
@@ -890,15 +899,9 @@ async function createLogLegendAttack(
     const averageTrophies = Math.round(nToday.attackTrophies / nToday.attacks);
     description += `:bar_chart: **+${nToday.attackTrophies}** in ${nToday.attacks} attacks (avg: +${averageTrophies})\n`;
   }
-  if (nWeek.attacks >= 1) {
-    const averageTrophies = Math.round(nWeek.attackTrophies / nWeek.attacks);
-    const weeklyAttackText =
-      nWeek.attackTrophies >= 0
-        ? `+${nWeek.attackTrophies}`
-        : `${nWeek.attackTrophies}`;
-    description += `:chart_with_upwards_trend: This week: **${weeklyAttackText}** in ${nWeek.attacks} attacks (avg: ${averageTrophies >= 0 ? `+${averageTrophies}` : averageTrophies})\n`;
+  if (scPlayer.leagueTier.id != config_coc.leagueId.legend) {
+    description += `:hourglass_flowing_sand: Week ends: <t:${nWeek.weekEndUnix}:F> (<t:${nWeek.weekEndUnix}:R>)\n`;
   }
-  description += `:hourglass_flowing_sand: Week ends: <t:${nWeek.weekEndUnix}:F> (<t:${nWeek.weekEndUnix}:R>)\n`;
 
   if (eventData.leagueId == config_coc.leagueId.legend) {
     // TOP200ランキング確認
@@ -926,6 +929,10 @@ async function createLogLegendDefense(
   seasonData,
 ) {
   const myEmbed = new EmbedBuilder();
+  const leagueTierConfig = config_coc.leagueTiers.find(
+    (tier) => tier.id === scPlayer.leagueTier.id,
+  );
+  const maxBattles = leagueTierConfig?.nBattles ?? 0;
   let title = '';
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     title = `${config.emote.shield} ${createDescriptionLegend(eventData.diffTrophies)}`;
@@ -939,7 +946,12 @@ async function createLogLegendDefense(
       `#${nToday.defenses - nEvents + i + 1} | ` +
       `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | ${scPlayer.leagueTier.name.toUpperCase()}`;
   } else {
-    footer = `${scPlayer.leagueTier.name.toUpperCase()}`;
+    const defenseOrder = Math.max(0, nWeek.defenses - nEvents + i + 1);
+    if (maxBattles > 0) {
+      footer = `DEFENSE ${defenseOrder}/${maxBattles} | ${scPlayer.leagueTier.name.toUpperCase()}`;
+    } else {
+      footer = `DEFENSE ${defenseOrder} | ${scPlayer.leagueTier.name.toUpperCase()}`;
+    }
   }
   myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
   myEmbed.setColor(config.color.defense);
@@ -953,13 +965,9 @@ async function createLogLegendDefense(
     );
     description += `:bar_chart: **${nToday.defenseTrophies}** in ${nToday.defenses} defenses (avg: -${averageTrophies})\n`;
   }
-  if (nWeek.defenses >= 1) {
-    const averageTrophies = Math.round(
-      Math.abs(nWeek.defenseTrophies) / nWeek.defenses,
-    );
-    description += `:chart_with_upwards_trend: This week: **${nWeek.defenseTrophies}** in ${nWeek.defenses} defenses (avg: -${averageTrophies})\n`;
+  if (scPlayer.leagueTier.id != config_coc.leagueId.legend) {
+    description += `:hourglass_flowing_sand: Week ends: <t:${nWeek.weekEndUnix}:F> (<t:${nWeek.weekEndUnix}:R>)\n`;
   }
-  description += `:hourglass_flowing_sand: Week ends: <t:${nWeek.weekEndUnix}:F> (<t:${nWeek.weekEndUnix}:R>)\n`;
 
   if (eventData.leagueId == config_coc.leagueId.legend) {
     // TOP200ランキング確認
