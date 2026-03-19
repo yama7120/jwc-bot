@@ -9,19 +9,23 @@ async function rankingMain(clientMongo) {
   await rankingLegend(clientMongo, "legendTrophies", "legendTrophies", "legend.legendTrophies");
 
   // ** Hero Equipment **
-  await rankingEquipment(clientMongo, "Total");
-  await rankingEquipment(clientMongo, "giantGauntlet");
-  await rankingEquipment(clientMongo, "spikyBall");
-  await rankingEquipment(clientMongo, "snakeBracelet");
-  await rankingEquipment(clientMongo, "frozenArrow");
-  await rankingEquipment(clientMongo, "magicMirror");
-  await rankingEquipment(clientMongo, "actionFigure");
-  await rankingEquipment(clientMongo, "fireball");
-  await rankingEquipment(clientMongo, "lavaloonPuppet");
-  await rankingEquipment(clientMongo, "rocketSpear");
-  await rankingEquipment(clientMongo, "electroBoots");
-  await rankingEquipment(clientMongo, "darkCrown");
-  await rankingEquipment(clientMongo, "meteorStaff");
+  // 14時バッチのMongo負荷を下げるため、一時的に更新を無効化。
+  const updateEquipmentRankings = false;
+  if (updateEquipmentRankings) {
+    await rankingEquipment(clientMongo, "Total");
+    await rankingEquipment(clientMongo, "giantGauntlet");
+    await rankingEquipment(clientMongo, "spikyBall");
+    await rankingEquipment(clientMongo, "snakeBracelet");
+    await rankingEquipment(clientMongo, "frozenArrow");
+    await rankingEquipment(clientMongo, "magicMirror");
+    await rankingEquipment(clientMongo, "actionFigure");
+    await rankingEquipment(clientMongo, "fireball");
+    await rankingEquipment(clientMongo, "lavaloonPuppet");
+    await rankingEquipment(clientMongo, "rocketSpear");
+    await rankingEquipment(clientMongo, "electroBoots");
+    await rankingEquipment(clientMongo, "darkCrown");
+    await rankingEquipment(clientMongo, "meteorStaff");
+  }
 
   // ** Others **
   await rankingGeneral(clientMongo, "trophies");
