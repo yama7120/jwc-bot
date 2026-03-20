@@ -394,6 +394,19 @@ async function sendLogUpdated(client, nAccs, seasonData) {
   const cursor = client.clientMongo.db("jwc").collection("accounts").find(query, options).sort(sort).limit(10);
   const accounts = await cursor.toArray();
   await cursor.close();
+  const legends200 = await client.clientMongo
+    .db("jwc")
+    .collection("ranking")
+    .findOne(
+      { name: "legends200" },
+      { projection: { _id: 0, japan: 1, global: 1 } }
+    );
+  const global200 = legends200?.global?.find((player) => player.rank === 200)
+    ?? legends200?.global?.[199]
+    ?? null;
+  const japan200 = legends200?.japan?.find((player) => player.rank === 200)
+    ?? legends200?.japan?.[199]
+    ?? null;
 
   const myEmbed = new EmbedBuilder();
   const title = `:white_check_mark: **UPDATED**`;
@@ -435,6 +448,19 @@ async function sendLogUpdated(client, nAccs, seasonData) {
       ].filter(Boolean).join(" ")
     );
   });
+
+  descriptionLines.push(
+    ``,
+    `:earth_asia: **GLOBAL LEGENDS**`,
+    global200
+      ? `200th border: **${global200.trophies}**`
+      : `200th border: N/A`,
+    ``,
+    `:flag_jp: **JAPANESE LEGENDS**`,
+    japan200
+      ? `200th border: **${japan200.trophies}**`
+      : `200th border: N/A`,
+  );
 
   descriptionLines.push(
     ``,
