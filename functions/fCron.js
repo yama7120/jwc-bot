@@ -532,6 +532,7 @@ async function sendLegendResult(client, seasonData) {
   );
   const japanRankMap = new Map((legends200?.japan ?? []).map(player => [player.tag, player.rank]));
   const globalRankMap = new Map((legends200?.global ?? []).map(player => [player.tag, player.rank]));
+  const legend200Borders = getLegendRank200BorderTrophies(legends200);
   const summaryByPilot = new Map();
 
   console.log(`sendLegendResult: ${mongoAccs.length}`);
@@ -548,7 +549,7 @@ async function sendLegendResult(client, seasonData) {
           japan: japanRankMap.get(mongoAcc.tag) ?? null
         };
         await saveLegendRankHistoryForDay(client, mongoAcc.tag, resultR1?.dayStats, rankInfo);
-        await sendLogAttachment(client, mongoAcc, resultR1, seasonData, rankInfo);
+        await sendLogAttachment(client, mongoAcc, resultR1, seasonData, rankInfo, legend200Borders);
         collectLegendSummary(summaryByPilot, mongoAcc, resultR1, rankInfo);
 
         await functions.sleep(500);
@@ -563,7 +564,22 @@ async function sendLegendResult(client, seasonData) {
   console.log("end: sendLegendResult");
 }
 
-async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo = {}) {
+function getLegendRank200BorderTrophies(legends200) {
+  const global200 =
+    legends200?.global?.find((player) => player.rank === 200) ??
+    legends200?.global?.[199] ??
+    null;
+  const japan200 =
+    legends200?.japan?.find((player) => player.rank === 200) ??
+    legends200?.japan?.[199] ??
+    null;
+  return {
+    global: Number.isFinite(global200?.trophies) ? global200.trophies : null,
+    japan: Number.isFinite(japan200?.trophies) ? japan200.trophies : null
+  };
+}
+
+async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo = {}, legend200Borders = {}) {
   const embed = new EmbedBuilder();
   const title = `${config.emote.legend} RESULT OF ${seasonData.daysNow == 1 ? "THE LAST DAY" : `DAY ${seasonData.daysNow - 1}`}`;
   embed.setTitle(title);
@@ -599,8 +615,24 @@ async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo 
   description += `\n${config.emote.sword} Attack Trophies: ${formattedAttackTrophies}`;
   description += `\n${config.emote.shield} Defense Trophies: ${formattedDefenseTrophies}`;
   description += `\n:globe_with_meridians: Global Rank: ${formattedGlobalRank}`;
+  const borderGlobal = legend200Borders.global ?? null;
+  if (Number.isFinite(endTrophies) && Number.isFinite(borderGlobal)) {
+    const vsGlobal = endTrophies - borderGlobal;
+    const vsGlobalFormatted =
+      vsGlobal >= 0 ? `**+${vsGlobal}**` : `**${vsGlobal}**`;
+    const vsGlobalArrow = vsGlobal >= 0 ? config.emote.up : config.emote.down;
+    description += `\n:earth_asia: vs Global 200th (**${borderGlobal}**): ${vsGlobalArrow}${vsGlobalFormatted}`;
+  }
   if (Number.isFinite(japanRank)) {
     description += `\n:flag_jp: Japan Rank: ${formattedJapanRank}`;
+  }
+  const borderJapan = legend200Borders.japan ?? null;
+  if (Number.isFinite(endTrophies) && Number.isFinite(borderJapan)) {
+    const vsJapan = endTrophies - borderJapan;
+    const vsJapanFormatted =
+      vsJapan >= 0 ? `**+${vsJapan}**` : `**${vsJapan}**`;
+    const vsJapanArrow = vsJapan >= 0 ? config.emote.up : config.emote.down;
+    description += `\n:flag_jp: vs Japan 200th (**${borderJapan}**): ${vsJapanArrow}${vsJapanFormatted}`;
   }
   embed.setDescription(description);
   embed.setColor(config.color.legend);
