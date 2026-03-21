@@ -710,6 +710,16 @@ async function warLineupMain(interaction, client) {
   embed.setTitle('**LINEUP**');
   embed.setColor(config.color[iLeague]);
 
+  if (!mongoWar || !mongoWar.clan_war?.clan?.members || !mongoWar.opponent_war?.clan?.members) {
+    let description = `*no lineup*\n`;
+    description += `league: ${iLeague}\n`;
+    description += `week: ${iWeek}\n`;
+    description += `match: ${iMatch}\n`;
+    embed.setDescription(description);
+    await interaction.followUp({ embeds: [embed] });
+    return;
+  }
+
   try {
     let teamAbbr_A = mongoWar.clan_abbr;
     let teamAbbr_B = mongoWar.opponent_abbr;
