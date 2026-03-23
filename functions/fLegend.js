@@ -1139,9 +1139,17 @@ async function createLogReset(scPlayer, mongoAcc, eventData, seasonData) {
   } else {
     description += `:exclamation: The league has been reset.\n`;
   }
-  const tournamentStartUnix = Math.floor(
+  // Non-legend reset has a 24-hour sign-up window after reset.
+  const tournamentStartUnixFromReset = Number.isFinite(eventData.unixTimeSeconds)
+    ? eventData.unixTimeSeconds + 24 * 60 * 60
+    : NaN;
+  const tournamentStartUnixFromWindow = Math.floor(
     new Date(seasonData.tournamentWindow.startTime).getTime() / 1000,
   );
+  const tournamentStartUnix = Number.isFinite(tournamentStartUnixFromReset)
+    && tournamentStartUnixFromReset > 0
+    ? tournamentStartUnixFromReset
+    : tournamentStartUnixFromWindow;
   description += `Sign up now to join the next tournament.\n`;
   if (Number.isFinite(tournamentStartUnix) && tournamentStartUnix > 0) {
     description += `Tournament starts at: <t:${tournamentStartUnix}:F> (<t:${tournamentStartUnix}:R>)\n`;

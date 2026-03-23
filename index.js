@@ -376,6 +376,7 @@ class PollingSystem {
           tag: 1,
           'legend.logSettings': 1,
           'legend.events': 1,
+          'leagueTier.id': 1,
           'pilotDC.id': 1,
           name: 1,
           townHallLevel: 1,
