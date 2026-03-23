@@ -1,83 +1,83 @@
-import { SlashCommandBuilder } from "discord.js";
-import { EmbedBuilder, ChannelType, PermissionsBitField } from "discord.js";
-import config from "../../config/config.js";
-import schedule from "../../config/schedule.js";
-import * as functions from "../../functions/functions.js";
-import * as fGetWars from "../../functions/fGetWars.js";
-import * as fScore from "../../functions/fScore.js";
-import * as fRanking from "../../functions/fRanking.js";
-import * as fMongo from "../../functions/fMongo.js";
-import * as fCron from "../../functions/fCron.js";
+import { SlashCommandBuilder } from 'discord.js';
+import { EmbedBuilder, ChannelType, PermissionsBitField } from 'discord.js';
+import config from '../../config/config.js';
+import schedule from '../../config/schedule.js';
+import * as functions from '../../functions/functions.js';
+import * as fGetWars from '../../functions/fGetWars.js';
+import * as fScore from '../../functions/fScore.js';
+import * as fRanking from '../../functions/fRanking.js';
+import * as fMongo from '../../functions/fMongo.js';
+import * as fCron from '../../functions/fCron.js';
 
-const nameCommand = "admin";
+const nameCommand = 'admin';
 let data = new SlashCommandBuilder()
   .setName(nameCommand)
-  .setDescription("no description")
+  .setDescription('no description')
   // subcommandGroup 0
   .addSubcommandGroup((subcommandgroup) =>
     subcommandgroup
-      .setName("create")
-      .setDescription("no description")
+      .setName('create')
+      .setDescription('no description')
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("negotiation_channels")
+          .setName('negotiation_channels')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["create"][
-              "negotiation_channels"
+            config.adminCommand[nameCommand].subCommandGroup['create'][
+              'negotiation_channels'
             ],
           )
           .addStringOption((option) =>
-            option.setName("league").setDescription("リーグ").setRequired(true),
+            option.setName('league').setDescription('リーグ').setRequired(true),
           )
           .addIntegerOption((option) =>
-            option.setName("week").setDescription("週").setRequired(true),
+            option.setName('week').setDescription('週').setRequired(true),
           ),
       )
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("team_channel")
+          .setName('team_channel')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["create"][
-              "team_channel"
+            config.adminCommand[nameCommand].subCommandGroup['create'][
+              'team_channel'
             ],
           )
           .addStringOption((option) =>
-            option.setName("league").setDescription("リーグ").setRequired(true),
+            option.setName('league').setDescription('リーグ').setRequired(true),
           )
           .addStringOption((option) =>
             option
-              .setName("team_name")
-              .setDescription("チーム名")
+              .setName('team_name')
+              .setDescription('チーム名')
               .setRequired(true),
           )
           .addUserOption((option) =>
             option
-              .setName("rep1st")
-              .setDescription("代表者1")
+              .setName('rep1st')
+              .setDescription('代表者1')
               .setRequired(true),
           )
           .addUserOption((option) =>
             option
-              .setName("rep2nd")
-              .setDescription("代表者2")
+              .setName('rep2nd')
+              .setDescription('代表者2')
               .setRequired(true),
           ),
       )
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("team_data")
+          .setName('team_data')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["create"][
-              "team_data"
+            config.adminCommand[nameCommand].subCommandGroup['create'][
+              'team_data'
             ],
           )
           .addStringOption((option) =>
-            option.setName("league").setDescription("リーグ").setRequired(true),
+            option.setName('league').setDescription('リーグ').setRequired(true),
           )
           .addStringOption((option) =>
             option
-              .setName("abbreviation")
-              .setDescription("チーム略称")
+              .setName('abbreviation')
+              .setDescription('チーム略称')
               .setRequired(true),
           ),
       ),
@@ -85,100 +85,100 @@ let data = new SlashCommandBuilder()
   // subcommandGroup 1
   .addSubcommandGroup((subcommandgroup) =>
     subcommandgroup
-      .setName("update")
-      .setDescription("no description")
+      .setName('update')
+      .setDescription('no description')
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("single_war")
+          .setName('single_war')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["update"][
-              "single_war"
+            config.adminCommand[nameCommand].subCommandGroup['update'][
+              'single_war'
             ],
           )
           .addStringOption((option) =>
-            option.setName("league").setDescription("リーグ").setRequired(true),
+            option.setName('league').setDescription('リーグ').setRequired(true),
           )
           .addIntegerOption((option) =>
-            option.setName("week").setDescription("週").setRequired(true),
+            option.setName('week').setDescription('週').setRequired(true),
           )
           .addIntegerOption((option) =>
             option
-              .setName("match")
-              .setDescription("対戦")
+              .setName('match')
+              .setDescription('対戦')
               .setRequired(true)
               .setAutocomplete(true),
           )
           .addStringOption((option) =>
             option
-              .setName("change_state")
-              .setDescription("強制対戦状況変更")
+              .setName('change_state')
+              .setDescription('強制対戦状況変更')
               .addChoices(
-                { name: "warEnded", value: "warEnded" },
-                { name: "inWar", value: "inWar" },
-                { name: "preparation", value: "preparation" },
+                { name: 'warEnded', value: 'warEnded' },
+                { name: 'inWar', value: 'inWar' },
+                { name: 'preparation', value: 'preparation' },
               ),
           ),
       )
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("every_war")
+          .setName('every_war')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["update"][
-              "every_war"
+            config.adminCommand[nameCommand].subCommandGroup['update'][
+              'every_war'
             ],
           )
           .addStringOption((option) =>
-            option.setName("league").setDescription("リーグ").setRequired(true),
+            option.setName('league').setDescription('リーグ').setRequired(true),
           )
           .addIntegerOption((option) =>
-            option.setName("week").setDescription("週").setRequired(true),
+            option.setName('week').setDescription('週').setRequired(true),
           ),
       )
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("league_standings")
+          .setName('league_standings')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["update"][
-              "league_standings"
+            config.adminCommand[nameCommand].subCommandGroup['update'][
+              'league_standings'
             ],
           )
           .addStringOption((option) =>
-            option.setName("league").setDescription("リーグ").setRequired(true),
+            option.setName('league').setDescription('リーグ').setRequired(true),
           ),
       )
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("season_score")
+          .setName('season_score')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["update"][
-              "season_score"
+            config.adminCommand[nameCommand].subCommandGroup['update'][
+              'season_score'
             ],
           )
           .addStringOption((option) =>
-            option.setName("league").setDescription("リーグ").setRequired(true),
+            option.setName('league').setDescription('リーグ').setRequired(true),
           ),
       )
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("single_account_data")
+          .setName('single_account_data')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["update"][
-              "single_account_data"
+            config.adminCommand[nameCommand].subCommandGroup['update'][
+              'single_account_data'
             ],
           )
           .addStringOption((option) =>
             option
-              .setName("tag")
-              .setDescription("プレイヤータグ")
+              .setName('tag')
+              .setDescription('プレイヤータグ')
               .setRequired(true),
           ),
       )
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("all_account_data")
+          .setName('all_account_data')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["update"][
-              "all_account_data"
+            config.adminCommand[nameCommand].subCommandGroup['update'][
+              'all_account_data'
             ],
           ),
       ),
@@ -186,287 +186,287 @@ let data = new SlashCommandBuilder()
   // subcommandGroup 2
   .addSubcommandGroup((subcommandgroup) =>
     subcommandgroup
-      .setName("edit")
-      .setDescription("no description")
+      .setName('edit')
+      .setDescription('no description')
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("attack_result")
+          .setName('attack_result')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["edit"][
-              "attack_result"
+            config.adminCommand[nameCommand].subCommandGroup['edit'][
+              'attack_result'
             ],
           )
           .addStringOption((option) =>
-            option.setName("league").setDescription("リーグ").setRequired(true),
+            option.setName('league').setDescription('リーグ').setRequired(true),
           )
           .addIntegerOption((option) =>
-            option.setName("week").setDescription("週").setRequired(true),
+            option.setName('week').setDescription('週').setRequired(true),
           )
           .addIntegerOption((option) =>
             option
-              .setName("match")
-              .setDescription("対戦")
+              .setName('match')
+              .setDescription('対戦')
               .setRequired(true)
               .setAutocomplete(true),
           )
           .addStringOption((option) =>
             option
-              .setName("team")
-              .setDescription("チーム")
+              .setName('team')
+              .setDescription('チーム')
               .setRequired(true)
               .setAutocomplete(true),
           )
           .addIntegerOption((option) =>
             option
-              .setName("attack")
-              .setDescription("攻撃")
+              .setName('attack')
+              .setDescription('攻撃')
               .setRequired(true)
               .setAutocomplete(true),
           )
           .addStringOption((option) =>
             option
-              .setName("action")
-              .setDescription("内容")
+              .setName('action')
+              .setDescription('内容')
               .setRequired(true)
-              .addChoices({ name: "星1 減", value: "1StarDeduction" })
-              .addChoices({ name: "無効", value: "Invalidate" }),
+              .addChoices({ name: '星1 減', value: '1StarDeduction' })
+              .addChoices({ name: '無効', value: 'Invalidate' }),
           )
           .addStringOption((option) =>
             option
-              .setName("reason")
-              .setDescription("理由（記入）")
+              .setName('reason')
+              .setDescription('理由（記入）')
               .setRequired(true),
           ),
       )
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("war")
+          .setName('war')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["edit"]["war"],
+            config.adminCommand[nameCommand].subCommandGroup['edit']['war'],
           )
           .addStringOption((option) =>
-            option.setName("league").setDescription("リーグ").setRequired(true),
+            option.setName('league').setDescription('リーグ').setRequired(true),
           )
           .addIntegerOption((option) =>
-            option.setName("week").setDescription("週").setRequired(true),
+            option.setName('week').setDescription('週').setRequired(true),
           )
           .addIntegerOption((option) =>
             option
-              .setName("match")
-              .setDescription("対戦")
+              .setName('match')
+              .setDescription('対戦')
               .setRequired(true)
               .setAutocomplete(true),
           )
           .addStringOption((option) =>
             option
-              .setName("action")
-              .setDescription("内容")
+              .setName('action')
+              .setDescription('内容')
               .setRequired(true)
               .addChoices(
-                { name: "没収試合（要：勝利クランを選択）", value: "forfeit" },
+                { name: '没収試合（要：勝利クランを選択）', value: 'forfeit' },
                 {
-                  name: "星数減点（要：クラン・減点数を選択）",
-                  value: "deductStar",
+                  name: '星数減点（要：クラン・減点数を選択）',
+                  value: 'deductStar',
                 },
                 {
-                  name: "防衛ポイント加点（要：クラン・加点数を選択）",
-                  value: "addDefPoint",
+                  name: '防衛ポイント加点（要：クラン・加点数を選択）',
+                  value: 'addDefPoint',
                 },
                 {
-                  name: "星数＆破壊率減点（要：クラン・減点数を選択）",
-                  value: "deductStarAndDestruction",
+                  name: '星数＆破壊率減点（要：クラン・減点数を選択）',
+                  value: 'deductStarAndDestruction',
                 },
-                { name: "配信フラグ ON/OFF", value: "stream" },
+                { name: '配信フラグ ON/OFF', value: 'stream' },
                 {
-                  name: "対戦結果の手動追加（要：星数・破壊率・全壊数・攻撃数・サイズ）",
-                  value: "addResult",
+                  name: '対戦結果の手動追加（要：星数・破壊率・全壊数・攻撃数・サイズ）',
+                  value: 'addResult',
                 },
               ),
           )
           .addStringOption((option) =>
             option
-              .setName("team")
-              .setDescription("チーム")
+              .setName('team')
+              .setDescription('チーム')
               .setAutocomplete(true),
           )
           .addIntegerOption((option) =>
             option
-              .setName("point")
-              .setDescription("加点数/減点数")
+              .setName('point')
+              .setDescription('加点数/減点数')
               .addChoices(
-                { name: "1", value: 1 },
-                { name: "2", value: 2 },
-                { name: "3", value: 3 },
-                { name: "4", value: 4 },
-                { name: "5", value: 5 },
+                { name: '1', value: 1 },
+                { name: '2', value: 2 },
+                { name: '3', value: 3 },
+                { name: '4', value: 4 },
+                { name: '5', value: 5 },
               ),
           )
           .addStringOption((option) =>
-            option.setName("reason").setDescription("理由（記入）"),
+            option.setName('reason').setDescription('理由（記入）'),
           )
           .addIntegerOption((option) =>
-            option.setName("clan_stars").setDescription("自軍の星数"),
+            option.setName('clan_stars').setDescription('自軍の星数'),
           )
           .addIntegerOption((option) =>
-            option.setName("opp_stars").setDescription("相手の星数"),
+            option.setName('opp_stars').setDescription('相手の星数'),
           )
           .addNumberOption((option) =>
-            option.setName("clan_destruction").setDescription("自軍の破壊率"),
+            option.setName('clan_destruction').setDescription('自軍の破壊率'),
           )
           .addNumberOption((option) =>
-            option.setName("opp_destruction").setDescription("相手の破壊率"),
+            option.setName('opp_destruction').setDescription('相手の破壊率'),
           )
           .addIntegerOption((option) =>
-            option.setName("clan_triples").setDescription("自軍の全壊数"),
+            option.setName('clan_triples').setDescription('自軍の全壊数'),
           )
           .addIntegerOption((option) =>
-            option.setName("opp_triples").setDescription("相手の全壊数"),
+            option.setName('opp_triples').setDescription('相手の全壊数'),
           )
           .addIntegerOption((option) =>
-            option.setName("clan_attacks").setDescription("自軍の攻撃数"),
+            option.setName('clan_attacks').setDescription('自軍の攻撃数'),
           )
           .addIntegerOption((option) =>
-            option.setName("opp_attacks").setDescription("相手の攻撃数"),
+            option.setName('opp_attacks').setDescription('相手の攻撃数'),
           )
           .addIntegerOption((option) =>
-            option.setName("war_size").setDescription("戦争サイズ"),
+            option.setName('war_size').setDescription('戦争サイズ'),
           ),
       )
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("team_score")
+          .setName('team_score')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["edit"][
-              "team_score"
+            config.adminCommand[nameCommand].subCommandGroup['edit'][
+              'team_score'
             ],
           )
           .addStringOption((option) =>
-            option.setName("league").setDescription("リーグ").setRequired(true),
+            option.setName('league').setDescription('リーグ').setRequired(true),
           )
           .addStringOption((option) =>
             option
-              .setName("team")
-              .setDescription("チーム")
+              .setName('team')
+              .setDescription('チーム')
               .setRequired(true)
               .setAutocomplete(true),
           )
           .addStringOption((option) =>
             option
-              .setName("action")
-              .setDescription("内容")
+              .setName('action')
+              .setDescription('内容')
               .setRequired(true)
               .addChoices(
-                { name: "勝ち点加点（要：加点数を選択）", value: "addPoint" },
-                { name: "星数差減点（要：減点数を選択）", value: "deductStar" },
+                { name: '勝ち点加点（要：加点数を選択）', value: 'addPoint' },
+                { name: '星数差減点（要：減点数を選択）', value: 'deductStar' },
               ),
           )
           .addIntegerOption((option) =>
             option
-              .setName("point")
-              .setDescription("加点数/減点数")
+              .setName('point')
+              .setDescription('加点数/減点数')
               .setRequired(true)
               .addChoices(
-                { name: "1", value: 1 },
-                { name: "2", value: 2 },
-                { name: "3", value: 3 },
-                { name: "4", value: 4 },
-                { name: "5", value: 5 },
+                { name: '1', value: 1 },
+                { name: '2', value: 2 },
+                { name: '3', value: 3 },
+                { name: '4', value: 4 },
+                { name: '5', value: 5 },
               ),
           ),
       )
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("add_attack")
+          .setName('add_attack')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["edit"][
-              "add_attack"
+            config.adminCommand[nameCommand].subCommandGroup['edit'][
+              'add_attack'
             ],
           )
           .addStringOption((option) =>
-            option.setName("league").setDescription("リーグ").setRequired(true),
+            option.setName('league').setDescription('リーグ').setRequired(true),
           )
           .addIntegerOption((option) =>
-            option.setName("week").setDescription("週").setRequired(true),
+            option.setName('week').setDescription('週').setRequired(true),
           )
           .addIntegerOption((option) =>
             option
-              .setName("match")
-              .setDescription("対戦")
+              .setName('match')
+              .setDescription('対戦')
               .setRequired(true)
               .setAutocomplete(true),
           )
           .addStringOption((option) =>
             option
-              .setName("team")
-              .setDescription("チーム")
+              .setName('team')
+              .setDescription('チーム')
               .setRequired(true)
               .setAutocomplete(true),
           )
           .addStringOption((option) =>
             option
-              .setName("attacker")
-              .setDescription("攻撃プレイヤー")
+              .setName('attacker')
+              .setDescription('攻撃プレイヤー')
               .setRequired(true)
               .setAutocomplete(true),
           )
           .addStringOption((option) =>
             option
-              .setName("defender")
-              .setDescription("防衛プレイヤー")
+              .setName('defender')
+              .setDescription('防衛プレイヤー')
               .setRequired(true)
               .setAutocomplete(true),
           )
           .addStringOption((option) =>
             option
-              .setName("attack_type")
-              .setDescription("初見/非初見/オーバーキル")
+              .setName('attack_type')
+              .setDescription('初見/非初見/オーバーキル')
               .setRequired(true)
               .addChoices(
-                { name: "初見", value: "fresh" },
-                { name: "非初見", value: "cleanup" },
-                { name: "オーバーキル", value: "overkill" },
+                { name: '初見', value: 'fresh' },
+                { name: '非初見', value: 'cleanup' },
+                { name: 'オーバーキル', value: 'overkill' },
               ),
           )
           .addIntegerOption((option) =>
             option
-              .setName("stars")
-              .setDescription("星数")
+              .setName('stars')
+              .setDescription('星数')
               .setRequired(true)
               .addChoices(
-                { name: "0", value: 0 },
-                { name: "1", value: 1 },
-                { name: "2", value: 2 },
-                { name: "3", value: 3 },
+                { name: '0', value: 0 },
+                { name: '1', value: 1 },
+                { name: '2', value: 2 },
+                { name: '3', value: 3 },
               ),
           )
           .addIntegerOption((option) =>
             option
-              .setName("destruction")
-              .setDescription("破壊率")
+              .setName('destruction')
+              .setDescription('破壊率')
               .setRequired(true)
               .setAutocomplete(true),
           ),
       )
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("account")
+          .setName('account')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["edit"]["account"],
+            config.adminCommand[nameCommand].subCommandGroup['edit']['account'],
           )
           .addStringOption((option) =>
             option
-              .setName("tag")
-              .setDescription("アカウントタグ")
+              .setName('tag')
+              .setDescription('アカウントタグ')
               .setRequired(true),
           )
           .addStringOption((option) =>
             option
-              .setName("action")
-              .setDescription("編集内容")
+              .setName('action')
+              .setDescription('編集内容')
               .setRequired(true)
               .addChoices(
-                { name: "status ON/OFF", value: "status" },
-                { name: "streamer ON/OFF", value: "streamer" },
+                { name: 'status ON/OFF', value: 'status' },
+                { name: 'streamer ON/OFF', value: 'streamer' },
               ),
           ),
       ),
@@ -474,117 +474,117 @@ let data = new SlashCommandBuilder()
   // subcommandGroup 3
   .addSubcommandGroup((subcommandgroup) =>
     subcommandgroup
-      .setName("edit_dc")
-      .setDescription("no description")
+      .setName('edit_dc')
+      .setDescription('no description')
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("role")
+          .setName('role')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["edit_dc"]["role"],
+            config.adminCommand[nameCommand].subCommandGroup['edit_dc']['role'],
           )
           .addUserOption((option) =>
-            option.setName("user").setDescription("ユーザー").setRequired(true),
+            option.setName('user').setDescription('ユーザー').setRequired(true),
           )
           .addStringOption((option) =>
             option
-              .setName("action")
-              .setDescription("編集内容")
+              .setName('action')
+              .setDescription('編集内容')
               .setRequired(true)
               .addChoices(
-                { name: "ロール追加", value: "add" },
-                { name: "ロール削除", value: "remove" },
+                { name: 'ロール追加', value: 'add' },
+                { name: 'ロール削除', value: 'remove' },
               ),
           )
           .addStringOption((option) =>
-            option.setName("league").setDescription("リーグ").setRequired(true),
+            option.setName('league').setDescription('リーグ').setRequired(true),
           ),
       )
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("ch_view_permission")
+          .setName('ch_view_permission')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["edit_dc"][
-              "ch_view_permission"
+            config.adminCommand[nameCommand].subCommandGroup['edit_dc'][
+              'ch_view_permission'
             ],
           )
           .addStringOption((option) =>
             option
-              .setName("action")
-              .setDescription("実行内容")
+              .setName('action')
+              .setDescription('実行内容')
               .setRequired(true)
               .addChoices(
-                { name: "削除", value: "delete" },
-                { name: "追加", value: "add" },
+                { name: '削除', value: 'delete' },
+                { name: '追加', value: 'add' },
               ),
           )
           .addUserOption((option) =>
-            option.setName("user").setDescription("ユーザー").setRequired(true),
+            option.setName('user').setDescription('ユーザー').setRequired(true),
           )
           .addChannelOption((option) =>
             option
-              .setName("channel")
-              .setDescription("チャンネル")
+              .setName('channel')
+              .setDescription('チャンネル')
               .setRequired(true),
           ),
       )
           .addSubcommand((subcommand) =>
         subcommand
-          .setName("ch_emote")
+          .setName('ch_emote')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["edit_dc"][
-              "ch_emote"
+            config.adminCommand[nameCommand].subCommandGroup['edit_dc'][
+              'ch_emote'
             ],
           )
           .addStringOption((option) =>
             option
-              .setName("action")
-              .setDescription("編集内容")
+              .setName('action')
+              .setDescription('編集内容')
               .setRequired(true)
               .addChoices(
-                { name: "受付完了", value: "accepted" },
-                { name: "不参加", value: "declined" },
-                { name: "新規応募", value: "new" },
-                { name: "初期化（絵文字削除）", value: "initialize" },
+                { name: '受付完了', value: 'accepted' },
+                { name: '不参加', value: 'declined' },
+                { name: '新規応募', value: 'new' },
+                { name: '初期化（絵文字削除）', value: 'initialize' },
               ),
           ),
       )
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("ch_emote_all")
+          .setName('ch_emote_all')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["edit_dc"][
-              "ch_emote_all"
+            config.adminCommand[nameCommand].subCommandGroup['edit_dc'][
+              'ch_emote_all'
             ],
           )
           .addStringOption((option) =>
-            option.setName("league").setDescription("リーグ").setRequired(true),
+            option.setName('league').setDescription('リーグ').setRequired(true),
           ),
       )
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("ch_name")
+          .setName('ch_name')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["edit_dc"][
-              "ch_name"
+            config.adminCommand[nameCommand].subCommandGroup['edit_dc'][
+              'ch_name'
             ],
           )
           .addStringOption((option) =>
             option
-              .setName("new_channel_name")
-              .setDescription("チャンネル名")
+              .setName('new_channel_name')
+              .setDescription('チャンネル名')
               .setRequired(true),
           ),
       )
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("delete_nego_chs")
+          .setName('delete_nego_chs')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["edit_dc"][
-              "delete_nego_chs"
+            config.adminCommand[nameCommand].subCommandGroup['edit_dc'][
+              'delete_nego_chs'
             ],
           )
           .addIntegerOption((option) =>
-            option.setName("week").setDescription("週").setRequired(true),
+            option.setName('week').setDescription('週').setRequired(true),
           ),
       ),
   )
@@ -592,50 +592,50 @@ let data = new SlashCommandBuilder()
   .addSubcommandGroup(
     (subcommandgroup) =>
       subcommandgroup
-        .setName("info")
-        .setDescription("no description")
+        .setName('info')
+        .setDescription('no description')
         .addSubcommand((subcommand) =>
           subcommand
-            .setName("war_summary")
+            .setName('war_summary')
             .setDescription(
-              config.adminCommand[nameCommand].subCommandGroup["info"][
-                "war_summary"
+              config.adminCommand[nameCommand].subCommandGroup['info'][
+                'war_summary'
               ],
             )
             .addStringOption((option) =>
               option
-                .setName("league")
-                .setDescription("リーグ")
+                .setName('league')
+                .setDescription('リーグ')
                 .setRequired(true),
             )
             .addIntegerOption((option) =>
-              option.setName("week").setDescription("週").setRequired(true),
+              option.setName('week').setDescription('週').setRequired(true),
             ),
         )
         .addSubcommand((subcommand) =>
           subcommand
-            .setName("ranking_summary")
+            .setName('ranking_summary')
             .setDescription(
-              config.adminCommand[nameCommand].subCommandGroup["info"][
-                "ranking_summary"
+              config.adminCommand[nameCommand].subCommandGroup['info'][
+                'ranking_summary'
               ],
             )
             .addStringOption((option) =>
               option
-                .setName("league")
-                .setDescription("リーグ")
+                .setName('league')
+                .setDescription('リーグ')
                 .setRequired(true),
             )
             .addIntegerOption((option) =>
-              option.setName("th_level").setDescription("タウンホールレベル"),
+              option.setName('th_level').setDescription('タウンホールレベル'),
             ),
         )
         .addSubcommand((subcommand) =>
           subcommand
-            .setName("bot_status")
+            .setName('bot_status')
             .setDescription(
-              config.adminCommand[nameCommand].subCommandGroup["info"][
-                "bot_status"
+              config.adminCommand[nameCommand].subCommandGroup['info'][
+                'bot_status'
               ],
             ),
         ),
@@ -650,123 +650,123 @@ let data = new SlashCommandBuilder()
   // subcommandGroup 5
   .addSubcommandGroup((subcommandgroup) =>
     subcommandgroup
-      .setName("roster")
-      .setDescription("no description")
+      .setName('roster')
+      .setDescription('no description')
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("delete")
+          .setName('delete')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["roster"][
-              "delete"
+            config.adminCommand[nameCommand].subCommandGroup['roster'][
+              'delete'
             ],
           )
           .addStringOption((option) =>
             option
-              .setName("team")
-              .setDescription("チーム")
+              .setName('team')
+              .setDescription('チーム')
               .setRequired(true)
               .setAutocomplete(true),
           )
           .addStringOption((option) =>
             option
-              .setName("account")
-              .setDescription("アカウント")
+              .setName('account')
+              .setDescription('アカウント')
               .setRequired(true)
               .setAutocomplete(true),
           ),
       )
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("update_season")
+          .setName('update_season')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["roster"][
-              "update_season"
+            config.adminCommand[nameCommand].subCommandGroup['roster'][
+              'update_season'
             ],
           )
           .addStringOption((option) =>
-            option.setName("league").setDescription("リーグ").setRequired(true),
+            option.setName('league').setDescription('リーグ').setRequired(true),
           ),
       ),
   )
   // subcommandGroup 6
   .addSubcommandGroup((subcommandgroup) =>
     subcommandgroup
-      .setName("set")
-      .setDescription("no description")
+      .setName('set')
+      .setDescription('no description')
       .addSubcommand((subcommand) =>
         subcommand
-          .setName("weeknow")
+          .setName('weeknow')
           .setDescription(
-            config.adminCommand[nameCommand].subCommandGroup["set"]["weeknow"],
+            config.adminCommand[nameCommand].subCommandGroup['set']['weeknow'],
           )
           .addStringOption((option) =>
             option
-              .setName("league")
-              .setDescription("リーグ (j1/j2/swiss/mix/five)")
+              .setName('league')
+              .setDescription('リーグ (j1/j2/swiss/mix/five)')
               .setRequired(true)
               .addChoices(
-                { name: "J1", value: "j1" },
-                { name: "J2", value: "j2" },
-                { name: "SWISS", value: "swiss" },
-                { name: "MIX", value: "mix" },
-                { name: "5V", value: "five" },
+                { name: 'J1', value: 'j1' },
+                { name: 'J2', value: 'j2' },
+                { name: 'SWISS', value: 'swiss' },
+                { name: 'MIX', value: 'mix' },
+                { name: '5V', value: 'five' },
               ),
           )
           .addIntegerOption((option) =>
-            option.setName("week").setDescription("週番号").setRequired(true),
+            option.setName('week').setDescription('週番号').setRequired(true),
           ),
       ),
   )
   // 7
   .addSubcommand((subcommand) =>
     subcommand
-      .setName("send_message_war_ended")
+      .setName('send_message_war_ended')
       .setDescription(
-        config.adminCommand[nameCommand].subCommand["send_message_war_ended"],
+        config.adminCommand[nameCommand].subCommand['send_message_war_ended'],
       )
       .addChannelOption((option) =>
         option
-          .setName("channel")
-          .setDescription("チャンネル")
+          .setName('channel')
+          .setDescription('チャンネル')
           .setRequired(true),
       ),
   )
   // 7
   .addSubcommand((subcommand) =>
     subcommand
-      .setName("scan_clan")
-      .setDescription(config.adminCommand[nameCommand].subCommand["scan_clan"])
+      .setName('scan_clan')
+      .setDescription(config.adminCommand[nameCommand].subCommand['scan_clan'])
       .addStringOption((option) =>
-        option.setName("league").setDescription("リーグ").setRequired(true),
+        option.setName('league').setDescription('リーグ').setRequired(true),
       )
       .addStringOption((option) =>
-        option.setName("team").setDescription("チーム").setAutocomplete(true),
+        option.setName('team').setDescription('チーム').setAutocomplete(true),
       ),
   )
   // 8
   .addSubcommand((subcommand) =>
     subcommand
-      .setName("mention_reps")
+      .setName('mention_reps')
       .setDescription(
-        config.adminCommand[nameCommand].subCommand["mention_reps"],
+        config.adminCommand[nameCommand].subCommand['mention_reps'],
       )
       .addStringOption((option) =>
-        option.setName("league").setDescription("リーグ").setRequired(true),
+        option.setName('league').setDescription('リーグ').setRequired(true),
       )
       .addIntegerOption((option) =>
-        option.setName("week").setDescription("週").setRequired(true),
+        option.setName('week').setDescription('週').setRequired(true),
       )
       .addIntegerOption((option) =>
         option
-          .setName("match")
-          .setDescription("対戦")
+          .setName('match')
+          .setDescription('対戦')
           .setRequired(true)
           .setAutocomplete(true),
       )
       .addStringOption((option) =>
         option
-          .setName("message")
-          .setDescription("メンション内容")
+          .setName('message')
+          .setDescription('メンション内容')
           .setRequired(true),
       ),
   )
@@ -774,8 +774,8 @@ let data = new SlashCommandBuilder()
   .addSubcommand(
     (subcommand) =>
       subcommand
-        .setName("test")
-        .setDescription(config.adminCommand[nameCommand].subCommand["test"]),
+        .setName('test')
+        .setDescription(config.adminCommand[nameCommand].subCommand['test']),
     /*.addStringOption(option =>
       option.setName('channel').setDescription('チャンネル').setRequired(true)
     )
@@ -835,25 +835,25 @@ export default {
     const subcommand = interaction.options.getSubcommand();
 
     const focusedOption = interaction.options.getFocused(true);
-    let iLeague = await interaction.options.getString("league");
+    let iLeague = await interaction.options.getString('league');
     if (iLeague == null) {
-      iLeague = "j1";
+      iLeague = 'j1';
     }
-    let iWeek = await interaction.options.getInteger("week");
+    let iWeek = await interaction.options.getInteger('week');
     if (iWeek == null || iWeek == 99) {
       iWeek = await functions.getWeekNow(iLeague);
     }
 
-    if (subcommandGroup == "roster") {
+    if (subcommandGroup == 'roster') {
       const mongoTeam = await client.clientMongo
-        .db("jwc")
-        .collection("clans")
+        .db('jwc')
+        .collection('clans')
         .findOne(
           { rep_channel: interaction.channel.id },
           { projection: { clan_abbr: 1, team_name: 1, _id: 0 } },
         );
 
-      if (focusedOption.name === "team") {
+      if (focusedOption.name === 'team') {
         if (mongoTeam) {
           await interaction.respond([
             {
@@ -862,11 +862,11 @@ export default {
             },
           ]);
         }
-      } else if (focusedOption.name === "account") {
-        const iTeamAbbr = await interaction.options.getString("team");
+      } else if (focusedOption.name === 'account') {
+        const iTeamAbbr = await interaction.options.getString('team');
         let leagueM = mongoTeam.league;
-        if (leagueM == "j1" || leagueM == "j2") {
-          leagueM = "j";
+        if (leagueM == 'j1' || leagueM == 'j2') {
+          leagueM = 'j';
         }
 
         const query = { [`homeClanAbbr.${leagueM}`]: iTeamAbbr, status: true };
@@ -882,8 +882,8 @@ export default {
         };
         const sort = { townHallLevel: -1, [`pilotName.${leagueM}`]: 1 };
         const cursor = client.clientMongo
-          .db("jwc")
-          .collection("accounts")
+          .db('jwc')
+          .collection('accounts')
           .find(query, options)
           .sort(sort);
         let accs = await cursor.toArray();
@@ -900,7 +900,7 @@ export default {
         }
 
         await interaction.respond([
-          { name: "ALL", value: "all" },
+          { name: 'ALL', value: 'all' },
           ...accs.map((acc) => ({
             name: `[TH${acc.townHallLevel}] ${acc.name} | ${acc.pilotName[leagueM]}`,
             value: acc.tag,
@@ -908,7 +908,7 @@ export default {
         ]);
       }
     } else {
-      if (focusedOption.name === "match") {
+      if (focusedOption.name === 'match') {
         const query = {
           season: config.season[iLeague],
           league: iLeague,
@@ -927,8 +927,8 @@ export default {
         };
         const sort = { match: 1 };
         const cursor = client.clientMongo
-          .db("jwc")
-          .collection("wars")
+          .db('jwc')
+          .collection('wars')
           .find(query, options)
           .sort(sort);
         let mongoWars = await cursor.toArray();
@@ -942,21 +942,21 @@ export default {
             })),
           );
         }
-      } else if (focusedOption.name === "team") {
+      } else if (focusedOption.name === 'team') {
         // 対戦のどちらかのチーム
         if (
-          subcommand === "attack_result" ||
-          subcommand === "war" ||
-          subcommand === "add_attack"
+          subcommand === 'attack_result' ||
+          subcommand === 'war' ||
+          subcommand === 'add_attack'
         ) {
-          const iMatch = await interaction.options.getInteger("match");
+          const iMatch = await interaction.options.getInteger('match');
           const query = {
             season: config.season[iLeague],
             league: iLeague,
             week: iWeek,
             match: iMatch,
           };
-          const myColl = client.clientMongo.db("jwc").collection("wars");
+          const myColl = client.clientMongo.db('jwc').collection('wars');
           const mongoWar = await myColl.findOne(query, {
             projection: { clan_abbr: 1, opponent_abbr: 1, _id: 0 },
           });
@@ -974,12 +974,12 @@ export default {
         // リーグ内全チーム
         else {
           const focusedValue = interaction.options.getFocused();
-          const iLeague = await interaction.options.getString("league");
+          const iLeague = await interaction.options.getString('league');
           let teamList = await client.clientMongo
-            .db("jwc")
-            .collection("config")
+            .db('jwc')
+            .collection('config')
             .findOne(
-              { _id: "teamList" },
+              { _id: 'teamList' },
               { projection: { [iLeague]: 1, _id: 0 } },
             );
 
@@ -999,9 +999,9 @@ export default {
             })),
           );
         }
-      } else if (focusedOption.name === "attack") {
-        const iMatch = await interaction.options.getInteger("match");
-        const iClanAbbr = await interaction.options.getString("team");
+      } else if (focusedOption.name === 'attack') {
+        const iMatch = await interaction.options.getInteger('match');
+        const iClanAbbr = await interaction.options.getString('team');
         const query = {
           season: config.season[iLeague],
           league: iLeague,
@@ -1009,8 +1009,8 @@ export default {
           match: iMatch,
         };
         const mongoWar = await client.clientMongo
-          .db("jwc")
-          .collection("wars")
+          .db('jwc')
+          .collection('wars')
           .findOne(query, {
             projection: {
               clan_abbr: 1,
@@ -1048,16 +1048,16 @@ export default {
             value: attack.order,
           })),
         );
-      } else if (focusedOption.name === "attacker") {
-        const iMatch = await interaction.options.getInteger("match");
-        const iTeamAbbr = await interaction.options.getString("team");
+      } else if (focusedOption.name === 'attacker') {
+        const iMatch = await interaction.options.getInteger('match');
+        const iTeamAbbr = await interaction.options.getString('team');
         const query = {
           season: config.season[iLeague],
           league: iLeague,
           week: iWeek,
           match: iMatch,
         };
-        const myColl = client.clientMongo.db("jwc").collection("wars");
+        const myColl = client.clientMongo.db('jwc').collection('wars');
         const mongoWar = await myColl.findOne(query);
         let members = {};
         if (mongoWar.clan_abbr == String(iTeamAbbr).toLowerCase()) {
@@ -1080,16 +1080,16 @@ export default {
             value: member.tag,
           })),
         );
-      } else if (focusedOption.name === "defender") {
-        const iMatch = await interaction.options.getInteger("match");
-        const iTeamAbbr = await interaction.options.getString("team");
+      } else if (focusedOption.name === 'defender') {
+        const iMatch = await interaction.options.getInteger('match');
+        const iTeamAbbr = await interaction.options.getString('team');
         const query = {
           season: config.season[iLeague],
           league: iLeague,
           week: iWeek,
           match: iMatch,
         };
-        const myColl = client.clientMongo.db("jwc").collection("wars");
+        const myColl = client.clientMongo.db('jwc').collection('wars');
         const mongoWar = await myColl.findOne(query);
         let members = {};
         if (mongoWar.clan_abbr == String(iTeamAbbr).toLowerCase()) {
@@ -1112,7 +1112,7 @@ export default {
             value: member.tag,
           })),
         );
-      } else if (focusedOption.name === "destruction") {
+      } else if (focusedOption.name === 'destruction') {
         choices = [
           100, 99, 98, 97, 96, 95, 94, 93, 92, 91, 90, 89, 88, 87, 86, 85, 84,
           83, 82, 81, 80, 79, 78, 77, 76,
@@ -1135,65 +1135,65 @@ export default {
       return;
     }
 
-    if (subcommandGroup == "create") {
-      if (subcommand == "negotiation_channels") {
+    if (subcommandGroup == 'create') {
+      if (subcommand == 'negotiation_channels') {
         createNegoChMain(interaction, client);
-      } else if (subcommand == "team_channel") {
+      } else if (subcommand == 'team_channel') {
         createTeamChMain(interaction, client);
-      } else if (subcommand == "team_data") {
+      } else if (subcommand == 'team_data') {
         createTeamData(interaction, client);
       }
-    } else if (subcommandGroup == "update") {
-      if (subcommand == "single_war") {
+    } else if (subcommandGroup == 'update') {
+      if (subcommand == 'single_war') {
         updateSingleWar(interaction, client);
-      } else if (subcommand == "every_war") {
+      } else if (subcommand == 'every_war') {
         updateEveryWar(interaction, client);
-      } else if (subcommand == "league_standings") {
+      } else if (subcommand == 'league_standings') {
         updateLeagueStandings(interaction, client);
-      } else if (subcommand == "season_score") {
+      } else if (subcommand == 'season_score') {
         updateSeasonScore(interaction, client);
-      } else if (subcommand == "single_account_data") {
-        const tag = interaction.options.getString("tag");
+      } else if (subcommand == 'single_account_data') {
+        const tag = interaction.options.getString('tag');
         await fMongo.updateAcc(client, tag);
-        await interaction.followUp({ content: "*done*" }, { ephemeral: true });
-      } else if (subcommand == "all_account_data") {
+        await interaction.followUp({ content: '*done*' }, { ephemeral: true });
+      } else if (subcommand == 'all_account_data') {
         await fCron.cronLegend2pm(client);
-        await interaction.followUp({ content: "*done*" }, { ephemeral: true });
+        await interaction.followUp({ content: '*done*' }, { ephemeral: true });
       }
-    } else if (subcommandGroup == "edit") {
-      if (subcommand == "attack_result") {
+    } else if (subcommandGroup == 'edit') {
+      if (subcommand == 'attack_result') {
         editAttackResult(interaction, client);
-      } else if (subcommand == "war") {
+      } else if (subcommand == 'war') {
         editWarResult(interaction, client);
-      } else if (subcommand == "team_score") {
+      } else if (subcommand == 'team_score') {
         editTeamScore(interaction, client);
-      } else if (subcommand == "war_stream") {
+      } else if (subcommand == 'war_stream') {
         editStream(interaction, client);
-      } else if (subcommand == "add_attack") {
+      } else if (subcommand == 'add_attack') {
         addAttack(interaction, client);
-      } else if (subcommand == "account") {
+      } else if (subcommand == 'account') {
         editAccount(interaction, client);
       }
-    } else if (subcommandGroup == "edit_dc") {
-      if (subcommand == "role") {
+    } else if (subcommandGroup == 'edit_dc') {
+      if (subcommand == 'role') {
         editRole(interaction);
-      } else if (subcommand == "ch_view_permission") {
+      } else if (subcommand == 'ch_view_permission') {
         editChannelView(interaction);
-      } else if (subcommand == "ch_emote") {
+      } else if (subcommand == 'ch_emote') {
         editChannelEmote(interaction);
-      } else if (subcommand == "ch_emote_all") {
+      } else if (subcommand == 'ch_emote_all') {
         editChannelEmoteAll(interaction);
-      } else if (subcommand == "ch_name") {
+      } else if (subcommand == 'ch_name') {
         changeChannelName(interaction);
-      } else if (subcommand == "delete_nego_chs") {
+      } else if (subcommand == 'delete_nego_chs') {
         deleteNegoChs(interaction);
       }
-    } else if (subcommandGroup == "info") {
-      if (subcommand == "war_summary") {
+    } else if (subcommandGroup == 'info') {
+      if (subcommand == 'war_summary') {
         warSummary(interaction, client);
-      } else if (subcommand == "ranking_summary") {
+      } else if (subcommand == 'ranking_summary') {
         rankingSummary(interaction, client);
-      } else if (subcommand == "bot_status") {
+      } else if (subcommand == 'bot_status') {
         const embed = await functions.getEmbedStatusInfo(client.clientMongo);
         await interaction.followUp({ embeds: [embed] });
         return;
@@ -1205,16 +1205,16 @@ export default {
         return;
       }
       */
-    } else if (subcommandGroup == "roster") {
-      if (subcommand == "delete") {
+    } else if (subcommandGroup == 'roster') {
+      if (subcommand == 'delete') {
         deleteAccFromRoster(interaction, client);
-      } else if (subcommand == "update_season") {
+      } else if (subcommand == 'update_season') {
         updateSeasonOfRoster(interaction, client);
       }
-    } else if (subcommandGroup == "set") {
-      if (subcommand == "weeknow") {
-        const league = interaction.options.getString("league");
-        const week = interaction.options.getInteger("week");
+    } else if (subcommandGroup == 'set') {
+      if (subcommand == 'weeknow') {
+        const league = interaction.options.getString('league');
+        const week = interaction.options.getInteger('week');
         await fMongo.setWeekNowInDb(client.clientMongo, league, week);
         config.weekNow[league] = week;
         await interaction.followUp({
@@ -1222,31 +1222,31 @@ export default {
           ephemeral: true,
         });
       }
-    } else if (subcommand == "send_message_war_ended") {
+    } else if (subcommand == 'send_message_war_ended') {
       sendEndMessage(interaction, client);
-    } else if (subcommand == "scan_clan") {
+    } else if (subcommand == 'scan_clan') {
       scanClan(interaction, client);
-    } else if (subcommand == "mention_reps") {
+    } else if (subcommand == 'mention_reps') {
       mentionReps(interaction, client);
-    } else if (subcommand == "test") {
+    } else if (subcommand == 'test') {
       fMongo.legends200(client);
 
-      const idChannel = await interaction.options.getString("channel");
-      const idMessage = await interaction.options.getString("message");
+      const idChannel = await interaction.options.getString('channel');
+      const idMessage = await interaction.options.getString('message');
       const channel = await client.channels.fetch(idChannel);
       const message = await channel.messages.fetch(idMessage);
-      message.react("<:atama:906158271432372295>");
-      await interaction.followUp({ content: "*done*" }, { ephemeral: true });
+      message.react('<:atama:906158271432372295>');
+      await interaction.followUp({ content: '*done*' }, { ephemeral: true });
 
-      await interaction.followUp({ content: "_done_" });
+      await interaction.followUp({ content: '_done_' });
       return;
     }
   },
 };
 
 async function createNegoChMain(interaction, client) {
-  const iLeague = await interaction.options.getString("league");
-  let iWeek = await interaction.options.getInteger("week");
+  const iLeague = await interaction.options.getString('league');
+  let iWeek = await interaction.options.getInteger('week');
   if (iWeek == null || iWeek == 99) {
     iWeek = await functions.getWeekNow(iLeague);
   }
@@ -1255,25 +1255,25 @@ async function createNegoChMain(interaction, client) {
     season: config.season[iLeague],
     league: iLeague,
     week: iWeek,
-    nego_channel: "",
+    nego_channel: '',
   }; // nego_channel が未設定：チャンネル未作成の対戦のみ
   const options = {
     sort: { match: 1 },
     projection: { clan_war: 0, opponent_war: 0, result: 0 },
   };
   const cursor = client.clientMongo
-    .db("jwc")
-    .collection("wars")
+    .db('jwc')
+    .collection('wars')
     .find(query, options);
   let mongoWars = await cursor.toArray();
   await cursor.close();
 
-  let myContent = "";
+  let myContent = '';
   if (mongoWars.length == 0) {
     myContent = `:exclamation: **No Matches**`;
   } else {
     let arrStr = [];
-    if (iLeague == "five") {
+    if (iLeague == 'five') {
       await Promise.all(
         mongoWars.map(async (mongoWar, index) => {
           arrStr[index] = await createNegoCh5v(
@@ -1313,12 +1313,12 @@ async function createNegoChMain(interaction, client) {
 async function createNegoCh5v(interaction, client, league, week, mongoWar) {
   const clanAbbr = mongoWar.clan_abbr;
   const clanAbbrOpp = mongoWar.opponent_abbr;
-  const weekStr = "w" + week;
+  const weekStr = 'w' + week;
   const match = mongoWar.match;
 
   const mongoClan = await client.clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne(
       { clan_abbr: clanAbbr },
       {
@@ -1336,8 +1336,8 @@ async function createNegoCh5v(interaction, client, league, week, mongoWar) {
   let rep3rdId1 = 0;
 
   const mongoClanOpp = await client.clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne(
       { clan_abbr: clanAbbrOpp },
       {
@@ -1354,8 +1354,8 @@ async function createNegoCh5v(interaction, client, league, week, mongoWar) {
   const rep2ndId2 = mongoClanOpp.rep_2nd.id;
   let rep3rdId2 = 0;
 
-  let clanAbbr1 = clanAbbr.replace(/5v-/g, "");
-  let clanAbbr2 = clanAbbrOpp.replace(/5v-/g, "");
+  let clanAbbr1 = clanAbbr.replace(/5v-/g, '');
+  let clanAbbr2 = clanAbbrOpp.replace(/5v-/g, '');
 
   // チャンネル作成
   let ch = await interaction.guild.channels.create({
@@ -1381,22 +1381,22 @@ async function createNegoCh5v(interaction, client, league, week, mongoWar) {
   ch.permissionOverwrites.edit(rep1stId2, { ViewChannel: true });
   ch.permissionOverwrites.edit(rep2ndId2, { ViewChannel: true });
 
-  if (mongoClan.rep_3rd != null && mongoClan.rep_3rd != "non-registered") {
+  if (mongoClan.rep_3rd != null && mongoClan.rep_3rd != 'non-registered') {
     rep3rdId1 = await mongoClan.rep_3rd.id;
     await client.users.fetch(rep3rdId1);
     ch.permissionOverwrites.edit(rep3rdId1, { ViewChannel: true });
   }
   if (
     mongoClanOpp.rep_3rd != null &&
-    mongoClanOpp.rep_3rd != "non-registered"
+    mongoClanOpp.rep_3rd != 'non-registered'
   ) {
     rep3rdId2 = await mongoClanOpp.rep_3rd.id;
     await client.users.fetch(rep3rdId2);
     ch.permissionOverwrites.edit(rep3rdId2, { ViewChannel: true });
   }
 
-  let nameMatch = "";
-  if (mongoWar.name_match == "") {
+  let nameMatch = '';
+  if (mongoWar.name_match == '') {
     nameMatch = schedule.week[weekStr];
   } else {
     nameMatch = mongoWar.name_match;
@@ -1414,21 +1414,21 @@ async function createNegoCh5v(interaction, client, league, week, mongoWar) {
 
   let myContent = ``;
   myContent += `<@!${rep1stId1}> <@!${rep2ndId1}>`;
-  if (mongoClan.rep_3rd != null && mongoClan.rep_3rd != "non-registered") {
+  if (mongoClan.rep_3rd != null && mongoClan.rep_3rd != 'non-registered') {
     myContent += ` <@!${rep3rdId1}>`;
   }
   myContent += `\n`;
   myContent += `<@!${rep1stId2}> <@!${rep2ndId2}>`;
   if (
     mongoClanOpp.rep_3rd != null &&
-    mongoClanOpp.rep_3rd != "non-registered"
+    mongoClanOpp.rep_3rd != 'non-registered'
   ) {
     myContent += ` <@!${rep3rdId2}>`;
   }
   myContent += `\n`;
   myContent += result.content;
 
-  let myDescription = "";
+  let myDescription = '';
   myDescription += result.description;
 
   let textFooter = `${config.footer} ${config.league[league]} | SEASON ${config.season[league]}`;
@@ -1449,8 +1449,8 @@ async function createNegoCh5v(interaction, client, league, week, mongoWar) {
   };
   const updatedListing = { nego_channel: ch.id };
   await client.clientMongo
-    .db("jwc")
-    .collection("wars")
+    .db('jwc')
+    .collection('wars')
     .updateOne(query, { $set: updatedListing });
 
   let rtnStr = `<#${ch.id}> : ${mongoClan.team_name} :vs: ${mongoClanOpp.team_name}\n`;
@@ -1461,27 +1461,27 @@ async function createNegoCh5v(interaction, client, league, week, mongoWar) {
 async function createNegoCh(interaction, client, league, week, mongoWar) {
   const clanAbbr = mongoWar.clan_abbr;
   const clanAbbrOpp = mongoWar.opponent_abbr;
-  const weekStr = "w" + week;
+  const weekStr = 'w' + week;
   const match = mongoWar.match;
 
   const mongoClan = await client.clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne({ clan_abbr: clanAbbr });
   const rep1stId1 = mongoClan.rep_1st.id;
   const rep2ndId1 = mongoClan.rep_2nd.id;
   let rep3rdId1 = 0;
 
   const mongoClanOpp = await client.clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne({ clan_abbr: clanAbbrOpp });
   const rep1stId2 = mongoClanOpp.rep_1st.id;
   const rep2ndId2 = mongoClanOpp.rep_2nd.id;
   let rep3rdId2 = 0;
 
-  let clanAbbr1 = clanAbbr.replace(/s-/g, "").replace(/m-/g, "");
-  let clanAbbr2 = clanAbbrOpp.replace(/s-/g, "").replace(/m-/g, "");
+  let clanAbbr1 = clanAbbr.replace(/s-/g, '').replace(/m-/g, '');
+  let clanAbbr2 = clanAbbrOpp.replace(/s-/g, '').replace(/m-/g, '');
 
   let parentIdNego = schedule.parentIdNego;
   let adminId = config.roleId.admins;
@@ -1510,22 +1510,22 @@ async function createNegoCh(interaction, client, league, week, mongoWar) {
   ch.permissionOverwrites.edit(rep1stId2, { ViewChannel: true });
   ch.permissionOverwrites.edit(rep2ndId2, { ViewChannel: true });
 
-  if (mongoClan.rep_3rd != null && mongoClan.rep_3rd != "non-registered") {
+  if (mongoClan.rep_3rd != null && mongoClan.rep_3rd != 'non-registered') {
     rep3rdId1 = await mongoClan.rep_3rd.id;
     await client.users.fetch(rep3rdId1);
     ch.permissionOverwrites.edit(rep3rdId1, { ViewChannel: true });
   }
   if (
     mongoClanOpp.rep_3rd != null &&
-    mongoClanOpp.rep_3rd != "non-registered"
+    mongoClanOpp.rep_3rd != 'non-registered'
   ) {
     rep3rdId2 = await mongoClanOpp.rep_3rd.id;
     await client.users.fetch(rep3rdId2);
     ch.permissionOverwrites.edit(rep3rdId2, { ViewChannel: true });
   }
 
-  let nameMatch = "";
-  if (mongoWar.name_match == "") {
+  let nameMatch = '';
+  if (mongoWar.name_match == '') {
     nameMatch = schedule.week[weekStr];
   } else {
     nameMatch = mongoWar.name_match;
@@ -1543,21 +1543,21 @@ async function createNegoCh(interaction, client, league, week, mongoWar) {
 
   let myContent = ``;
   myContent += `<@!${rep1stId1}> <@!${rep2ndId1}>`;
-  if (mongoClan.rep_3rd != null && mongoClan.rep_3rd != "non-registered") {
+  if (mongoClan.rep_3rd != null && mongoClan.rep_3rd != 'non-registered') {
     myContent += ` <@!${rep3rdId1}>`;
   }
   myContent += `\n`;
   myContent += `<@!${rep1stId2}> <@!${rep2ndId2}>`;
   if (
     mongoClanOpp.rep_3rd != null &&
-    mongoClanOpp.rep_3rd != "non-registered"
+    mongoClanOpp.rep_3rd != 'non-registered'
   ) {
     myContent += ` <@!${rep3rdId2}>`;
   }
   myContent += `\n`;
   myContent += result.content;
 
-  let myDescription = "";
+  let myDescription = '';
   myDescription += result.description;
 
   let textFooter = `${config.footer} ${config.league[league]} | SEASON ${config.season[league]}`;
@@ -1578,8 +1578,8 @@ async function createNegoCh(interaction, client, league, week, mongoWar) {
   };
   const updatedListing = { nego_channel: ch.id };
   await client.clientMongo
-    .db("jwc")
-    .collection("wars")
+    .db('jwc')
+    .collection('wars')
     .updateOne(query, { $set: updatedListing });
 
   let rtnStr = `<#${ch.id}> : ${mongoClan.team_name} :vs: ${mongoClanOpp.team_name}\n`;
@@ -1588,10 +1588,10 @@ async function createNegoCh(interaction, client, league, week, mongoWar) {
 }
 
 async function createTeamChMain(interaction, client) {
-  const iLeague = await interaction.options.getString("league");
-  const iTeamName = await interaction.options.getString("team_name");
-  const iRep1st = await interaction.options.getUser("rep1st");
-  const iRep2nd = await interaction.options.getUser("rep2nd");
+  const iLeague = await interaction.options.getString('league');
+  const iTeamName = await interaction.options.getString('team_name');
+  const iRep1st = await interaction.options.getUser('rep1st');
+  const iRep2nd = await interaction.options.getUser('rep2nd');
 
   let ch = await createTeamCh(
     interaction,
@@ -1631,7 +1631,7 @@ async function createTeamChMain(interaction, client) {
   let footer = `${config.footer} ${config.league[iLeague]} SEASON ${config.seasonNext[iLeague]}`;
 
   let myTitle = `**${iTeamName}**`;
-  let myDescription = "";
+  let myDescription = '';
   myDescription += `* チーム名略称\n`;
   myDescription += `英数字 2 ～ 5 文字程度でチームを表す略称\n`;
   myDescription += `代表者は名前の後ろに略称を付けてください。\n`;
@@ -1660,15 +1660,15 @@ async function createTeamCh(
   idRep2nd,
 ) {
   let chName = `${iTeamName}`;
-  if (iLeague == "swiss") {
+  if (iLeague == 'swiss') {
     chName = `s-` + chName;
-  } else if (iLeague == "mix") {
+  } else if (iLeague == 'mix') {
     chName = `m-` + chName;
   }
   chName = `🆕` + chName;
-  let idAdmins = "";
-  let idBots = "";
-  if (iLeague == "five") {
+  let idAdmins = '';
+  let idBots = '';
+  if (iLeague == 'five') {
     idAdmins = config.roleId.admins5v;
     idBots = config.roleId.bots5v;
   } else {
@@ -1707,8 +1707,8 @@ async function createTeamCh(
 }
 
 async function createTeamData(interaction, client) {
-  let iLeague = interaction.options.getString("league");
-  let iTeamAbbr = await interaction.options.getString("abbreviation");
+  let iLeague = interaction.options.getString('league');
+  let iTeamAbbr = await interaction.options.getString('abbreviation');
   let teamAbbr = iTeamAbbr.toLowerCase();
 
   let listing = {
@@ -1729,8 +1729,8 @@ async function createTeamData(interaction, client) {
   };
 
   const result = await client.clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .insertOne(listing);
   console.log(
     `New listing created with the following id: ${result.insertedId}`,
@@ -1741,17 +1741,17 @@ async function createTeamData(interaction, client) {
 }
 
 async function updateSingleWar(interaction, client) {
-  const iLeague = await interaction.options.getString("league");
-  const iMatch = await interaction.options.getInteger("match");
-  const iState = await interaction.options.getString("change_state");
+  const iLeague = await interaction.options.getString('league');
+  const iMatch = await interaction.options.getInteger('match');
+  const iState = await interaction.options.getString('change_state');
 
-  let iWeek = await interaction.options.getInteger("week");
+  let iWeek = await interaction.options.getInteger('week');
   if (iWeek == null || iWeek == 99) {
     iWeek = await functions.getWeekNow(iLeague);
   }
 
   let title = `**RESULT UPDATED**`;
-  let description = "";
+  let description = '';
 
   const query = {
     season: config.season[iLeague],
@@ -1763,21 +1763,21 @@ async function updateSingleWar(interaction, client) {
   // 強制対戦状況変更
   if (iState != null) {
     await client.clientMongo
-      .db("jwc")
-      .collection("wars")
+      .db('jwc')
+      .collection('wars')
       .updateOne(query, {
-        $set: { "clan_war.state": iState, "opponent_war.state": iState },
+        $set: { 'clan_war.state': iState, 'opponent_war.state': iState },
       });
   }
 
   let mongoWar = await client.clientMongo
-    .db("jwc")
-    .collection("wars")
+    .db('jwc')
+    .collection('wars')
     .findOne(query);
 
   description += `${mongoWar.clan_abbr} vs. ${mongoWar.opponent_abbr}\n`;
 
-  if (mongoWar.clan_war.state == "warEnded") {
+  if (mongoWar.clan_war.state == 'warEnded') {
     let clanWar = mongoWar.clan_war;
     let clanWarOpp = mongoWar.opponent_war;
     let mongoClan = null;
@@ -1801,7 +1801,7 @@ async function updateSingleWar(interaction, client) {
     );
   }
 
-  console.log("updateWarInfo...");
+  console.log('updateWarInfo...');
   await functions.updateWarInfo(client, iLeague, iWeek);
   description += `* War info updated: ${iLeague}-w${iWeek}\n`;
   let embed = new EmbedBuilder();
@@ -1812,8 +1812,8 @@ async function updateSingleWar(interaction, client) {
   await interaction.followUp({ embeds: [embed] });
 
   let mongoWarUpdated = await client.clientMongo
-    .db("jwc")
-    .collection("wars")
+    .db('jwc')
+    .collection('wars')
     .findOne({
       season: config.season[iLeague],
       league: iLeague,
@@ -1822,11 +1822,11 @@ async function updateSingleWar(interaction, client) {
     });
 
   if (mongoWarUpdated.result.state == null) {
-    embed.setDescription("*Before the war*");
+    embed.setDescription('*Before the war*');
     await interaction.followUp({ embeds: [embed] });
   } else {
-    if (mongoWarUpdated.result.state == "warEnded") {
-      console.log("updateScoreAccs...");
+    if (mongoWarUpdated.result.state == 'warEnded') {
+      console.log('updateScoreAccs...');
       await fScore.updateScoreAccs(
         client.clientMongo,
         config.season[iLeague],
@@ -1843,7 +1843,7 @@ async function updateSingleWar(interaction, client) {
         mongoWarUpdated.opponent_war.clan.members,
         mongoWarUpdated.clan_war.clan.members,
       );
-      console.log("calcStatsAccs...");
+      console.log('calcStatsAccs...');
       await fScore.calcStatsAccs(
         client.clientMongo,
         iLeague,
@@ -1863,7 +1863,7 @@ async function updateSingleWar(interaction, client) {
       );
       await interaction.followUp({ embeds: [embed] });
     } else {
-      embed.setDescription("* *Accounts have registered successfully*");
+      embed.setDescription('* *Accounts have registered successfully*');
       await interaction.followUp({ embeds: [embed] });
     }
   }
@@ -1872,13 +1872,13 @@ async function updateSingleWar(interaction, client) {
 }
 
 async function updateEveryWar(interaction, client) {
-  const iLeague = await interaction.options.getString("league");
-  let iWeek = await interaction.options.getInteger("week");
+  const iLeague = await interaction.options.getString('league');
+  let iWeek = await interaction.options.getInteger('week');
   if (iWeek == null || iWeek == 99) {
     iWeek = await functions.getWeekNow(iLeague);
   }
 
-  let description = "";
+  let description = '';
 
   const query = {
     season: config.season[iLeague],
@@ -1887,8 +1887,8 @@ async function updateEveryWar(interaction, client) {
   };
   const options = {};
   const cursor = client.clientMongo
-    .db("jwc")
-    .collection("wars")
+    .db('jwc')
+    .collection('wars')
     .find(query, options);
   let mongoWars = await cursor.toArray();
   await cursor.close();
@@ -1898,7 +1898,7 @@ async function updateEveryWar(interaction, client) {
       if (!mongoWar.result) {
         return;
       }
-      else if (mongoWar.result.state == "warEnded") {
+      else if (mongoWar.result.state == 'warEnded') {
         let clanWar = mongoWar.clan_war;
         let clanWarOpp = mongoWar.opponent_war;
         let match = mongoWar.match;
@@ -1973,7 +1973,7 @@ async function updateEveryWar(interaction, client) {
 }
 
 async function updateLeagueStandings(interaction, client) {
-  const iLeague = await interaction.options.getString("league");
+  const iLeague = await interaction.options.getString('league');
 
   let embed = new EmbedBuilder();
   embed.setTitle(`**STANDINGS UPDATED**`);
@@ -1985,19 +1985,19 @@ async function updateLeagueStandings(interaction, client) {
   embed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
 
   await fMongo.standings(client.clientMongo, iLeague);
-  if (iLeague == "five") {
-    await fMongo.standingsGroupStage(client.clientMongo, iLeague, "a", "b");
-  } else if (iLeague == "j1") {
+  if (iLeague == 'five') {
+    await fMongo.standingsGroupStage(client.clientMongo, iLeague, 'a', 'b');
+  } else if (iLeague == 'j1') {
     await fMongo.standingsGroupStage(
       client.clientMongo,
       iLeague,
-      "fist",
-      "cloak",
+      'fist',
+      'cloak',
     );
   }
   await fMongo.jwcAttacks(client.clientMongo, iLeague);
 
-  if (iLeague == "mix") {
+  if (iLeague == 'mix') {
     for (const lvTH of config.lvTHmix) {
       await functions.updateRankingJwcAttack(client, iLeague, lvTH);
     }
@@ -2011,19 +2011,19 @@ async function updateLeagueStandings(interaction, client) {
 }
 
 async function editAttackResult(interaction, client) {
-  const iLeague = await interaction.options.getString("league");
-  const iMatch = await interaction.options.getInteger("match");
-  const iAction = await interaction.options.getString("action");
-  const iClanAbbr = await interaction.options.getString("team");
-  const iAttackOrder = await interaction.options.getInteger("attack");
-  const iReason = await interaction.options.getString("reason");
+  const iLeague = await interaction.options.getString('league');
+  const iMatch = await interaction.options.getInteger('match');
+  const iAction = await interaction.options.getString('action');
+  const iClanAbbr = await interaction.options.getString('team');
+  const iAttackOrder = await interaction.options.getInteger('attack');
+  const iReason = await interaction.options.getString('reason');
 
-  let iWeek = await interaction.options.getInteger("week");
+  let iWeek = await interaction.options.getInteger('week');
   if (iWeek == null || iWeek == 99) {
     iWeek = await functions.getWeekNow(iLeague);
   }
 
-  let myKey = "";
+  let myKey = '';
 
   const query = {
     season: config.season[iLeague],
@@ -2032,17 +2032,17 @@ async function editAttackResult(interaction, client) {
     match: iMatch,
   };
   const mongoWar = await client.clientMongo
-    .db("jwc")
-    .collection("wars")
+    .db('jwc')
+    .collection('wars')
     .findOne(query);
 
   let members = {};
   if (mongoWar.clan_abbr == iClanAbbr) {
     members = mongoWar.clan_war.clan.members;
-    myKey = "clan_war.clan";
+    myKey = 'clan_war.clan';
   } else {
     members = mongoWar.opponent_war.clan.members;
-    myKey = "opponent_war.clan";
+    myKey = 'opponent_war.clan';
   }
 
   let attack = [];
@@ -2063,16 +2063,16 @@ async function editAttackResult(interaction, client) {
     }
   });
 
-  let description = "";
-  let footer = "";
+  let description = '';
+  let footer = '';
 
   // 攻撃結果編集処理のメイン部分
-  if (iAction == "1StarDeduction" || iAction == "Invalidate") {
+  if (iAction == '1StarDeduction' || iAction == 'Invalidate') {
     // ===== 共通処理: 通知作成と送信 =====
     description += `:exclamation: **VIOLATION**\n${iReason}\n`;
     footer = `${config.footer} ${config.league[iLeague]} W${iWeek} M${iMatch} - Attack No. ${iAttackOrder}\n`;
 
-    let actionTitle = iAction == "1StarDeduction" ? "星1減" : "攻撃無効";
+    let actionTitle = iAction == '1StarDeduction' ? '星1減' : '攻撃無効';
 
     const embedNotification = new EmbedBuilder()
       .setTitle(`**ATTACK RESULT EDITED: ${actionTitle}**`)
@@ -2083,7 +2083,7 @@ async function editAttackResult(interaction, client) {
     await interaction.followUp({ embeds: [embedNotification] });
 
     // ===== 共通処理: 現在の攻撃状態表示 =====
-    description = "";
+    description = '';
     const stars = [];
 
     // 星の状態を表示用に変換
@@ -2099,11 +2099,11 @@ async function editAttackResult(interaction, client) {
 
     // プレイヤー名のエスケープ処理
     const namePlayerAtt = attack.name
-      .replace(/\*/g, "\\*")
-      .replace(/_/g, "\\_");
+      .replace(/\*/g, '\\*')
+      .replace(/_/g, '\\_');
     const namePlayerDef = attack.namePlayerDef
-      .replace(/\*/g, "\\*")
-      .replace(/_/g, "\\_");
+      .replace(/\*/g, '\\*')
+      .replace(/_/g, '\\_');
 
     // 攻撃情報の説明文作成
     description += `${config.emote.thn[attack.townHallLevel]} ${config.emote.sword} ${config.emote.thn[attack.townHallLevelDef]} `;
@@ -2126,11 +2126,11 @@ async function editAttackResult(interaction, client) {
     let arrStarsFlagAfter = [...attack.arrStarsFlag]; // 配列のコピーを作成
     let starsAfter = [...stars]; // 表示用星配列のコピー
     let destructionAfter = attack.destruction; // 破壊率の初期値
-    let penaltyText = "";
+    let penaltyText = '';
 
-    if (iAction == "1StarDeduction") {
+    if (iAction == '1StarDeduction') {
       // 星を1つ減らす - 最も高い星から減らす
-      penaltyText = "1 star deduction";
+      penaltyText = '1 star deduction';
 
       if (attack.arrStarsFlag[2] == 2 || attack.arrStarsFlag[2] == 1) {
         starsAfter[2] = config.emote.starGray;
@@ -2142,9 +2142,9 @@ async function editAttackResult(interaction, client) {
         starsAfter[0] = config.emote.starGray;
         arrStarsFlagAfter[0] = 0;
       }
-    } else if (iAction == "Invalidate") {
+    } else if (iAction == 'Invalidate') {
       // 全ての星を灰色に、破壊率を0%に
-      penaltyText = "Invalidated";
+      penaltyText = 'Invalidated';
       starsAfter = [
         config.emote.starGray,
         config.emote.starGray,
@@ -2166,10 +2166,10 @@ async function editAttackResult(interaction, client) {
     await interaction.followUp({ embeds: [embedUpdatedAttack] });
 
     // ===== 共通処理: データベース更新 =====
-    description = "";
+    description = '';
 
     // 攻撃データの更新
-    attack.stars = iAction == "1StarDeduction" ? attack.stars - 1 : 0;
+    attack.stars = iAction == '1StarDeduction' ? attack.stars - 1 : 0;
     attack.arrStarsFlag = arrStarsFlagAfter;
     attack.destruction = destructionAfter;
     attack.penalty = penaltyText;
@@ -2180,8 +2180,8 @@ async function editAttackResult(interaction, client) {
     try {
       // MongoDBに更新を適用
       await client.clientMongo
-        .db("jwc")
-        .collection("wars")
+        .db('jwc')
+        .collection('wars')
         .updateOne(query, { $set: updatedListing });
 
       description += `:white_check_mark: *The attack result has successfully updated.*\n`;
@@ -2226,11 +2226,11 @@ async function editAttackResult(interaction, client) {
       description += `:white_check_mark: *The account stats has successfully updated.*\n\n`;
     } catch (error) {
       description += `:warning: *更新中にエラーが発生しました。*\n\n`;
-      console.error("更新エラー:", error);
+      console.error('更新エラー:', error);
     }
 
     // 管理コマンドの案内
-    description += `run </admin edit war:${config.adminCommand["admin"].id}> to change the final stats of the war\n`;
+    description += `run </admin edit war:${config.adminCommand['admin'].id}> to change the final stats of the war\n`;
 
     // ===== 共通処理: 結果ログの表示 =====
     const embedResultLog = new EmbedBuilder()
@@ -2259,15 +2259,15 @@ async function addResultManual(
   iWeek,
   iMatch,
 ) {
-  const iClanStars = interaction.options.getInteger("clan_stars");
-  const iOppStars = interaction.options.getInteger("opp_stars");
-  const iClanDestruction = interaction.options.getNumber("clan_destruction");
-  const iOppDestruction = interaction.options.getNumber("opp_destruction");
-  const iClanTriples = interaction.options.getInteger("clan_triples");
-  const iOppTriples = interaction.options.getInteger("opp_triples");
-  const iClanAttacks = interaction.options.getInteger("clan_attacks");
-  const iOppAttacks = interaction.options.getInteger("opp_attacks");
-  const iSize = interaction.options.getInteger("war_size");
+  const iClanStars = interaction.options.getInteger('clan_stars');
+  const iOppStars = interaction.options.getInteger('opp_stars');
+  const iClanDestruction = interaction.options.getNumber('clan_destruction');
+  const iOppDestruction = interaction.options.getNumber('opp_destruction');
+  const iClanTriples = interaction.options.getInteger('clan_triples');
+  const iOppTriples = interaction.options.getInteger('opp_triples');
+  const iClanAttacks = interaction.options.getInteger('clan_attacks');
+  const iOppAttacks = interaction.options.getInteger('opp_attacks');
+  const iSize = interaction.options.getInteger('war_size');
 
   // 必須パラメータのチェック
   if (
@@ -2283,7 +2283,7 @@ async function addResultManual(
   ) {
     await interaction.followUp({
       content:
-        ":x: 必須パラメータが不足しています（clan_stars, opp_stars, clan_destruction, opp_destruction, clan_triples, opp_triples, clan_attacks, opp_attacks, war_size）",
+        ':x: 必須パラメータが不足しています（clan_stars, opp_stars, clan_destruction, opp_destruction, clan_triples, opp_triples, clan_attacks, opp_attacks, war_size）',
     });
     return;
   }
@@ -2291,8 +2291,8 @@ async function addResultManual(
   // 既に結果がある場合は上書き防止
   if (
     mongoWar.result &&
-    (mongoWar.result.state === "warEnded" ||
-      mongoWar.result.state === "forfeited")
+    (mongoWar.result.state === 'warEnded' ||
+      mongoWar.result.state === 'forfeited')
   ) {
     await interaction.followUp({
       content: `:x: この対戦には既に結果が存在します（state: ${mongoWar.result.state}）`,
@@ -2366,7 +2366,7 @@ async function addResultManual(
     league: iLeague,
     week: iWeek,
     match: iMatch,
-    state: "warEnded",
+    state: 'warEnded',
     size: iSize,
     apm: apm,
     arrAttacksPlus: [],
@@ -2398,15 +2398,15 @@ async function addResultManual(
 
   // wars コレクションに result を保存
   await client.clientMongo
-    .db("jwc")
-    .collection("wars")
+    .db('jwc')
+    .collection('wars')
     .updateOne(query, { $set: { result: result } });
 
   // war info の更新
   await functions.updateWarInfo(client, iLeague, iWeek);
 
   // 結果表示
-  let description = "";
+  let description = '';
   description += `:white_check_mark: **対戦結果を手動追加しました**\n\n`;
   description += `${config.league[iLeague]} - Week ${iWeek} - Match ${iMatch}\n`;
   description += `**${mongoWar.clan_abbr.toUpperCase()} vs. ${mongoWar.opponent_abbr.toUpperCase()}**\n\n`;
@@ -2427,7 +2427,7 @@ async function addResultManual(
   description += `Size: **${iSize}** / APM: **${apm}**\n`;
 
   const embed = new EmbedBuilder();
-  embed.setTitle("**WAR RESULT ADDED (MANUAL)**");
+  embed.setTitle('**WAR RESULT ADDED (MANUAL)**');
   embed.setDescription(description);
   embed.setColor(config.color[iLeague]);
   embed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
@@ -2438,14 +2438,14 @@ async function addResultManual(
 }
 
 async function editWarResult(interaction, client) {
-  const iLeague = await interaction.options.getString("league");
-  const iMatch = await interaction.options.getInteger("match");
-  const iAction = await interaction.options.getString("action");
-  const iClanAbbr = await interaction.options.getString("team");
-  const iPoint = await interaction.options.getInteger("point");
-  const iReason = await interaction.options.getString("reason");
+  const iLeague = await interaction.options.getString('league');
+  const iMatch = await interaction.options.getInteger('match');
+  const iAction = await interaction.options.getString('action');
+  const iClanAbbr = await interaction.options.getString('team');
+  const iPoint = await interaction.options.getInteger('point');
+  const iReason = await interaction.options.getString('reason');
 
-  let iWeek = await interaction.options.getInteger("week");
+  let iWeek = await interaction.options.getInteger('week');
   if (iWeek == null || iWeek == 99) {
     iWeek = await functions.getWeekNow(iLeague);
   }
@@ -2456,22 +2456,22 @@ async function editWarResult(interaction, client) {
     week: iWeek,
     match: iMatch,
   };
-  const myColl = client.clientMongo.db("jwc").collection("wars");
+  const myColl = client.clientMongo.db('jwc').collection('wars');
   const mongoWar = await myColl.findOne(query);
 
   if (!mongoWar) {
-    let content = "";
+    let content = '';
     content += `:exclamation: **No Data**\n`;
     content += `${config.league[iLeague]} - Week ${iWeek} - Match ${iMatch}\n`;
     await interaction.followUp({ content: content });
     return;
   }
 
-  if (iAction == "stream") {
-    let description = "";
+  if (iAction == 'stream') {
+    let description = '';
 
     description += `* ${config.league[mongoWar.league]}\n`;
-    if (mongoWar.name_match != "") {
+    if (mongoWar.name_match != '') {
       description += `* ${mongoWar.name_match}\n`;
     } else {
       description += `* WEEK ${mongoWar.week}\n`;
@@ -2488,8 +2488,8 @@ async function editWarResult(interaction, client) {
       description += `STREAM: OFF`;
     }
     await client.clientMongo
-      .db("jwc")
-      .collection("wars")
+      .db('jwc')
+      .collection('wars')
       .updateOne(query, { $set: updatedListing });
 
     await functions.updateWarInfo(client, iLeague, iWeek);
@@ -2505,19 +2505,19 @@ async function editWarResult(interaction, client) {
     return;
   }
 
-  if (iAction == "addResult") {
+  if (iAction == 'addResult') {
     await addResultManual(client, interaction, query, mongoWar, iLeague, iWeek, iMatch);
     return;
   }
 
-  let description = "";
+  let description = '';
 
   description += `:exclamation: **VIOLATION**\n`;
   description += `${iReason}\n\n`;
 
-  if (iAction == "forfeit") {
+  if (iAction == 'forfeit') {
     description += await forfeit(client, query, mongoWar, iClanAbbr);
-  } else if (iAction == "deductStar") {
+  } else if (iAction == 'deductStar') {
     description += await deductStarInWarResult(
       client,
       query,
@@ -2525,7 +2525,7 @@ async function editWarResult(interaction, client) {
       iClanAbbr,
       iPoint,
     );
-  } else if (iAction == "addDefPoint") {
+  } else if (iAction == 'addDefPoint') {
     description += await addDefPoint(
       client,
       query,
@@ -2533,7 +2533,7 @@ async function editWarResult(interaction, client) {
       iClanAbbr,
       iPoint,
     );
-  } else if (iAction == "deductStarAndDestruction") {
+  } else if (iAction == 'deductStarAndDestruction') {
     description += await deductStarAndDestruction(
       client,
       query,
@@ -2551,7 +2551,7 @@ async function editWarResult(interaction, client) {
 
   const mongoWarUpdated = await myColl.findOne(query);
 
-  if (iAction != "forfeit") {
+  if (iAction != 'forfeit') {
     let logChIdLocal = null;
     let teamName = null;
     let teamNameOpp = null;
@@ -2580,7 +2580,7 @@ async function editWarResult(interaction, client) {
   description += `:white_check_mark: *The war info has successfully updated.*: ${config.league[mongoWarUpdated.league]}-w${mongoWarUpdated.week}\n`;
 
   const embed = new EmbedBuilder();
-  embed.setTitle("**WAR RESULT EDITED**");
+  embed.setTitle('**WAR RESULT EDITED**');
   embed.setDescription(description);
   embed.setColor(config.color[iLeague]);
   embed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
@@ -2589,27 +2589,27 @@ async function editWarResult(interaction, client) {
 
   const negoCh = await client.channels.cache.get(mongoWar.nego_channel);
   await negoCh.send({ embeds: [embed] });
-  const newChName = negoCh.name.replace("✅", "❌");
+  const newChName = negoCh.name.replace('✅', '❌');
   await negoCh.edit({ name: newChName });
 
   return;
 }
 
 async function forfeit(client, query, mongoWar, clanAbbr) {
-  let description = "";
-  let note = "";
+  let description = '';
+  let note = '';
 
-  let clanAbbrOpp = "";
-  let resultClan = "";
-  let resultOpponent = "";
+  let clanAbbrOpp = '';
+  let resultClan = '';
+  let resultOpponent = '';
   if (mongoWar.clan_abbr == clanAbbr) {
     clanAbbrOpp = mongoWar.opponent_abbr;
-    resultClan = "win";
-    resultOpponent = "lose";
+    resultClan = 'win';
+    resultOpponent = 'lose';
   } else {
     clanAbbrOpp = mongoWar.clan_abbr;
-    resultClan = "lose";
-    resultOpponent = "win";
+    resultClan = 'lose';
+    resultOpponent = 'win';
   }
 
   description += `:x: **FORFEITED**\n`;
@@ -2618,15 +2618,15 @@ async function forfeit(client, query, mongoWar, clanAbbr) {
 
   note = `Forfeited: ${clanAbbr.toUpperCase()} won`;
   let resultUpdated = {
-    state: "forfeited",
+    state: 'forfeited',
     note: note,
     clan: resultClan,
     opponent: resultOpponent,
   };
 
   await client.clientMongo
-    .db("jwc")
-    .collection("wars")
+    .db('jwc')
+    .collection('wars')
     .updateOne(query, { $set: { result: resultUpdated } });
 
   return description;
@@ -2639,8 +2639,8 @@ async function deductStarInWarResult(
   clanAbbr,
   iPoint,
 ) {
-  let description = "";
-  let note = "";
+  let description = '';
+  let note = '';
   let penalty = {};
 
   description += `* **PENALTY**: ${clanAbbr.toUpperCase()}\n`;
@@ -2655,24 +2655,24 @@ async function deductStarInWarResult(
     penalty = mongoWar.clan_war.clan.penalty ?? {};
     penalty.star = -iPoint;
     await client.clientMongo
-      .db("jwc")
-      .collection("wars")
-      .updateOne(query, { $set: { "clan_war.clan.penalty": penalty } });
+      .db('jwc')
+      .collection('wars')
+      .updateOne(query, { $set: { 'clan_war.clan.penalty': penalty } });
   } else if (mongoWar.opponent_abbr == clanAbbr) {
     penalty = mongoWar.opponent_war.clan.penalty ?? {};
     penalty.star = -iPoint;
     await client.clientMongo
-      .db("jwc")
-      .collection("wars")
-      .updateOne(query, { $set: { "opponent_war.clan.penalty": penalty } });
+      .db('jwc')
+      .collection('wars')
+      .updateOne(query, { $set: { 'opponent_war.clan.penalty': penalty } });
   }
 
   return description;
 }
 
 async function addDefPoint(client, query, mongoWar, clanAbbr, iPoint) {
-  let description = "";
-  let note = "";
+  let description = '';
+  let note = '';
   let penalty = {};
 
   description += `* ${clanAbbr.toUpperCase()}\n`;
@@ -2687,16 +2687,16 @@ async function addDefPoint(client, query, mongoWar, clanAbbr, iPoint) {
     penalty = mongoWar.clan_war.clan.penalty ?? {};
     penalty.defPoint = iPoint;
     await client.clientMongo
-      .db("jwc")
-      .collection("wars")
-      .updateOne(query, { $set: { "clan_war.clan.penalty": penalty } });
+      .db('jwc')
+      .collection('wars')
+      .updateOne(query, { $set: { 'clan_war.clan.penalty': penalty } });
   } else {
     penalty = mongoWar.opponent_war.clan.penalty ?? {};
     penalty.defPoint = iPoint;
     await client.clientMongo
-      .db("jwc")
-      .collection("wars")
-      .updateOne(query, { $set: { "opponent_war.clan.penalty": penalty } });
+      .db('jwc')
+      .collection('wars')
+      .updateOne(query, { $set: { 'opponent_war.clan.penalty': penalty } });
   }
 
   return description;
@@ -2709,8 +2709,8 @@ async function deductStarAndDestruction(
   clanAbbr,
   iPoint,
 ) {
-  let description = "";
-  let note = "";
+  let description = '';
+  let note = '';
   let penalty = {};
 
   description += `* **PENALTY**: ${clanAbbr.toUpperCase()}\n`;
@@ -2726,36 +2726,36 @@ async function deductStarAndDestruction(
     penalty.star = -iPoint;
     penalty.destruction = -2 * iPoint;
     await client.clientMongo
-      .db("jwc")
-      .collection("wars")
-      .updateOne(query, { $set: { "clan_war.clan.penalty": penalty } });
+      .db('jwc')
+      .collection('wars')
+      .updateOne(query, { $set: { 'clan_war.clan.penalty': penalty } });
   } else {
     penalty = mongoWar.opponent_war.clan.penalty ?? {};
     penalty.star = -iPoint;
     penalty.destruction = -2 * iPoint;
     await client.clientMongo
-      .db("jwc")
-      .collection("wars")
-      .updateOne(query, { $set: { "opponent_war.clan.penalty": penalty } });
+      .db('jwc')
+      .collection('wars')
+      .updateOne(query, { $set: { 'opponent_war.clan.penalty': penalty } });
   }
 
   return description;
 }
 
 async function editTeamScore(interaction, client) {
-  const iLeague = await interaction.options.getString("league");
-  const iAction = await interaction.options.getString("action");
-  const iClanAbbr = await interaction.options.getString("team");
-  const iPoint = await interaction.options.getInteger("point");
+  const iLeague = await interaction.options.getString('league');
+  const iAction = await interaction.options.getString('action');
+  const iClanAbbr = await interaction.options.getString('team');
+  const iPoint = await interaction.options.getInteger('point');
 
   const query = { clan_abbr: iClanAbbr };
   const mongoClan = await client.clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne(query);
 
-  let description = "";
-  if (iAction == "deductStar") {
+  let description = '';
+  if (iAction == 'deductStar') {
     description = await deductStarInTeamScore(
       client,
       query,
@@ -2763,7 +2763,7 @@ async function editTeamScore(interaction, client) {
       iClanAbbr,
       iPoint,
     );
-  } else if (iAction == "addPoint") {
+  } else if (iAction == 'addPoint') {
     description = await addPointInTeamScore(
       client,
       query,
@@ -2775,8 +2775,8 @@ async function editTeamScore(interaction, client) {
   description += `\n`;
 
   const mongoClanNew = await client.clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne(query);
   await fScore.updateScore(client.clientMongo, iLeague, mongoClanNew);
   await fMongo.standings(client.clientMongo, iLeague);
@@ -2784,7 +2784,7 @@ async function editTeamScore(interaction, client) {
   description += `:white_check_mark: *${config.league[iLeague]} standings has successfully updated.*\n`;
 
   const embed = new EmbedBuilder()
-    .setTitle("**LEAGUE SCORE EDITED**")
+    .setTitle('**LEAGUE SCORE EDITED**')
     .setDescription(description)
     .setColor(config.color[iLeague])
     .setFooter({ text: config.footer, iconURL: config.urlImage.jwc })
@@ -2801,8 +2801,8 @@ async function deductStarInTeamScore(
   iClanAbbr,
   iPoint,
 ) {
-  let description = "";
-  let note = "";
+  let description = '';
+  let note = '';
   let penalty = {};
 
   description += `* ${iClanAbbr.toUpperCase()}\n`;
@@ -2825,13 +2825,13 @@ async function deductStarInTeamScore(
     penalty.note = `${-penalty.star} stars deducted`;
   }
   await client.clientMongo
-    .db("jwc")
-    .collection("clans")
-    .updateOne(query, { $set: { "score.sum.penalty": penalty } });
+    .db('jwc')
+    .collection('clans')
+    .updateOne(query, { $set: { 'score.sum.penalty': penalty } });
   await client.clientMongo
-    .db("jwc")
-    .collection("clans")
-    .updateOne(query, { $set: { "score.sumQ.penalty": penalty } });
+    .db('jwc')
+    .collection('clans')
+    .updateOne(query, { $set: { 'score.sumQ.penalty': penalty } });
 
   return description;
 }
@@ -2843,8 +2843,8 @@ async function addPointInTeamScore(
   iClanAbbr,
   iPoint,
 ) {
-  let description = "";
-  let note = "";
+  let description = '';
+  let note = '';
   let add = {};
 
   description += `* ${iClanAbbr.toUpperCase()}\n`;
@@ -2871,35 +2871,35 @@ async function addPointInTeamScore(
     add.note = `${add.point} points added`;
   }
   await client.clientMongo
-    .db("jwc")
-    .collection("clans")
-    .updateOne(query, { $set: { "score.add": add } });
+    .db('jwc')
+    .collection('clans')
+    .updateOne(query, { $set: { 'score.add': add } });
   await client.clientMongo
-    .db("jwc")
-    .collection("clans")
-    .updateOne(query, { $set: { "score.add": add } });
+    .db('jwc')
+    .collection('clans')
+    .updateOne(query, { $set: { 'score.add': add } });
 
   return description;
 }
 
 async function addAttack(interaction, client) {
-  const iLeague = await interaction.options.getString("league");
-  const iMatch = await interaction.options.getInteger("match");
-  const iClanAbbr = await interaction.options.getString("team").toLowerCase();
-  const iAttackerTag = await interaction.options.getString("attacker");
-  const iDefenderTag = await interaction.options.getString("defender");
-  const iStars = await interaction.options.getInteger("stars");
-  const iDestruction = await interaction.options.getInteger("destruction");
-  const iAttackType = await interaction.options.getString("attack_type");
+  const iLeague = await interaction.options.getString('league');
+  const iMatch = await interaction.options.getInteger('match');
+  const iClanAbbr = await interaction.options.getString('team').toLowerCase();
+  const iAttackerTag = await interaction.options.getString('attacker');
+  const iDefenderTag = await interaction.options.getString('defender');
+  const iStars = await interaction.options.getInteger('stars');
+  const iDestruction = await interaction.options.getInteger('destruction');
+  const iAttackType = await interaction.options.getString('attack_type');
 
-  let iWeek = await interaction.options.getInteger("week");
+  let iWeek = await interaction.options.getInteger('week');
   if (iWeek == null || iWeek == 99) {
     iWeek = await functions.getWeekNow(iLeague);
   }
 
-  let myKeyClan = "";
-  let myKeyOpp = "";
-  let myKeyAttack = "";
+  let myKeyClan = '';
+  let myKeyOpp = '';
+  let myKeyAttack = '';
 
   const query = {
     season: config.season[iLeague],
@@ -2908,8 +2908,8 @@ async function addAttack(interaction, client) {
     match: iMatch,
   };
   const mongoWar = await client.clientMongo
-    .db("jwc")
-    .collection("wars")
+    .db('jwc')
+    .collection('wars')
     .findOne(query);
   let attackCountBefore = 0;
   let membersAtt = {};
@@ -2918,14 +2918,14 @@ async function addAttack(interaction, client) {
     attackCountBefore = mongoWar.clan_war.clan.attackCount;
     membersAtt = mongoWar.clan_war.clan.members;
     membersDef = mongoWar.opponent_war.clan.members;
-    myKeyClan = "clan_war";
-    myKeyOpp = "opponent_war";
+    myKeyClan = 'clan_war';
+    myKeyOpp = 'opponent_war';
   } else {
     attackCountBefore = mongoWar.opponent_war.clan.attackCount;
     membersAtt = mongoWar.opponent_war.clan.members;
     membersDef = mongoWar.clan_war.clan.members;
-    myKeyClan = "opponent_war";
-    myKeyOpp = "clan_war";
+    myKeyClan = 'opponent_war';
+    myKeyOpp = 'clan_war';
   }
 
   let attacker = {};
@@ -2960,10 +2960,10 @@ async function addAttack(interaction, client) {
     nDef += 1;
   }
 
-  let myKeyOppMember = "";
+  let myKeyOppMember = '';
   let defender = {};
   let defenseCountBefore = 0;
-  let bestOpponentAttackerTag = "";
+  let bestOpponentAttackerTag = '';
   membersDef.map((member, index) => {
     if (member.tag == iDefenderTag) {
       defender = member;
@@ -2986,7 +2986,7 @@ async function addAttack(interaction, client) {
       }
     }
   });
-  let bestOpponentAttackerTagNew = "";
+  let bestOpponentAttackerTagNew = '';
   if (starsBefore < iStars) {
     bestOpponentAttackerTagNew = iAttackerTag;
   } else if ((starsBefore = iStars)) {
@@ -3007,14 +3007,14 @@ async function addAttack(interaction, client) {
   if (starsBefore <= iStars) {
     for (let k = 0; k < starsBefore; k++) {
       arrStarsFlag[k] = 1;
-      if (iAttackType == "overkill") {
+      if (iAttackType == 'overkill') {
         arrStarsFlag[k] = 3;
       }
     }
   } else {
     for (let k = 0; k < iStars; k++) {
       arrStarsFlag[k] = 1;
-      if (iAttackType == "overkill") {
+      if (iAttackType == 'overkill') {
         arrStarsFlag[k] = 3;
       }
     }
@@ -3038,19 +3038,19 @@ async function addAttack(interaction, client) {
     mongoWar.opponent_war.clan.attackCount +
     1;
 
-  let description = "";
-  let footer = "";
+  let description = '';
+  let footer = '';
 
   description += `${stars[0]}${stars[1]}${stars[2]}  **${iDestruction}%**\n\n`;
   description += `${config.emote.thn[attacker.townHallLevel]}`;
   description += ` ${config.emote.sword}`;
   description += ` ${config.emote.thn[defender.townHallLevel]}\n\n`;
-  let namePlayerAtt = attacker.name.replace(/\*/g, "\\*").replace(/_/g, "\\_");
-  let namePlayerDef = defender.name.replace(/\*/g, "\\*").replace(/_/g, "\\_");
+  let namePlayerAtt = attacker.name.replace(/\*/g, '\\*').replace(/_/g, '\\_');
+  let namePlayerDef = defender.name.replace(/\*/g, '\\*').replace(/_/g, '\\_');
   description += `${namePlayerAtt} ${config.emote.arrowAtt} ${namePlayerDef}\n`;
 
   let ptDef = 0;
-  if (iAttackType != "fresh" && iStars != 3) {
+  if (iAttackType != 'fresh' && iStars != 3) {
     ptDef = 1;
   }
 
@@ -3061,7 +3061,7 @@ async function addAttack(interaction, client) {
   newAttack.destruction = iDestruction;
   newAttack.order = order;
   newAttack.duration = 180;
-  newAttack.action = "attack";
+  newAttack.action = 'attack';
   newAttack.attackType = iAttackType;
   newAttack.attackerTag = iAttackerTag;
   newAttack.name = attacker.name;
@@ -3075,8 +3075,8 @@ async function addAttack(interaction, client) {
   let updatedListing = {};
   updatedListing = { [myKeyAttack]: newAttack };
   await client.clientMongo
-    .db("jwc")
-    .collection("wars")
+    .db('jwc')
+    .collection('wars')
     .updateOne(query, { $set: updatedListing });
 
   // update mongo defense
@@ -3086,13 +3086,13 @@ async function addAttack(interaction, client) {
     [`${myKeyOppMember}._bestOpponentAttackerTag`]: bestOpponentAttackerTagNew,
   };
   await client.clientMongo
-    .db("jwc")
-    .collection("wars")
+    .db('jwc')
+    .collection('wars')
     .updateOne(query, { $set: updatedListing });
 
   const mongoWarNew = await client.clientMongo
-    .db("jwc")
-    .collection("wars")
+    .db('jwc')
+    .collection('wars')
     .findOne(query);
   let membersAttNew = mongoWarNew[myKeyClan].clan.members;
   let membersDefNew = mongoWarNew[myKeyOpp].clan.members;
@@ -3107,8 +3107,8 @@ async function addAttack(interaction, client) {
     [`${myKeyClan}.clan.attackCount`]: attackCountAfter,
   };
   await client.clientMongo
-    .db("jwc")
-    .collection("wars")
+    .db('jwc')
+    .collection('wars')
     .updateOne(query, { $set: updatedListing });
 
   description += `\n\n`;
@@ -3146,7 +3146,7 @@ async function addAttack(interaction, client) {
 
   footer = `${config.footer} ${config.league[iLeague]} W${iWeek} M${iMatch} - Attack No. ${order}\n`;
   const embed = new EmbedBuilder()
-    .setTitle("**ATTACK ADDED**")
+    .setTitle('**ATTACK ADDED**')
     .setDescription(description)
     .setColor(config.color[iLeague])
     .setFooter({ text: footer, iconURL: config.urlImage.jwc });
@@ -3179,22 +3179,22 @@ async function calcDestruction(membersAtt, membersDef) {
 }
 
 async function editAccount(interaction, client) {
-  const iAccountTag = await interaction.options.getString("tag");
-  const iAction = await interaction.options.getString("action");
+  const iAccountTag = await interaction.options.getString('tag');
+  const iAction = await interaction.options.getString('action');
 
   const query = { tag: iAccountTag };
   const acc = await client.clientMongo
-    .db("jwc")
-    .collection("accounts")
+    .db('jwc')
+    .collection('accounts')
     .findOne(query);
 
-  const title = await functions.getAccInfoTitle(acc, "long");
-  let description = "";
-  description += await functions.getAccInfoDescriptionMain(acc, "long");
-  description += "\n";
+  const title = await functions.getAccInfoTitle(acc, 'long');
+  let description = '';
+  description += await functions.getAccInfoDescriptionMain(acc, 'long');
+  description += '\n';
 
   let updatedListing = {};
-  if (iAction == "status" || iAction == "streamer") {
+  if (iAction == 'status' || iAction == 'streamer') {
     if (acc[iAction] == false || acc[iAction] == null) {
       updatedListing = { [iAction]: true };
       description += `${iAction.toUpperCase()}: ON`;
@@ -3204,8 +3204,8 @@ async function editAccount(interaction, client) {
     }
   }
   await client.clientMongo
-    .db("jwc")
-    .collection("accounts")
+    .db('jwc')
+    .collection('accounts')
     .updateOne(query, { $set: updatedListing });
 
   let embed = new EmbedBuilder();
@@ -3219,9 +3219,9 @@ async function editAccount(interaction, client) {
 }
 
 async function editRole(interaction) {
-  const iUser = await interaction.options.getUser("user");
-  const iAction = await interaction.options.getString("action");
-  const iLeague = await interaction.options.getString("league");
+  const iUser = await interaction.options.getUser('user');
+  const iAction = await interaction.options.getString('action');
+  const iLeague = await interaction.options.getString('league');
 
   functions.editRoleMain(interaction, iUser, iAction, iLeague, 1);
 
@@ -3229,18 +3229,18 @@ async function editRole(interaction) {
 }
 
 async function editChannelView(interaction) {
-  const iAction = await interaction.options.getString("action");
-  const iUser = await interaction.options.getUser("user");
-  const iCh = await interaction.options.getChannel("channel");
+  const iAction = await interaction.options.getString('action');
+  const iUser = await interaction.options.getUser('user');
+  const iCh = await interaction.options.getChannel('channel');
 
-  let title = "";
-  let description = "";
+  let title = '';
+  let description = '';
 
-  if (iAction == "delete") {
+  if (iAction == 'delete') {
     iCh.permissionOverwrites.edit(iUser.id, { ViewChannel: false });
     title = `*REP REMOVED*`;
     description = `<@!${iUser.id}>\n<#${iCh.id}>`;
-  } else if (iAction == "add") {
+  } else if (iAction == 'add') {
     iCh.permissionOverwrites.edit(iUser.id, { ViewChannel: true });
     title = `*REP ADDED*`;
     description = `<@!${iUser.id}>\n<#${iCh.id}>`;
@@ -3257,30 +3257,30 @@ async function editChannelView(interaction) {
 }
 
 async function editChannelEmote(interaction) {
-  const iAction = await interaction.options.getString("action");
+  const iAction = await interaction.options.getString('action');
   const oldCh = await interaction.guild.channels.fetch(interaction.channelId);
 
-  let message = "";
-  let newChName = "";
-  if (iAction == "initialize") {
+  let message = '';
+  let newChName = '';
+  if (iAction == 'initialize') {
     newChName = oldCh.name;
-    newChName = newChName.replace("👤", "");
-    newChName = newChName.replace("🆕", "");
-    newChName = newChName.replace("✅", "");
-    newChName = newChName.replace("❌", "");
-    message = "*done*";
-  } else if (iAction == "new") {
-    newChName = "🆕" + oldCh.name;
-    message = "🆕 *new*";
-  } else if (iAction == "accepted") {
-    newChName = "✅" + oldCh.name;
-    message = "✅ *accepted*";
-  } else if (iAction == "declined") {
+    newChName = newChName.replace('👤', '');
+    newChName = newChName.replace('🆕', '');
+    newChName = newChName.replace('✅', '');
+    newChName = newChName.replace('❌', '');
+    message = '*done*';
+  } else if (iAction == 'new') {
+    newChName = '🆕' + oldCh.name;
+    message = '🆕 *new*';
+  } else if (iAction == 'accepted') {
+    newChName = '✅' + oldCh.name;
+    message = '✅ *accepted*';
+  } else if (iAction == 'declined') {
     newChName = oldCh.name;
-    newChName = newChName.replace("✅", "");
-    newChName = newChName.replace("🆕", "");
-    newChName = "❌" + newChName;
-    message = "❌ *declined*";
+    newChName = newChName.replace('✅', '');
+    newChName = newChName.replace('🆕', '');
+    newChName = '❌' + newChName;
+    message = '❌ *declined*';
   }
 
   await interaction.guild.channels.edit(interaction.channelId, {
@@ -3292,9 +3292,9 @@ async function editChannelEmote(interaction) {
 }
 
 async function editChannelEmoteAll(interaction) {
-  const iLeague = interaction.options.getString("league");
+  const iLeague = interaction.options.getString('league');
 
-  let description = "";
+  let description = '';
   let parentIdLeague = config.parentId.repsServer[iLeague];
 
   const channels = await interaction.guild.channels.fetch();
@@ -3303,12 +3303,12 @@ async function editChannelEmoteAll(interaction) {
     if (channel.parentId == parentIdLeague) {
       let newChName = channel.name;
       newChName = newChName
-        .replace("👤", "")
-        .replace("🆕", "")
-        .replace("✅", "")
-        .replace("❌", "");
+        .replace('👤', '')
+        .replace('🆕', '')
+        .replace('✅', '')
+        .replace('❌', '');
       await channel.setName(newChName);
-      description += newChName + "\n";
+      description += newChName + '\n';
     }
   }
 
@@ -3318,14 +3318,14 @@ async function editChannelEmoteAll(interaction) {
 }
 
 async function deleteAccFromRoster(interaction, client) {
-  const iTeamAbbr = await interaction.options.getString("team");
-  const iAcc = await interaction.options.getString("account");
+  const iTeamAbbr = await interaction.options.getString('team');
+  const iAcc = await interaction.options.getString('account');
 
   const query = { clan_abbr: iTeamAbbr };
   const options = { projection: { _id: 0, league: 1 } };
   const mongoTeam = await client.clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne(query, options);
 
   if (!mongoTeam) {
@@ -3337,20 +3337,20 @@ async function deleteAccFromRoster(interaction, client) {
   }
 
   let leagueM = mongoTeam.league;
-  if (leagueM == "j1" || leagueM == "j2") {
-    leagueM = "j";
+  if (leagueM == 'j1' || leagueM == 'j2') {
+    leagueM = 'j';
   }
 
   let title = `ROSTER DELETED | ${iTeamAbbr.toUpperCase()}`;
-  let description = "";
+  let description = '';
   let footer = `${config.footer} ${config.league[mongoTeam.league]}`;
 
-  if (iAcc == "all") {
+  if (iAcc == 'all') {
     const query = { [`homeClanAbbr.${leagueM}`]: iTeamAbbr, status: true };
     const options = { projection: { _id: 0, tag: 1 } };
     const cursor = client.clientMongo
-      .db("jwc")
-      .collection("accounts")
+      .db('jwc')
+      .collection('accounts')
       .find(query, options);
     const accs = await cursor.toArray();
     await cursor.close();
@@ -3373,17 +3373,17 @@ async function deleteAccFromRoster(interaction, client) {
         arrDescription[index] +=
           `:bust_in_silhouette: ${mongoAcc.pilotName[leagueM]}`;
         if (
-          mongoAcc.pilotDC != "no discord acc" &&
+          mongoAcc.pilotDC != 'no discord acc' &&
           mongoAcc.pilotDC != null &&
-          mongoAcc.pilotDC != ""
+          mongoAcc.pilotDC != ''
         ) {
           arrDescription[index] += ` <@!${mongoAcc.pilotDC.id}>`;
         }
         arrDescription[index] += `\n`;
         if (result.modifiedCount == 1 && result.matchedCount == 1) {
-          arrDescription[index] += ":white_check_mark: _sucessfully deleted_";
+          arrDescription[index] += ':white_check_mark: _sucessfully deleted_';
         } else {
-          arrDescription[index] += ":question: _ERROR_";
+          arrDescription[index] += ':question: _ERROR_';
         }
         arrDescription[index] += `\n`;
         arrDescription[index] += `\n`;
@@ -3394,7 +3394,7 @@ async function deleteAccFromRoster(interaction, client) {
 
     let description = [];
     for (let i = 0; i < 10; i++) {
-      description[i] = "";
+      description[i] = '';
     }
     arrDescription.forEach(function (value, index) {
       for (let i = 0; i < 10; i++) {
@@ -3413,7 +3413,7 @@ async function deleteAccFromRoster(interaction, client) {
     await interaction.followUp({ embeds: [embed] });
 
     for (let i = 1; i < 10; i++) {
-      if (description[i] != "") {
+      if (description[i] != '') {
         embed.setDescription(description[i]);
         await interaction.followUp({ embeds: [embed] });
       }
@@ -3432,16 +3432,16 @@ async function deleteAccFromRoster(interaction, client) {
       description += `\n`;
       description += `:bust_in_silhouette: ${mongoAcc.pilotName[leagueM]}`;
       if (
-        mongoAcc.pilotDC != "no discord acc" &&
+        mongoAcc.pilotDC != 'no discord acc' &&
         mongoAcc.pilotDC != null &&
-        mongoAcc.pilotDC != ""
+        mongoAcc.pilotDC != ''
       ) {
         description += ` <@!${mongoAcc.pilotDC.id}>`;
       }
       description += `\n`;
-      description += ":white_check_mark: sucessfully deleted";
+      description += ':white_check_mark: sucessfully deleted';
     } else {
-      description = ":question: _ERROR_";
+      description = ':question: _ERROR_';
     }
 
     let embed = new EmbedBuilder();
@@ -3456,7 +3456,7 @@ async function deleteAccFromRoster(interaction, client) {
 }
 
 async function updateSeasonOfRoster(interaction, client) {
-  const iLeague = await interaction.options.getString("league");
+  const iLeague = await interaction.options.getString('league');
 
   let leagueM = config.leagueM[iLeague];
 
@@ -3465,8 +3465,8 @@ async function updateSeasonOfRoster(interaction, client) {
     projection: { _id: 0, tag: 1, homeClanAbbr: 1, stats: 1, lastSeason: 1 },
   };
   const cursor = client.clientMongo
-    .db("jwc")
-    .collection("accounts")
+    .db('jwc')
+    .collection('accounts')
     .find(query, options);
   let mongoAccs = await cursor.toArray();
   await cursor.close();
@@ -3490,8 +3490,8 @@ async function updateSeasonOfRoster(interaction, client) {
       }
 
       const result = await client.clientMongo
-        .db("jwc")
-        .collection("accounts")
+        .db('jwc')
+        .collection('accounts')
         .updateOne({ tag: mongoAcc.tag }, { $set: listingSet });
     }),
   );
@@ -3504,18 +3504,18 @@ async function updateSeasonOfRoster(interaction, client) {
 }
 
 async function updateSeasonScore(interaction, client) {
-  const iLeague = await interaction.options.getString("league");
+  const iLeague = await interaction.options.getString('league');
 
   const query = {
     league: iLeague,
-    [`status.${functions.seasonToString(config.seasonLast[iLeague])}`]: "true",
+    [`status.${functions.seasonToString(config.seasonLast[iLeague])}`]: 'true',
   };
   const options = {
     projection: { _id: 0, clan_abbr: 1, score: 1, score_last_season: 1 },
   };
   const cursor = client.clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .find(query, options);
   const mongoTeams = await cursor.toArray();
   await cursor.close();
@@ -3534,8 +3534,8 @@ async function updateSeasonScore(interaction, client) {
       console.dir(listingSet);
 
       await client.clientMongo
-        .db("jwc")
-        .collection("clans")
+        .db('jwc')
+        .collection('clans')
         .updateOne({ clan_abbr: mongoTeam.clan_abbr }, { $set: listingSet });
     }),
   );
@@ -3548,7 +3548,7 @@ async function updateSeasonScore(interaction, client) {
 }
 
 async function changeChannelName(interaction) {
-  const iChName = await interaction.options.getString("new_channel_name");
+  const iChName = await interaction.options.getString('new_channel_name');
 
   await interaction.guild.channels.edit(interaction.channelId, {
     name: iChName,
@@ -3559,13 +3559,13 @@ async function changeChannelName(interaction) {
 }
 
 async function deleteNegoChs(interaction) {
-  let iWeek = await interaction.options.getInteger("week");
+  let iWeek = await interaction.options.getInteger('week');
   if (iWeek == null || iWeek == 99) {
     iWeek = await functions.getWeekNow(iLeague);
   }
 
-  let description = "";
-  let parentIdNego = "";
+  let description = '';
+  let parentIdNego = '';
 
   if (interaction.guild.id == config.guildId.jwcReps) {
     parentIdNego = schedule.parentIdNego[`w${iWeek}`];
@@ -3576,7 +3576,7 @@ async function deleteNegoChs(interaction) {
   interaction.guild.channels.cache.forEach((channel) => {
     if (channel.parentId == parentIdNego) {
       channel.delete().catch(console.error);
-      description += channel.name + "\n";
+      description += channel.name + '\n';
     }
   });
 
@@ -3588,8 +3588,8 @@ async function deleteNegoChs(interaction) {
 }
 
 async function warSummary(interaction, client) {
-  const iLeague = await interaction.options.getString("league");
-  let iWeek = await interaction.options.getInteger("week");
+  const iLeague = await interaction.options.getString('league');
+  let iWeek = await interaction.options.getInteger('week');
   if (iWeek == null || iWeek == 99) {
     iWeek = await functions.getWeekNow(iLeague);
   }
@@ -3608,7 +3608,7 @@ async function warSummary(interaction, client) {
     .setFooter({ text: footerText, iconURL: config.urlImage.jwc })
     .setTimestamp();
 
-  let msgId = "";
+  let msgId = '';
   await interaction.followUp({ embeds: [embed] }).then((message) => {
     msgId = message.id;
   });
@@ -3620,24 +3620,24 @@ async function warSummary(interaction, client) {
   newListing.league = iLeague;
   newListing.week = Number(iWeek);
   await client.clientMongo
-    .db("jwc")
-    .collection("war_info")
+    .db('jwc')
+    .collection('war_info')
     .insertOne(newListing);
 
   return;
 }
 
 async function rankingSummary(interaction, client) {
-  const iLeague = await interaction.options.getString("league");
-  const iLvTH = await interaction.options.getInteger("th_level");
+  const iLeague = await interaction.options.getString('league');
+  const iLvTH = await interaction.options.getInteger('th_level');
 
   let lvTH = iLvTH;
   if (!iLvTH) {
     lvTH = config.lvTH;
   }
 
-  const keyAttacks = "attacks";
-  const iAttackType = "total";
+  const keyAttacks = 'attacks';
+  const iAttackType = 'total';
   const query = {
     townHallLevel: lvTH,
     [`league.${config.leagueM[iLeague]}`]: iLeague,
@@ -3652,7 +3652,7 @@ async function rankingSummary(interaction, client) {
   };
 
   let nDisplay = 10;
-  if (iLeague == "mix") {
+  if (iLeague == 'mix') {
     nDisplay = 5;
   }
 
@@ -3661,11 +3661,11 @@ async function rankingSummary(interaction, client) {
     iLeague,
     query,
     sort,
-    "entire",
+    'entire',
     lvTH,
     nDisplay,
     true,
-    "false",
+    'false',
     iAttackType,
   );
   const footerText = `${config.footer} ${config.league[iLeague]} S${config.season[iLeague]}`;
@@ -3677,44 +3677,44 @@ async function rankingSummary(interaction, client) {
   embed.setFooter({ text: footerText, iconURL: config.urlImage.jwc });
   embed.setTimestamp();
 
-  let msgId = "";
+  let msgId = '';
   await interaction.followUp({ embeds: [embed] }).then((message) => {
     msgId = message.id;
   });
 
   const mongoRankingSummary = await client.clientMongo
-    .db("jwc")
-    .collection("ranking")
-    .findOne({ name: "summary" });
+    .db('jwc')
+    .collection('ranking')
+    .findOne({ name: 'summary' });
 
   let listingUpdate = {};
   listingUpdate.channelId = mongoRankingSummary.channelId;
-  if (iLeague == "mix") {
+  if (iLeague == 'mix') {
     listingUpdate.channelId[iLeague][`th${lvTH}`] = msgId;
   } else {
     listingUpdate.channelId[iLeague] = msgId;
   }
   await client.clientMongo
-    .db("jwc")
-    .collection("ranking")
-    .updateOne({ name: "summary" }, { $set: listingUpdate });
+    .db('jwc')
+    .collection('ranking')
+    .updateOne({ name: 'summary' }, { $set: listingUpdate });
 
   return;
 }
 
 async function sendEndMessage(interaction, client) {
-  const iCh = await interaction.options.getChannel("channel");
+  const iCh = await interaction.options.getChannel('channel');
 
   let mongoWar = await client.clientMongo
-    .db("jwc")
-    .collection("wars")
+    .db('jwc')
+    .collection('wars')
     .findOne({ nego_channel: iCh.id });
 
   try {
     await fGetWars.sendEnd(client, mongoWar);
     await interaction.followUp({ content: `送信完了: <#${iCh.id}>`, ephemeral: true });
   } catch (e) {
-    console.error("sendEndMessage error:", e);
+    console.error('sendEndMessage error:', e);
     await interaction.followUp({ content: `送信失敗: ${e.message}`, ephemeral: true });
   }
 
@@ -3722,30 +3722,30 @@ async function sendEndMessage(interaction, client) {
 }
 
 async function scanClan(interaction, client) {
-  const iLeague = await interaction.options.getString("league");
-  const iTeam = await interaction.options.getString("team");
+  const iLeague = await interaction.options.getString('league');
+  const iTeam = await interaction.options.getString('team');
 
-  let title = "";
-  let description = "";
-  let description2 = "";
+  let title = '';
+  let description = '';
+  let description2 = '';
 
   if (iTeam != null) {
-    title = "**SCANED**";
+    title = '**SCANED**';
 
     const query = { clan_abbr: iTeam };
     const mongoClan = await client.clientMongo
-      .db("jwc")
-      .collection("clans")
+      .db('jwc')
+      .collection('clans')
       .findOne(query);
 
     let clanTag = mongoClan.clan_tag;
     let clanLink =
-      "https://link.clashofclans.com/?action=OpenClanProfile&tag=" +
-      clanTag.replace("#", "");
+      'https://link.clashofclans.com/?action=OpenClanProfile&tag=' +
+      clanTag.replace('#', '');
     let clan = await client.clientCoc.getClan(clanTag);
     if (clan.location == null) {
       description = `${mongoClan.team_name}\n`;
-    } else if (clan.location.name == "Japan") {
+    } else if (clan.location.name == 'Japan') {
       description = `:flag_jp: ${mongoClan.team_name}\n`;
     } else {
       description = `[${clan.location.name}] ${mongoClan.team_name}\n`;
@@ -3761,7 +3761,7 @@ async function scanClan(interaction, client) {
     title = `CLANS | ${config.league[iLeague]}`;
 
     const query = { league: iLeague };
-    const cursor = client.clientMongo.db("jwc").collection("clans").find(query);
+    const cursor = client.clientMongo.db('jwc').collection('clans').find(query);
     let mongoClans = await cursor.toArray();
     await cursor.close();
 
@@ -3770,12 +3770,12 @@ async function scanClan(interaction, client) {
       mongoClans.map(async (mongoClan, index) => {
         let clanTag = mongoClan.clan_tag;
         let clanLink =
-          "https://link.clashofclans.com/?action=OpenClanProfile&tag=" +
-          clanTag.replace("#", "");
+          'https://link.clashofclans.com/?action=OpenClanProfile&tag=' +
+          clanTag.replace('#', '');
         let clan = await client.clientCoc.getClan(clanTag);
         if (clan.location == null) {
           arrDescription[index] = `${mongoClan.team_name}\n`;
-        } else if (clan.location.name == "Japan") {
+        } else if (clan.location.name == 'Japan') {
           arrDescription[index] = `:flag_jp: ${mongoClan.team_name}\n`;
         } else {
           arrDescription[index] =
@@ -3801,7 +3801,7 @@ async function scanClan(interaction, client) {
     });
   }
 
-  if (description != "") {
+  if (description != '') {
     await interaction.followUp({
       embeds: [
         new EmbedBuilder()
@@ -3814,7 +3814,7 @@ async function scanClan(interaction, client) {
     });
   }
 
-  if (description2 != "") {
+  if (description2 != '') {
     await interaction.followUp({
       embeds: [
         new EmbedBuilder()
@@ -3831,18 +3831,18 @@ async function scanClan(interaction, client) {
 }
 
 async function mentionReps(interaction, client) {
-  const iLeague = await interaction.options.getString("league");
-  const iMatch = await interaction.options.getInteger("match");
-  const iMessage = await interaction.options.getString("message");
+  const iLeague = await interaction.options.getString('league');
+  const iMatch = await interaction.options.getInteger('match');
+  const iMessage = await interaction.options.getString('message');
 
-  let iWeek = await interaction.options.getInteger("week");
+  let iWeek = await interaction.options.getInteger('week');
   if (iWeek == null || iWeek == 99) {
     iWeek = await functions.getWeekNow(iLeague);
   }
 
   const mongoWar = await client.clientMongo
-    .db("jwc")
-    .collection("wars")
+    .db('jwc')
+    .collection('wars')
     .findOne({
       season: config.season[iLeague],
       league: iLeague,
@@ -3851,40 +3851,40 @@ async function mentionReps(interaction, client) {
     });
 
   const mongoClan = await client.clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne({ clan_abbr: mongoWar.clan_abbr });
   const rep1stId1 = mongoClan.rep_1st.id;
   const rep2ndId1 = mongoClan.rep_2nd.id;
   let rep3rdId1 = 0;
-  if (mongoClan.rep_3rd != null && mongoClan.rep_3rd != "non-registered") {
+  if (mongoClan.rep_3rd != null && mongoClan.rep_3rd != 'non-registered') {
     rep3rdId1 = await mongoClan.rep_3rd.id;
   }
 
   const mongoClanOpp = await client.clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne({ clan_abbr: mongoWar.opponent_abbr });
   const rep1stId2 = mongoClanOpp.rep_1st.id;
   const rep2ndId2 = mongoClanOpp.rep_2nd.id;
   let rep3rdId2 = 0;
   if (
     mongoClanOpp.rep_3rd != null &&
-    mongoClanOpp.rep_3rd != "non-registered"
+    mongoClanOpp.rep_3rd != 'non-registered'
   ) {
     rep3rdId2 = await mongoClanOpp.rep_3rd.id;
   }
 
-  let myContent = "";
+  let myContent = '';
   myContent += `<@!${rep1stId1}> <@!${rep2ndId1}>`;
-  if (mongoClan.rep_3rd != null && mongoClan.rep_3rd != "non-registered") {
+  if (mongoClan.rep_3rd != null && mongoClan.rep_3rd != 'non-registered') {
     myContent += ` <@!${rep3rdId1}>`;
   }
   myContent += `\n`;
   myContent += `<@!${rep1stId2}> <@!${rep2ndId2}>`;
   if (
     mongoClanOpp.rep_3rd != null &&
-    mongoClanOpp.rep_3rd != "non-registered"
+    mongoClanOpp.rep_3rd != 'non-registered'
   ) {
     myContent += ` <@!${rep3rdId2}>`;
   }
@@ -3893,5 +3893,5 @@ async function mentionReps(interaction, client) {
 
   client.channels.cache.get(mongoWar.nego_channel).send({ content: myContent });
 
-  interaction.followUp("*done*");
+  interaction.followUp('*done*');
 }

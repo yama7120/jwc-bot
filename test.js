@@ -1,13 +1,13 @@
 // 'node test.js' to run in Shell
 
-import * as functions from "./functions/functions.js";
-import * as fRanking from "./functions/fRanking.js";
-import * as fCanvas from "./functions/fCanvas.js";
-import config from "./config/config.js";
-import config_coc from "./config/config_coc.js";
+import * as functions from './functions/functions.js';
+import * as fRanking from './functions/fRanking.js';
+import * as fCanvas from './functions/fCanvas.js';
+import config from './config/config.js';
+import config_coc from './config/config_coc.js';
 
-import { MongoClient, ServerApiVersion } from "mongodb";
-import { EmbedBuilder } from "discord.js";
+import { MongoClient, ServerApiVersion } from 'mongodb';
+import { EmbedBuilder } from 'discord.js';
 const clientMongo = new MongoClient(process.env.mongoURI, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -17,29 +17,29 @@ const clientMongo = new MongoClient(process.env.mongoURI, {
 });
 
 (async () => {
-  console.log(functions.plusTime("start"));
+  console.log(functions.plusTime('start'));
 
   await removeDuplicateEvents(clientMongo);
 
-  console.log(functions.plusTime("end"));
+  console.log(functions.plusTime('end'));
   process.exit();
 })();
 
 // legend.events配列からunixTimeが重複しているオブジェクトを削除
 async function removeDuplicateEvents(clientMongo) {
   try {
-    console.log(functions.plusTime("start: removeDuplicateEvents"));
+    console.log(functions.plusTime('start: removeDuplicateEvents'));
     
     // legend.events配列が存在する全アカウントを検索
     const query = {
       status: true,
-      "legend.events": { $exists: true, $type: "array" }
+      'legend.events': { $exists: true, $type: 'array' }
     };
 
     const accounts = await clientMongo
-      .db("jwc")
-      .collection("accounts")
-      .find(query, { projection: { _id: 0, tag: 1, "legend.events": 1 } })
+      .db('jwc')
+      .collection('accounts')
+      .find(query, { projection: { _id: 0, tag: 1, 'legend.events': 1 } })
       .toArray();
 
     console.log(`Found ${accounts.length} accounts with legend.events array`);
@@ -76,13 +76,13 @@ async function removeDuplicateEvents(clientMongo) {
         if (removedCount > 0) {
           // データベースを更新
           await clientMongo
-            .db("jwc")
-            .collection("accounts")
+            .db('jwc')
+            .collection('accounts')
             .updateOne(
               { tag: account.tag },
               {
                 $set: {
-                  "legend.events": uniqueEvents
+                  'legend.events': uniqueEvents
                 }
               }
             );
@@ -98,9 +98,9 @@ async function removeDuplicateEvents(clientMongo) {
 
     console.log(`Successfully updated ${accountsUpdated} accounts`);
     console.log(`Total removed ${totalRemoved} duplicate event objects`);
-    console.log(functions.plusTime("end: removeDuplicateEvents"));
+    console.log(functions.plusTime('end: removeDuplicateEvents'));
     
   } catch (error) {
-    console.error("Error in removeDuplicateEvents:", error);
+    console.error('Error in removeDuplicateEvents:', error);
   }
 }

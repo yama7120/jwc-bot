@@ -1,6 +1,6 @@
-import config from "../config/config.js";
-import * as functions from "../functions/functions.js";
-import { Events, EmbedBuilder, MessageFlags } from "discord.js";
+import config from '../config/config.js';
+import * as functions from '../functions/functions.js';
+import { Events, EmbedBuilder, MessageFlags } from 'discord.js';
 
 export default {
   name: Events.InteractionCreate,
@@ -44,7 +44,7 @@ export default {
         console.error(error);
         console.error(`${interaction.user.tag} - ${interaction.commandName}: ${interaction.toString()}`);
         let description = `*Please report to <@!${config.yamaId}>.*`;
-        const embed = createEmbed("ERROR", description);
+        const embed = createEmbed('ERROR', description);
         if (interaction.replied || interaction.deferred) {
           await interaction.followUp({ embeds: [embed] });
         } else {

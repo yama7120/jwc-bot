@@ -1,12 +1,12 @@
-import { EmbedBuilder } from "discord.js";
-import { format } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
+import { EmbedBuilder } from 'discord.js';
+import { format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 
-import config from "../config/config.js";
-import config_coc from "../config/config_coc.js";
-import schedule from "../config/schedule.js";
-import * as fGetWars from "./fGetWars.js";
-import * as fRanking from "./fRanking.js";
+import config from '../config/config.js';
+import config_coc from '../config/config_coc.js';
+import schedule from '../config/schedule.js';
+import * as fGetWars from './fGetWars.js';
+import * as fRanking from './fRanking.js';
 
 /**
  * チャンネルへ安全にメッセージを送信するユーティリティ。
@@ -15,18 +15,18 @@ import * as fRanking from "./fRanking.js";
  * @param {string} channelId - 送信先チャンネルID
  * @param {object} payload - send() に渡す引数 (例: { embeds: [...] })
  * @param {string} [label] - ログ用ラベル (どこから呼ばれたか)
- * @returns {Promise<import("discord.js").Message|null>}
+ * @returns {Promise<import('discord.js').Message|null>}
  */
-async function safeSend(client, channelId, payload, label = "") {
+async function safeSend(client, channelId, payload, label = '') {
   try {
     const channel = client.channels.cache.get(channelId);
     if (!channel) {
-      console.warn(`⚠️ [safeSend]${label ? ` (${label})` : ""} チャンネルが見つかりません: ${channelId}`);
+      console.warn(`⚠️ [safeSend]${label ? ` (${label})` : ''} チャンネルが見つかりません: ${channelId}`);
       return null;
     }
     return await channel.send(payload);
   } catch (error) {
-    console.error(`❌ [safeSend]${label ? ` (${label})` : ""} 送信失敗 ch=${channelId}:`, error.message);
+    console.error(`❌ [safeSend]${label ? ` (${label})` : ''} 送信失敗 ch=${channelId}:`, error.message);
     return null;
   }
 }
@@ -37,12 +37,12 @@ function maintenance(interaction) {
     const send = (content) => {
       // Prefer followUp only when interaction is already replied/deferred
       if (
-        typeof interaction.followUp === "function" &&
+        typeof interaction.followUp === 'function' &&
         (interaction.deferred || interaction.replied)
       ) {
         return interaction.followUp({ content });
       }
-      if (typeof interaction.reply === "function") {
+      if (typeof interaction.reply === 'function') {
         return interaction.reply({ content });
       }
       if (interaction.channel?.isTextBased?.()) {
@@ -58,7 +58,7 @@ function maintenance(interaction) {
       return true; // block others
     }
   } catch (e) {
-    console.error("maintenance notice failed:", e);
+    console.error('maintenance notice failed:', e);
   }
 }
 export { maintenance };
@@ -91,9 +91,9 @@ async function countHeroEquipment(arrEquipmentInAttack) {
     if (hero.equipment) {
       hero.equipment.forEach((item) => {
         const type = equipmentMap[item];
-        if (type === "common") {
+        if (type === 'common') {
           commonCount++;
-        } else if (type === "epic") {
+        } else if (type === 'epic') {
           epicCount++;
         }
       });
@@ -153,7 +153,7 @@ async function createEmbedLegends(client, nDisplay, locationId, prefetched) {
         const leagueTier = config_coc.leagueTiers.find(
           (tier) => tier.id === scPlayer.leagueTier.id,
         );
-        const leagueEmoji = leagueTier ? leagueTier.emote : "";
+        const leagueEmoji = leagueTier ? leagueTier.emote : '';
 
         arrDescription[index] += ` ${leagueEmoji} **${scPlayer.trophies}**`;
         arrDescription[index] += ` _x${scPlayer.attackWins}_`;
@@ -170,18 +170,18 @@ async function createEmbedLegends(client, nDisplay, locationId, prefetched) {
         arrDescription[index] += ` ${config.emote.thn[config.lvTH]}`;
         arrDescription[index] += ` **${nameReplacer(scPlayer.name)}**`;
         let mongoAcc = await client.clientMongo
-          .db("jwc")
-          .collection("accounts")
+          .db('jwc')
+          .collection('accounts')
           .findOne(
             { tag: scPlayer.tag },
             { projection: { homeClanAbbr: 1, _id: 0 } },
           );
-        let homeTeamAbbr = "";
+        let homeTeamAbbr = '';
         if (mongoAcc != null) {
-          homeTeamAbbr = mongoAcc.homeClanAbbr.j = ""
-            ? ""
+          homeTeamAbbr = mongoAcc.homeClanAbbr.j = ''
+            ? ''
             : mongoAcc.homeClanAbbr.j;
-          if (homeTeamAbbr != "") {
+          if (homeTeamAbbr != '') {
             arrDescription[index] +=
               ` | ${config.emote.jwc}${String(homeTeamAbbr).toUpperCase()}`;
           }
@@ -199,7 +199,7 @@ async function createEmbedLegends(client, nDisplay, locationId, prefetched) {
   for (let i = 0; i < pages; i++) {
     let embed = new EmbedBuilder();
     embed.setColor(config.color.main);
-    let title = "";
+    let title = '';
     if (locationId == config_coc.locationId.japan) {
       title = `${config.emote.legend} **JAPANESE LEGENDS :flag_jp:**`;
     } else {
@@ -208,7 +208,7 @@ async function createEmbedLegends(client, nDisplay, locationId, prefetched) {
     embed.setTitle(title);
 
     arrEmbed[i] = {};
-    let description = "";
+    let description = '';
     arrDescription.forEach((value, index) => {
       if (index >= 25 * i && index < 25 * (i + 1)) {
         description += value;
@@ -230,25 +230,25 @@ export { createEmbedLegends };
 
 function tagReplacer(tag) {
   let tagNew =
-    tag.includes("#") || tag.includes("＃")
-      ? tag.replace("＃", "#")
-      : "#" + tag;
-  return tagNew.replace(/O/g, "0").toUpperCase();
+    tag.includes('#') || tag.includes('＃')
+      ? tag.replace('＃', '#')
+      : '#' + tag;
+  return tagNew.replace(/O/g, '0').toUpperCase();
 }
 export { tagReplacer };
 
 function nameReplacer(name) {
   let nameNew = String(name)
-    .replace(/\*/g, "\\*")
-    .replace(/_/g, "\\_")
-    .replace(/`/g, "\\`");
+    .replace(/\*/g, '\\*')
+    .replace(/_/g, '\\_')
+    .replace(/`/g, '\\`');
   return nameNew;
 }
 export { nameReplacer };
 
 async function getAccInfoTitle(scPlayer) {
   //console.dir(scPlayer.troops);
-  let title = "";
+  let title = '';
   title = `${config.emote.thn[scPlayer.townHallLevel]}`;
   title += `  ${nameReplacer(scPlayer.name)}`;
   return title;
@@ -256,9 +256,9 @@ async function getAccInfoTitle(scPlayer) {
 export { getAccInfoTitle };
 
 async function getAccInfoDescriptionMain(scPlayer, formatLength) {
-  let description = "";
+  let description = '';
   const urlPlayer = `https://link.clashofclans.com/jp?action=OpenPlayerProfile&tag=${scPlayer.tag.slice(1)}`;
-  if (formatLength == "long") {
+  if (formatLength == 'long') {
     if (
       scPlayer.townHallLevel == 12 ||
       scPlayer.townHallLevel == 13 ||
@@ -274,9 +274,9 @@ async function getAccInfoDescriptionMain(scPlayer, formatLength) {
     } else {
       description = `[__${scPlayer.tag}__](${urlPlayer}) TH${scPlayer.townHallLevel}\n`;
     }
-  } else if (formatLength == "short") {
+  } else if (formatLength == 'short') {
     description = config.emote.thn[scPlayer.townHallLevel];
-    description += " ";
+    description += ' ';
     description += `**${nameReplacer(scPlayer.name)}**`;
     description += ` [__${scPlayer.tag}__](${urlPlayer})\n`;
   }
@@ -285,47 +285,47 @@ async function getAccInfoDescriptionMain(scPlayer, formatLength) {
 export { getAccInfoDescriptionMain };
 
 async function getAccInfoDescriptionWar(clientCoc, scPlayer, formatLength) {
-  let description = "";
+  let description = '';
 
   if (scPlayer.inClan == false) {
     description += `*not in any clans*\n`;
   } else if (scPlayer.inClan == true) {
     description += `${nameReplacer(scPlayer.clan.name)}\n`;
-    if (formatLength == "long") {
-      description += "\n";
-      description += "* **WAR**\n";
+    if (formatLength == 'long') {
+      description += '\n';
+      description += '* **WAR**\n';
     }
     let clanWar = null;
     try {
       clanWar = await clientCoc.getCurrentWar(scPlayer.clan.tag);
       //console.dir(clanWar);
     } catch (error) {
-      if (error.reason != "notFound") {
+      if (error.reason != 'notFound') {
         description += `error: *${error.reason}*\n`;
       }
     }
     if (clanWar != null) {
-      if (clanWar.state == "preparation" || clanWar.state == "inWar") {
+      if (clanWar.state == 'preparation' || clanWar.state == 'inWar') {
         const clanWarMember = clanWar.getMember(scPlayer.tag);
         if (clanWarMember != null) {
-          const startTimeJstDate = toZonedTime(clanWar.startTime, "Asia/Tokyo");
-          const startTimeJstStr = format(startTimeJstDate, "M/d HH:mm");
+          const startTimeJstDate = toZonedTime(clanWar.startTime, 'Asia/Tokyo');
+          const startTimeJstStr = format(startTimeJstDate, 'M/d HH:mm');
           const startTimeUnix = new Date(clanWar.startTime).getTime() / 1000;
-          const endTimeJstDate = toZonedTime(clanWar.endTime, "Asia/Tokyo");
-          const endTimeJstStr = format(endTimeJstDate, "M/d HH:mm");
+          const endTimeJstDate = toZonedTime(clanWar.endTime, 'Asia/Tokyo');
+          const endTimeJstStr = format(endTimeJstDate, 'M/d HH:mm');
           const endTimeUnix = new Date(clanWar.endTime).getTime() / 1000;
           description += `_in war until ${endTimeJstStr}_ <t:${endTimeUnix}:R>\n`;
-          if (clanWar.state == "preparation") {
+          if (clanWar.state == 'preparation') {
             description += `_preparation until ${startTimeJstStr}_ <t:${startTimeUnix}:R>\n`;
-          } else if (clanWar.state == "inWar") {
-            if (formatLength == "long") {
+          } else if (clanWar.state == 'inWar') {
+            if (formatLength == 'long') {
               let inSCCWL = null;
               try {
                 let clanWarLeagueGroup = await clientCoc.getClanWarLeagueGroup(
                   scPlayer.clan.tag,
                 );
                 inSCCWL = true;
-                if (clanWarLeagueGroup.state == "inWar") {
+                if (clanWarLeagueGroup.state == 'inWar') {
                   description += await createDescriptionAttacksSCCWL(
                     clientCoc,
                     clanWarLeagueGroup,
@@ -333,7 +333,7 @@ async function getAccInfoDescriptionWar(clientCoc, scPlayer, formatLength) {
                   );
                 }
               } catch (error) {
-                if (error.reason == "notFound") {
+                if (error.reason == 'notFound') {
                   inSCCWL = false;
                 }
               }
@@ -341,7 +341,7 @@ async function getAccInfoDescriptionWar(clientCoc, scPlayer, formatLength) {
               if (inSCCWL == false) {
                 try {
                   //let clanWar = await clientCoc.getCurrentWar(scPlayer.clan.tag);
-                  if (clanWar.state == "inWar") {
+                  if (clanWar.state == 'inWar') {
                     description += await createDescriptionAttacks(
                       clanWar,
                       clanWarMember,
@@ -350,7 +350,7 @@ async function getAccInfoDescriptionWar(clientCoc, scPlayer, formatLength) {
                   }
                 } catch (error) {}
               }
-            } else if (formatLength == "short") {
+            } else if (formatLength == 'short') {
               description += await createDescriptionAttacks(
                 clanWar,
                 clanWarMember,
@@ -359,7 +359,7 @@ async function getAccInfoDescriptionWar(clientCoc, scPlayer, formatLength) {
             }
           }
         } else if (clanWarMember == null) {
-          description += "*not in war*\n";
+          description += '*not in war*\n';
         }
       } else {
         description += `*${clanWar.state}*\n`;
@@ -374,7 +374,7 @@ async function getAccInfoDescriptionWar(clientCoc, scPlayer, formatLength) {
 export { getAccInfoDescriptionWar };
 
 async function createDescriptionAttacks(clanWar, clanWarMember, scPlayer) {
-  let description = "";
+  let description = '';
   if (
     clanWar.clan.tag == scPlayer.clan.tag ||
     clanWar.opponent.tag == scPlayer.clan.tag
@@ -417,15 +417,15 @@ async function createDescriptionAttacksSCCWL(
   clanWarLeagueGroup,
   scPlayer,
 ) {
-  let description = "";
+  let description = '';
   let arrDescription = [];
   await Promise.all(
     clanWarLeagueGroup.rounds.map(async (round, index) => {
-      arrDescription[index] = "";
+      arrDescription[index] = '';
       await Promise.all(
         round.warTags.map(async (warTag) => {
           let clanWar = await clientCoc.getClanWarLeagueRound(warTag);
-          if (clanWar.state == "warEnded" || clanWar.state == "inWar") {
+          if (clanWar.state == 'warEnded' || clanWar.state == 'inWar') {
             if (
               clanWar.clan.tag == scPlayer.clan.tag ||
               clanWar.opponent.tag == scPlayer.clan.tag
@@ -451,7 +451,7 @@ async function createDescriptionAttacksSCCWL(
     }),
   );
   arrDescription.forEach(function (value, index) {
-    if (value != "") {
+    if (value != '') {
       description += `${arrDescription[index]}`;
     }
   });
@@ -459,8 +459,8 @@ async function createDescriptionAttacksSCCWL(
 }
 
 async function createDescriptionAttack(clanWarAttack) {
-  let description = "";
-  let star = ["", "", ""];
+  let description = '';
+  let star = ['', '', ''];
   let destruction = clanWarAttack.destruction;
   let left = 180 - clanWarAttack.duration;
   //if (destruction == 100) {
@@ -488,20 +488,20 @@ async function createDescriptionAttack(clanWarAttack) {
 }
 
 async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
-  let description = "";
-  const logUnknownEquipment = (equipmentName, heroName = "unknown") => {
+  let description = '';
+  const logUnknownEquipment = (equipmentName, heroName = 'unknown') => {
     console.error(
-      `[getAccInfoDescriptionHeroes] unknown hero equipment: ${equipmentName} (hero: ${heroName}, player: ${scPlayer?.name ?? "unknown"}, tag: ${scPlayer?.tag ?? "unknown"})`,
+      `[getAccInfoDescriptionHeroes] unknown hero equipment: ${equipmentName} (hero: ${heroName}, player: ${scPlayer?.name ?? 'unknown'}, tag: ${scPlayer?.tag ?? 'unknown'})`,
     );
   };
 
   if (!scPlayer.heroes) {
-    return "*ERROR*\n";
+    return '*ERROR*\n';
   }
 
-  if (format == "long") {
-    description += "\n";
-    description += "* **HEROES**\n";
+  if (format == 'long') {
+    description += '\n';
+    description += '* **HEROES**\n';
   }
 
   let hasHeroes = false;
@@ -509,7 +509,7 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
 
   let arrEqName = [];
   scPlayer.heroes.map((hero) => {
-    if (hero.village == "home") {
+    if (hero.village == 'home') {
       //console.log(hero.name, hero.isLoaded);
 
       hasHeroes = true;
@@ -523,13 +523,13 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
       }
       description += foundEquipment.emote;
       let hallMaxLevel = hero.hallMaxLevel;
-      if (hero.name == "Minion Prince") {
+      if (hero.name == 'Minion Prince') {
         hallMaxLevel =
           config_coc.maxLevel.heroes.minionPrince[
             `th${scPlayer.townHallLevel}`
           ];
       }
-      if (hero.name == "Dragon Duke") {
+      if (hero.name == 'Dragon Duke') {
         hallMaxLevel =
           config_coc.maxLevel.heroes.dragonDuke[
             `th${scPlayer.townHallLevel}`
@@ -548,7 +548,7 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
             (equipment_config) => equipment_config.name == equipment.name,
           );
           let hallMaxLevel = 99;
-          let emote = ":question:";
+          let emote = ':question:';
           if (foundEquipment) {
             hallMaxLevel =
               equipment.hallMaxLevel ??
@@ -556,7 +556,7 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
                 `th${scPlayer.townHallLevel}`
               ];
             emote = foundEquipment.emote;
-            /*if (foundEquipment.type == "epic") {
+            /*if (foundEquipment.type == 'epic') {
               numEpic += 1;
             }*/
           } else {
@@ -577,17 +577,17 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
   //escription += `_E${numEpic}_\n`;
 
   if (hasHeroes == false) {
-    description += "*No heroes*\n";
+    description += '*No heroes*\n';
   }
 
   if (showAllEquipment == true) {
     const heroOrder = [
-      "Barbarian King",
-      "Archer Queen",
-      "Grand Warden",
-      "Royal Champion",
-      "Minion Prince",
-      "Dragon Duke",
+      'Barbarian King',
+      'Archer Queen',
+      'Grand Warden',
+      'Royal Champion',
+      'Minion Prince',
+      'Dragon Duke',
     ];
     const equipmentsByHero = {};
     heroOrder.forEach((heroName) => {
@@ -599,8 +599,8 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
         (equipment_config) => equipment_config.name == equipment.name,
       );
       let hallMaxLevel = 99;
-      let emote = ":question:";
-      let heroName = "Unknown";
+      let emote = ':question:';
+      let heroName = 'Unknown';
       if (foundEquipment) {
         hallMaxLevel =
           equipment.hallMaxLevel ??
@@ -625,8 +625,8 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
     });
 
     if (hasHeroEquipments == true) {
-      description += "\n";
-      description += "* **HERO EQUIPMENTS**\n";
+      description += '\n';
+      description += '* **HERO EQUIPMENTS**\n';
       const renderOrder = [
         ...heroOrder,
         ...Object.keys(equipmentsByHero).filter(
@@ -639,7 +639,7 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
             (hero_config) => hero_config.name == heroName,
           );
           const heroEmote = foundHero?.emote ?? `[${heroName}]`;
-          description += `${heroEmote} ${equipmentsByHero[heroName].join(" ")}\n`;
+          description += `${heroEmote} ${equipmentsByHero[heroName].join(' ')}\n`;
         }
       });
     }
@@ -650,22 +650,22 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
 export { getAccInfoDescriptionHeroes };
 
 async function getAccInfoDescriptionSuperTroops(scPlayer, formatLength) {
-  let description = "";
-  if (formatLength == "long") {
-    description += "\n";
-    description += "* **SUPER TROOPS**\n";
+  let description = '';
+  if (formatLength == 'long') {
+    description += '\n';
+    description += '* **SUPER TROOPS**\n';
   }
 
   const activeSuperTroops = scPlayer.superTroops.filter(
     (troop) => troop.isActive,
   );
   if (activeSuperTroops.length > 0) {
-    description += activeSuperTroops.map((troop) => troop.name).join(" / ");
+    description += activeSuperTroops.map((troop) => troop.name).join(' / ');
   } else {
-    description += "*None*";
+    description += '*None*';
   }
 
-  description += "\n";
+  description += '\n';
 
   return description;
 }
@@ -676,10 +676,10 @@ async function getAccInfoDescriptionRankedBattles(
   mongoAcc,
   formatLength,
 ) {
-  let description = "";
-  if (formatLength == "long") {
-    description += "\n";
-    description += "* **RANKED BATTLES**\n";
+  let description = '';
+  if (formatLength == 'long') {
+    description += '\n';
+    description += '* **RANKED BATTLES**\n';
   }
 
   const leagueTierConfig = config_coc.leagueTiers.find(
@@ -714,13 +714,13 @@ async function getAccInfoDescriptionRankedBattles(
 export { getAccInfoDescriptionRankedBattles };
 
 async function getAccInfoDescriptionTrophies(scPlayer, mongoAcc, formatLength) {
-  let description = "";
-  if (formatLength == "long") {
-    description += "\n";
+  let description = '';
+  if (formatLength == 'long') {
+    description += '\n';
     if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
-      description += "* **ATTACK WINS / DEFENSE WINS**\n";
+      description += '* **ATTACK WINS / DEFENSE WINS**\n';
     } else {
-      description += "* **TROPHIES / ATTACK WINS / DEFENSE WINS**\n";
+      description += '* **TROPHIES / ATTACK WINS / DEFENSE WINS**\n';
     }
   }
   let attackWinsStart = 0;
@@ -736,7 +736,7 @@ async function getAccInfoDescriptionTrophies(scPlayer, mongoAcc, formatLength) {
   let diffDefenseWins = scPlayer.defenseWins - defenseWinsStart;
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     // Legend League
-    if (formatLength == "short") {
+    if (formatLength == 'short') {
       description += `:trophy: ${scPlayer.trophies} `;
     }
     description += `${config.emote.sword} ${diffAattackWins} ${config.emote.shield} ${diffDefenseWins}`;
@@ -750,9 +750,9 @@ async function getAccInfoDescriptionTrophies(scPlayer, mongoAcc, formatLength) {
 export { getAccInfoDescriptionTrophies };
 
 async function getAccInfoDescriptionAccData(mongoAcc, formatLength) {
-  let description = "";
+  let description = '';
 
-  if (formatLength == "long") {
+  if (formatLength == 'long') {
     description += `* **TROPHIES / ATTACK WINS / DEFENSE WINS**\n`;
     description += `:trophy: ${mongoAcc.trophies}`;
     description += `  ${config.emote.sword} ${mongoAcc.attackWins}`;
@@ -765,49 +765,49 @@ async function getAccInfoDescriptionAccData(mongoAcc, formatLength) {
     config.emote.iconNormalTroops,
     mongoAcc.lvTroops.normal.level,
     mongoAcc.lvTroops.normal.maxLevel,
-    "Nomal Troops",
+    'Nomal Troops',
   );
   description += createDescriptionLevels(
     config.emote.iconDarkTroops,
     mongoAcc.lvTroops.dark.level,
     mongoAcc.lvTroops.dark.maxLevel,
-    "Dark Troops",
+    'Dark Troops',
   );
   description += createDescriptionLevels(
     config.emote.iconNormalSpells,
     mongoAcc.lvSpells.normal.level,
     mongoAcc.lvSpells.normal.maxLevel,
-    "Nomal Spells",
+    'Nomal Spells',
   );
   description += createDescriptionLevels(
     config.emote.iconDarkSpells,
     mongoAcc.lvSpells.dark.level,
     mongoAcc.lvSpells.dark.maxLevel,
-    "Dark Spells",
+    'Dark Spells',
   );
   description += createDescriptionLevels(
     config_coc.heroes[0].emote,
     mongoAcc.lvHeroes.level,
     mongoAcc.lvHeroes.maxLevel,
-    "Heroes",
+    'Heroes',
   );
   description += createDescriptionLevels(
     config_coc.heroEquipments[0].emote,
     mongoAcc.lvHeroEquipment.total.level,
     mongoAcc.lvHeroEquipment.total.maxLevel,
-    "Hero Equipments",
+    'Hero Equipments',
   );
   description += createDescriptionLevels(
     config.emote.iconPets,
     mongoAcc.lvPets.level,
     mongoAcc.lvPets.maxLevel,
-    "Pets",
+    'Pets',
   );
   description += createDescriptionLevels(
     config.emote.iconSieges,
     mongoAcc.lvSieges.level,
     mongoAcc.lvSieges.maxLevel,
-    "Siege Machines",
+    'Siege Machines',
   );
 
   return description;
@@ -815,23 +815,23 @@ async function getAccInfoDescriptionAccData(mongoAcc, formatLength) {
 export { getAccInfoDescriptionAccData };
 
 function createDescriptionLevels(emote, level, maxLevel, strItem) {
-  let description = "";
+  let description = '';
   if (maxLevel == 0) {
-    return "";
+    return '';
   }
   if (level == maxLevel) {
     description += `${emote} **${level}/${maxLevel}** :white_check_mark: - ${strItem}\n`;
   } else {
     const rateGrowth = Math.round((level / maxLevel) * 100);
-    let emoteRate = "";
+    let emoteRate = '';
     if (rateGrowth >= 95) {
-      emoteRate = ":green_circle:";
+      emoteRate = ':green_circle:';
     } else if (rateGrowth >= 90) {
-      emoteRate = ":yellow_circle:";
+      emoteRate = ':yellow_circle:';
     } else if (rateGrowth >= 85) {
-      emoteRate = ":orange_circle:";
+      emoteRate = ':orange_circle:';
     } else {
-      emoteRate = ":red_circle:";
+      emoteRate = ':red_circle:';
     }
     description += `${emote} ${level}/${maxLevel} ( ${emoteRate}*${rateGrowth}%* ) - ${strItem}\n`;
   }
@@ -839,13 +839,13 @@ function createDescriptionLevels(emote, level, maxLevel, strItem) {
 }
 
 async function getAccInfoDescriptionJWC(mongoAcc) {
-  let description = "";
+  let description = '';
 
   description += `* **TEAM FOR JWC ${config.emote.jwc}**\n`;
-  description += `J1/J2 *S${config.season.j}*: ${(mongoAcc?.homeClanAbbr?.j?.trim().toUpperCase() || "FREE") === "FREE" ? "*FREE*" : `**${mongoAcc.homeClanAbbr.j.toUpperCase()}**`}\n`;
-  description += `SWISS *S${config.season.swiss}*: ${(mongoAcc?.homeClanAbbr?.swiss?.trim().toUpperCase() || "FREE") === "FREE" ? "*FREE*" : `**${mongoAcc.homeClanAbbr.swiss.toUpperCase()}**`}\n`;
-  description += `MIX *S${config.season.mix}*: ${(mongoAcc?.homeClanAbbr?.mix?.trim().toUpperCase() || "FREE") === "FREE" ? "*FREE*" : `**${mongoAcc.homeClanAbbr.mix.toUpperCase()}**`}\n`;
-  description += `5V *S${config.season.five}*: ${(mongoAcc?.homeClanAbbr?.five?.trim().toUpperCase() || "FREE") === "FREE" ? "*FREE*" : `**${mongoAcc.homeClanAbbr.five.toUpperCase()}**`}\n`;
+  description += `J1/J2 *S${config.season.j}*: ${(mongoAcc?.homeClanAbbr?.j?.trim().toUpperCase() || 'FREE') === 'FREE' ? '*FREE*' : `**${mongoAcc.homeClanAbbr.j.toUpperCase()}**`}\n`;
+  description += `SWISS *S${config.season.swiss}*: ${(mongoAcc?.homeClanAbbr?.swiss?.trim().toUpperCase() || 'FREE') === 'FREE' ? '*FREE*' : `**${mongoAcc.homeClanAbbr.swiss.toUpperCase()}**`}\n`;
+  description += `MIX *S${config.season.mix}*: ${(mongoAcc?.homeClanAbbr?.mix?.trim().toUpperCase() || 'FREE') === 'FREE' ? '*FREE*' : `**${mongoAcc.homeClanAbbr.mix.toUpperCase()}**`}\n`;
+  description += `5V *S${config.season.five}*: ${(mongoAcc?.homeClanAbbr?.five?.trim().toUpperCase() || 'FREE') === 'FREE' ? '*FREE*' : `**${mongoAcc.homeClanAbbr.five.toUpperCase()}**`}\n`;
   description += `\n`;
 
   return description;
@@ -857,7 +857,7 @@ async function scanAcc(clientCoc, playerTag) {
   try {
     let scPlayer = await clientCoc.getPlayer(playerTag);
     //console.dir(scPlayer);
-    result.status = "ok";
+    result.status = 'ok';
     result.scPlayer = scPlayer;
   } catch (error) {
     //console.error(error);
@@ -891,7 +891,7 @@ async function updateWarInfo(client, league, weekStr) {
   };
   const dbValueSch = await client.clientMongo
     .db(config.mongo.nameDatabase)
-    .collection("war_info")
+    .collection('war_info')
     .findOne(query);
 
   if (dbValueSch != null) {
@@ -908,8 +908,8 @@ async function updateWarInfo(client, league, weekStr) {
 export { updateWarInfo };
 
 async function updateRankingJwcAttack(client, league, lvTH) {
-  const keyAttacks = "attacks";
-  const iAttackType = "total";
+  const keyAttacks = 'attacks';
+  const iAttackType = 'total';
   const query = {
     townHallLevel: lvTH,
     //[`league.${config.leagueM[league]}`]: league,
@@ -924,7 +924,7 @@ async function updateRankingJwcAttack(client, league, lvTH) {
   };
 
   let nDisplay = 10;
-  if (league == "mix") {
+  if (league == 'mix') {
     nDisplay = 5;
   }
 
@@ -933,11 +933,11 @@ async function updateRankingJwcAttack(client, league, lvTH) {
     league,
     query,
     sort,
-    "entire",
+    'entire',
     lvTH,
     nDisplay,
     true,
-    "false",
+    'false',
     iAttackType,
   );
   const footerText = `${config.footer} ${config.league[league]} S${config.season[league]}`;
@@ -951,12 +951,12 @@ async function updateRankingJwcAttack(client, league, lvTH) {
 
   const mongoSummaryRanking = await client.clientMongo
     .db(config.mongo.nameDatabase)
-    .collection("ranking")
-    .findOne({ name: "summary" });
+    .collection('ranking')
+    .findOne({ name: 'summary' });
 
   if (mongoSummaryRanking) {
     let messageId = mongoSummaryRanking.channelId[league];
-    if (league == "mix") {
+    if (league == 'mix') {
       messageId = mongoSummaryRanking.channelId[league]?.[`th${lvTH}`];
     }
     const channel = client.channels.cache.get(config.rankingCh[league]);
@@ -983,7 +983,7 @@ async function getDescriptionWarInfo(clientMongo, league, weekStr) {
     week: Number(weekStr),
   };
   const sort = { match: 1 };
-  const myColl = clientMongo.db(config.mongo.nameDatabase).collection("wars");
+  const myColl = clientMongo.db(config.mongo.nameDatabase).collection('wars');
   const cursor = myColl.find(query).sort(sort);
   let dbValueWars = await cursor.toArray();
   await cursor.close();
@@ -992,11 +992,11 @@ async function getDescriptionWarInfo(clientMongo, league, weekStr) {
   await Promise.all(
     dbValueWars.map(async (dbValueWar, index) => {
       arrDescription[index] =
-        `${await fGetWars.createDescription(clientMongo, dbValueWar, league, "multi")}`;
+        `${await fGetWars.createDescription(clientMongo, dbValueWar, league, 'multi')}`;
     }),
   );
 
-  let description = "";
+  let description = '';
   arrDescription.forEach(function (value, index) {
     description += value;
   });
@@ -1021,7 +1021,7 @@ export { updateStatusInfo };
 
 async function getEmbedStatusInfo(clientMongo, isAdmin, unixTime) {
   const embed = new EmbedBuilder();
-  embed.setTitle("**BOT STATUS**");
+  embed.setTitle('**BOT STATUS**');
   embed.setColor(config.color.main);
 
   /*
@@ -1037,17 +1037,17 @@ async function getEmbedStatusInfo(clientMongo, isAdmin, unixTime) {
   await cursor.close();
   */
 
-  let description = "";
+  let description = '';
 
-  description += "* **Current Week**\n";
-  description += await getDescriptionStatusInfo("j1");
-  description += await getDescriptionStatusInfo("j2");
-  description += await getDescriptionStatusInfo("swiss");
-  description += await getDescriptionStatusInfo("mix");
-  description += await getDescriptionStatusInfo("five");
+  description += '* **Current Week**\n';
+  description += await getDescriptionStatusInfo('j1');
+  description += await getDescriptionStatusInfo('j2');
+  description += await getDescriptionStatusInfo('swiss');
+  description += await getDescriptionStatusInfo('mix');
+  description += await getDescriptionStatusInfo('five');
 
-  description += "\n";
-  description += "* **Last Update**\n";
+  description += '\n';
+  description += '* **Last Update**\n';
   if (isAdmin == true) {
     description += `<t:${unixTime}:f> (<t:${unixTime}:R>)\n`;
   } else {
@@ -1064,13 +1064,13 @@ async function getEmbedStatusInfo(clientMongo, isAdmin, unixTime) {
 export { getEmbedStatusInfo };
 
 async function getDescriptionStatusInfo(league) {
-  let description = "";
+  let description = '';
 
   description += `${config.league[league]}: **Week ${config.weekNow[league]}**`;
-  if (config.cronWarStatus[league] == "on") {
-    description += " :green_circle: _active_";
+  if (config.cronWarStatus[league] == 'on') {
+    description += ' :green_circle: _active_';
   }
-  description += "\n";
+  description += '\n';
 
   return description;
 }
@@ -1091,29 +1091,29 @@ export { updateStatusInfoLegend };
 
 async function getEmbedStatusInfoLegend(client, seasonData) {
   const embed = new EmbedBuilder();
-  embed.setTitle("**BOT STATUS [LEGEND]**");
+  embed.setTitle('**BOT STATUS [LEGEND]**');
   embed.setColor(config.color.legend);
 
-  let description = "";
+  let description = '';
 
-  description += "* **Start**\n";
+  description += '* **Start**\n';
   const unixTimeSeasonStart = Math.floor(
     new Date(seasonData.seasonStart) / 1000,
   );
   description += `<t:${unixTimeSeasonStart}:f> (<t:${unixTimeSeasonStart}:R>)\n`;
 
-  description += "* **End**\n";
+  description += '* **End**\n';
   const unixTimeSeasonEnd = Math.floor(new Date(seasonData.seasonEnd) / 1000);
   description += `<t:${unixTimeSeasonEnd}:f> (<t:${unixTimeSeasonEnd}:R>)\n`;
 
-  description += "* **Current Day**\n";
+  description += '* **Current Day**\n';
   description += `Day ${seasonData.daysNow}\n`;
 
-  description += "* **Days Remaining**\n";
-  description += `${seasonData.daysEnd} ${seasonData.daysEnd === 1 ? "day" : "days"}\n`;
+  description += '* **Days Remaining**\n';
+  description += `${seasonData.daysEnd} ${seasonData.daysEnd === 1 ? 'day' : 'days'}\n`;
 
-  description += "\n";
-  description += "* **Last Update**\n";
+  description += '\n';
+  description += '* **Last Update**\n';
   const unixTime = Math.floor(Date.now() / 1000);
   description += `<t:${unixTime}:f> (<t:${unixTime}:R>)\n`;
 
@@ -1138,11 +1138,11 @@ async function getEmbedStatusInfoLegend(client, seasonData) {
     };
 
     await client.clientMongo
-      .db("jwc")
-      .collection("config")
-      .updateOne({ name: "rankedBattlesSeason" }, { $set: statusData });
+      .db('jwc')
+      .collection('config')
+      .updateOne({ name: 'rankedBattlesSeason' }, { $set: statusData });
   } catch (error) {
-    console.error("Error writing status info to MongoDB:", error);
+    console.error('Error writing status info to MongoDB:', error);
   }
 
   return embed;
@@ -1150,11 +1150,11 @@ async function getEmbedStatusInfoLegend(client, seasonData) {
 export { getEmbedStatusInfoLegend };
 
 async function setDescriptionClanList(client, iLeague, season) {
-  let return_arr = ["", "", "", "", ""];
+  let return_arr = ['', '', '', '', ''];
 
   const query = {
     league: iLeague,
-    [`status.${seasonToString(season)}`]: { $in: ["true", "question"] },
+    [`status.${seasonToString(season)}`]: { $in: ['true', 'question'] },
   };
   const projection = {
     _id: 0,
@@ -1167,7 +1167,7 @@ async function setDescriptionClanList(client, iLeague, season) {
   };
   const sort = { clan_abbr: 1 };
   const options = { projection: projection, sort: sort };
-  const myColl = client.clientMongo.db("jwc").collection("clans");
+  const myColl = client.clientMongo.db('jwc').collection('clans');
   const cursor = myColl.find(query, options);
   let clans = await cursor.toArray();
   await cursor.close();
@@ -1221,40 +1221,40 @@ function setDescriptionClanListOne(iLeague, index, season, clan) {
   let status = clan.status[`${seasonToString(season)}`];
   let clanLink =
     clan.clan_tag !== null
-      ? "https://link.clashofclans.com/?action=OpenClanProfile&tag=" +
-        clan.clan_tag.replace("#", "")
+      ? 'https://link.clashofclans.com/?action=OpenClanProfile&tag=' +
+        clan.clan_tag.replace('#', '')
       : null;
 
-  let return_str = "";
+  let return_str = '';
 
-  let statusEmote = "";
-  if (clan.clan_tag == "non-registered") {
-    statusEmote = ":exclamation:";
-  } else if (status == "true") {
-    statusEmote = ":white_check_mark:";
+  let statusEmote = '';
+  if (clan.clan_tag == 'non-registered') {
+    statusEmote = ':exclamation:';
+  } else if (status == 'true') {
+    statusEmote = ':white_check_mark:';
   } else if (status == false) {
-    statusEmote = ":x:";
+    statusEmote = ':x:';
   } else {
-    statusEmote = ":question:";
+    statusEmote = ':question:';
   }
 
   return_str += `${index + 1}. **${clan.clan_abbr.toUpperCase()} | ${clan.team_name}** ${statusEmote}\n`;
   const clanStr =
     clan.clan_tag !== null
       ? `[__**${clan.clan_tag}**__](${clanLink}) ${clan.clan_name}\n`
-      : ":question:\n";
+      : ':question:\n';
   return_str += clanStr;
 
   if (
     clan.division != null &&
-    clan.division != "" &&
-    clan.division != "NO DIVISION"
+    clan.division != '' &&
+    clan.division != 'NO DIVISION'
   ) {
     return_str += `*${clan.division.toUpperCase()}*\n`;
   }
-  let clanAbbrRoster = clan.clan_abbr.toUpperCase().replace("-", "_");
-  if (iLeague == "j1" || iLeague == "j2") {
-    clanAbbrRoster = "J_" + clanAbbrRoster;
+  let clanAbbrRoster = clan.clan_abbr.toUpperCase().replace('-', '_');
+  if (iLeague == 'j1' || iLeague == 'j2') {
+    clanAbbrRoster = 'J_' + clanAbbrRoster;
   }
   /*
   if (iLeague != 'five') {
@@ -1275,17 +1275,17 @@ async function getDescriptionNego(
 ) {
   let objReturn = {};
 
-  let myContent = "";
-  let myDescription = "";
+  let myContent = '';
+  let myDescription = '';
 
   let options = {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    weekday: "short",
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    weekday: 'short',
   };
 
-  if (league == "five") {
+  if (league == 'five') {
     myContent += `* 本対戦に関する連絡や交渉はこちらのチャンネル内でのみお願いします。\n`;
     myContent += `* 下記の基準日を含めて ${schedule.dateDef5v.period[`w${week}`]} 日以内に対戦を実施してください。\n`;
     myContent += `* マッチング時間は 22:00 または 23:00 としてください。\n`;
@@ -1300,10 +1300,10 @@ async function getDescriptionNego(
     myDescription += `対戦モード： **eSports Mode**:fire:\n`;
     myDescription += `\n`;
     myDescription += `基準日・基準時間 (JST)：\n`;
-    myDescription += `:calendar: ${schedule.dateDef5v.day[`w${week}`].toLocaleDateString("ja-JP", options)}\n`;
+    myDescription += `:calendar: ${schedule.dateDef5v.day[`w${week}`].toLocaleDateString('ja-JP', options)}\n`;
     myDescription += `:alarm_clock: ${schedule.dateDef5v.time[`w${week}`]} ポチ\n`;
     myDescription += `:hourglass_flowing_sand: ${schedule.timePrep[league]} 分 / :crossed_swords: ${schedule.timeBattle[league]} 分\n`;
-  } else if (league != "five") {
+  } else if (league != 'five') {
     myContent += `* 交渉はこちらのチャンネル内でのみお願いします。\n`;
     myContent += `* 日程と、どちらから申請するかを決めてください。\n`;
     myContent += `* 交渉結果は </rep deal_war:1229035726549680191> コマンドで報告してください。 <#1123531433475063818>\n`;
@@ -1312,15 +1312,15 @@ async function getDescriptionNego(
     myDescription += `**${teamNameA}** :vs: **${teamNameB}**\n`;
     myDescription += `\n`;
 
-    if (league == "swiss" || league == "mix") {
+    if (league == 'swiss' || league == 'mix') {
       myDescription += `対戦人数（固定）： `;
     } else {
       myDescription += `対戦人数（増加可）： `;
     }
 
-    if (league == "mix") {
+    if (league == 'mix') {
       config.lvTHmix.forEach((lvTH, index) => {
-        myDescription += `**${config.bd["mix"][`th${lvTH}`]}** ${config.emote.thn[lvTH]}`;
+        myDescription += `**${config.bd['mix'][`th${lvTH}`]}** ${config.emote.thn[lvTH]}`;
         if (index == config.lvTHmix.length - 1) {
           myDescription += `\n`;
         } else {
@@ -1328,8 +1328,8 @@ async function getDescriptionNego(
         }
       });
     } else {
-      if (league == "j1j2") {
-        league = "j2";
+      if (league == 'j1j2') {
+        league = 'j2';
       }
       let bd = config.bd[league];
       myDescription += `**${bd}** ${config.emote.thn[config.lvTH]}\n`;
@@ -1339,13 +1339,13 @@ async function getDescriptionNego(
     myDescription += `対戦モード： **${config.mode[league]}**:fire:\n`;
     myDescription += `\n`;
     myDescription += `基準日：\n`;
-    myDescription += `:calendar: ${schedule.dateDef[league].day[`w${week}`].toLocaleDateString("ja-JP", options)}\n`;
+    myDescription += `:calendar: ${schedule.dateDef[league].day[`w${week}`].toLocaleDateString('ja-JP', options)}\n`;
     myDescription += `:alarm_clock: 11:00 ポチ\n`;
     myDescription += `:hourglass_flowing_sand: ${schedule.timePrep[league]} 時間 / :crossed_swords: ${schedule.timeBattle[league]} 時間\n`;
     myDescription += `\n`;
     myDescription += `基準期間：\n`;
-    myDescription += `${schedule.dateDef[league].start[`w${week}`].toLocaleDateString("ja-JP", options)} ～ `;
-    myDescription += `${schedule.dateDef[league].end[`w${week}`].toLocaleDateString("ja-JP", options)}\n`;
+    myDescription += `${schedule.dateDef[league].start[`w${week}`].toLocaleDateString('ja-JP', options)} ～ `;
+    myDescription += `${schedule.dateDef[league].end[`w${week}`].toLocaleDateString('ja-JP', options)}\n`;
   }
 
   objReturn.content = myContent;
@@ -1356,7 +1356,7 @@ async function getDescriptionNego(
 export { getDescriptionNego };
 
 async function sendClanInfo(interaction, client, clanAbbr) {
-  const nameCollection = "clans";
+  const nameCollection = 'clans';
   const query = { clan_abbr: clanAbbr };
   const options = {};
   const myColl = client.clientMongo
@@ -1364,10 +1364,10 @@ async function sendClanInfo(interaction, client, clanAbbr) {
     .collection(nameCollection);
   const mongoClan = await myColl.findOne(query, options);
 
-  let clanLink = "";
+  let clanLink = '';
   if (mongoClan.clan_tag) {
     clanLink =
-      "https://link.clashofclans.com/?action=OpenClanProfile&tag=" +
+      'https://link.clashofclans.com/?action=OpenClanProfile&tag=' +
       mongoClan.clan_tag.slice(1);
   }
 
@@ -1378,40 +1378,40 @@ async function sendClanInfo(interaction, client, clanAbbr) {
     myTitle += ` | NO TEAM NAME`;
   }
 
-  let myDescription = "";
+  let myDescription = '';
 
-  myDescription += "### LEAGUE";
+  myDescription += '### LEAGUE';
   myDescription += `\n`;
   myDescription += config.leaguePlusEmote[mongoClan.league];
   if (
     mongoClan.division != null &&
-    mongoClan.division != "" &&
-    mongoClan.division != "NO DIVISION"
+    mongoClan.division != '' &&
+    mongoClan.division != 'NO DIVISION'
   ) {
     myDescription += ` - *${mongoClan.division.toUpperCase()}*`;
   }
   myDescription += `\n\n`;
 
-  myDescription += "### STATUS";
+  myDescription += '### STATUS';
   myDescription += `\n`;
-  let statusEmote = "";
+  let statusEmote = '';
   if (!mongoClan.status) {
-    statusEmote = ":question:";
+    statusEmote = ':question:';
   } else {
     let status =
       mongoClan.status[seasonToString(config.seasonNext[mongoClan.league])];
-    if (status == "true") {
-      statusEmote = ":white_check_mark:";
-    } else if (status == "false") {
-      statusEmote = ":x:";
+    if (status == 'true') {
+      statusEmote = ':white_check_mark:';
+    } else if (status == 'false') {
+      statusEmote = ':x:';
     } else {
-      statusEmote = ":question:";
+      statusEmote = ':question:';
     }
   }
   myDescription += ` ${statusEmote} SEASON ${config.seasonNext[mongoClan.league]}`;
   myDescription += `\n\n`;
 
-  myDescription += "### REPS";
+  myDescription += '### REPS';
   myDescription += `\n`;
   if (!mongoClan.rep_1st) {
     myDescription += `:one: :question:\n`;
@@ -1421,8 +1421,8 @@ async function sendClanInfo(interaction, client, clanAbbr) {
       myDescription += `:one: *${mongoClan.rep_1st}*\n`;
     } else {
       let username1 = mongoClan.rep_1st.username;
-      if (username1.includes("__")) {
-        username1 = username1.replace(/__/g, "\\__");
+      if (username1.includes('__')) {
+        username1 = username1.replace(/__/g, '\\__');
       }
       myDescription += `:one: ${username1} <@!${mongoClan.rep_1st.id}>\n`;
     }
@@ -1432,8 +1432,8 @@ async function sendClanInfo(interaction, client, clanAbbr) {
       myDescription += `:one: *${mongoClan.rep_1st}*\n`;
     } else {
       let username1 = mongoClan.rep_1st.username;
-      if (username1.includes("__")) {
-        username1 = username1.replace(/__/g, "\\__");
+      if (username1.includes('__')) {
+        username1 = username1.replace(/__/g, '\\__');
       }
       myDescription += `:one: ${username1} <@!${mongoClan.rep_1st.id}>\n`;
     }
@@ -1441,8 +1441,8 @@ async function sendClanInfo(interaction, client, clanAbbr) {
       myDescription += `:two: *${mongoClan.rep_2nd}*\n\n`;
     } else {
       let username2 = mongoClan.rep_2nd.username;
-      if (username2.includes("__")) {
-        username2 = username2.replace(/__/g, "\\__");
+      if (username2.includes('__')) {
+        username2 = username2.replace(/__/g, '\\__');
       }
       myDescription += `:two: ${username2} <@!${mongoClan.rep_2nd.id}>\n\n`;
     }
@@ -1451,15 +1451,15 @@ async function sendClanInfo(interaction, client, clanAbbr) {
         myDescription += ``;
       } else {
         let username3 = mongoClan.rep_3rd.username;
-        if (username3.includes("__")) {
-          username3 = username3.replace(/__/g, "\\__");
+        if (username3.includes('__')) {
+          username3 = username3.replace(/__/g, '\\__');
         }
         myDescription += `:three: ${username3} <@!${mongoClan.rep_3rd.id}>\n\n`;
       }
     }
   }
 
-  myDescription += "### CLAN";
+  myDescription += '### CLAN';
   myDescription += `\n`;
   if (mongoClan.clan_tag) {
     let apiClan = await client.clientCoc.getClan(mongoClan.clan_tag);
@@ -1474,7 +1474,7 @@ async function sendClanInfo(interaction, client, clanAbbr) {
   }
   myDescription += `\n`;
 
-  myDescription += "### ROSTER";
+  myDescription += '### ROSTER';
   myDescription += `\n`;
   try {
     const { players, accounts } = await getTeamInfo(
@@ -1488,50 +1488,50 @@ async function sendClanInfo(interaction, client, clanAbbr) {
     myDescription += `\n`;
   } catch (error) {
     console.error(error.message);
-    myDescription += "*no account registered*\n";
+    myDescription += '*no account registered*\n';
     myDescription += `\n`;
   }
 
   if (mongoClan.rep_channel != null) {
-    myDescription += "### TEAM CHANNEL [REP SERVER]";
+    myDescription += '### TEAM CHANNEL [REP SERVER]';
     myDescription += `\n`;
     myDescription += `<#${mongoClan.rep_channel}>\n`;
     myDescription += `\n`;
   }
 
-  myDescription += "### TEAM CHANNEL [LOCAL SERVER]";
+  myDescription += '### TEAM CHANNEL [LOCAL SERVER]';
   myDescription += `\n`;
   if (mongoClan.log) {
     myDescription += `* Main: `;
-    if (mongoClan.log.main.switch == "on") {
+    if (mongoClan.log.main.switch == 'on') {
       myDescription += `<#${mongoClan.log.main.channel_id}>\n`;
     } else {
       myDescription += `off\n`;
     }
 
     myDescription += `* Deal: `;
-    if (mongoClan.log.deal.switch == "on") {
+    if (mongoClan.log.deal.switch == 'on') {
       myDescription += `<#${mongoClan.log.deal.channel_id}>\n`;
     } else {
       myDescription += `off\n`;
     }
 
     myDescription += `* Start: `;
-    if (mongoClan.log.start.switch == "on") {
+    if (mongoClan.log.start.switch == 'on') {
       myDescription += `<#${mongoClan.log.start.channel_id}>\n`;
     } else {
       myDescription += `off\n`;
     }
 
     myDescription += `* Attacks & Defenses: `;
-    if (mongoClan.log.att_def.switch == "on") {
+    if (mongoClan.log.att_def.switch == 'on') {
       myDescription += `<#${mongoClan.log.att_def.channel_id}>\n`;
     } else {
       myDescription += `off\n`;
     }
 
     myDescription += `* End: `;
-    if (mongoClan.log.end.switch == "on") {
+    if (mongoClan.log.end.switch == 'on') {
       myDescription += `<#${mongoClan.log.end.channel_id}>\n`;
     } else {
       myDescription += `off\n`;
@@ -1552,9 +1552,9 @@ export { sendClanInfo };
 
 async function getTeamInfo(client, league, teamAbbr) {
   const teamList = await client.clientMongo
-    .db("jwc")
-    .collection("config")
-    .findOne({ name: "teamList" });
+    .db('jwc')
+    .collection('config')
+    .findOne({ name: 'teamList' });
 
   const team = teamList[league].find((team) => team.team_abbr === teamAbbr);
 
@@ -1582,7 +1582,7 @@ async function editRoleMain(interaction, user, action, league, flagReturn) {
   const roleIdM = config.roleId.repsServer[seasonStr].mix;
   const arrRolesAll = [roleIdJ1, roleIdJ2, roleIdS, roleIdM];
 
-  if (action == "add") {
+  if (action == 'add') {
     if (
       !interaction.guild.members.cache
         .get(user.id)
@@ -1595,7 +1595,7 @@ async function editRoleMain(interaction, user, action, league, flagReturn) {
     ) {
       await editRole(interaction, user, roleIdAll, action, flagReturn);
     }
-  } else if (action == "remove") {
+  } else if (action == 'remove') {
     await editRole(interaction, user, roleIdLeague, action, flagReturn);
     if (
       !interaction.guild.members.cache.get(user.id)._roles.includes(roleIdJ1)
@@ -1626,11 +1626,11 @@ async function editRoleMain5v(interaction, user, action, flagReturn) {
   const seasonStr = seasonToString(seasonValue);
   const repId = config.roleId.repsServer5v[seasonStr];
 
-  if (action == "add") {
+  if (action == 'add') {
     if (!interaction.guild.members.cache.get(user.id)._roles.includes(repId)) {
       await editRole(interaction, user, repId, action, flagReturn);
     }
-  } else if (action == "remove") {
+  } else if (action == 'remove') {
     await editRole(interaction, user, repId, action, flagReturn);
   }
 }
@@ -1640,7 +1640,7 @@ async function editRole(interaction, user, roleId, action, flagReturn) {
   let title = ``;
   let description = ``;
 
-  if (action == "add" && flagReturn == 1) {
+  if (action == 'add' && flagReturn == 1) {
     if (interaction.guild.members.cache.get(user.id)._roles.includes(roleId)) {
       title = `*ERROR*`;
       description = `<@!${user.id}>\n`;
@@ -1651,10 +1651,10 @@ async function editRole(interaction, user, roleId, action, flagReturn) {
   }
 
   const obj = { user: user, role: roleId };
-  if (action == "add") {
+  if (action == 'add') {
     title = `:white_check_mark: *ROLE ADDED*`;
     await interaction.guild.members.addRole(obj);
-  } else if (action == "remove") {
+  } else if (action == 'remove') {
     title = `*ROLE REMOVED*`;
     //console.dir(user);
     await interaction.guild.members.removeRole(obj);
@@ -1676,15 +1676,15 @@ export { editRole };
 
 function detectTownHallLevel(league, lvTownHall) {
   if (
-    league == "j1" ||
-    league == "j2" ||
-    league == "swiss" ||
-    league == "five"
+    league == 'j1' ||
+    league == 'j2' ||
+    league == 'swiss' ||
+    league == 'five'
   ) {
     if (lvTownHall == config.lvTH) {
       return true;
     }
-  } else if (league == "mix") {
+  } else if (league == 'mix') {
     /*if (config.lvTHmix.includes(lvTownHall)) {
       return true;
     };*/
@@ -1704,32 +1704,32 @@ async function logInteraction(interaction, client) {
   try {
     if (interaction.user.id != config.yamaId) {
       const log = new EmbedBuilder()
-        .setTitle("**INTERACTION LOG**")
+        .setTitle('**INTERACTION LOG**')
         .setColor(config.color.main)
         .setTimestamp()
         .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
         .addFields(
           {
-            name: "COMMAND",
-            value: "```\n" + interaction.toString() + "\n```",
+            name: 'COMMAND',
+            value: '```\n' + interaction.toString() + '\n```',
           },
           {
-            name: "USER",
+            name: 'USER',
             value: `${interaction.user.tag}\n<@!${interaction.user.id}>`,
             inline: false,
           },
           {
-            name: "SERVER",
-            value: `${interaction.guild?.name ?? "DM"}`,
+            name: 'SERVER',
+            value: `${interaction.guild?.name ?? 'DM'}`,
             inline: false,
           },
         );
       //.setFooter({ text: String(interaction.id) });
-      let channelName = interaction.channel?.name ?? "undefiend";
-      let channelId = interaction.channel?.id ?? "DM";
-      if (channelId != "DM") {
+      let channelName = interaction.channel?.name ?? 'undefiend';
+      let channelId = interaction.channel?.id ?? 'DM';
+      if (channelId != 'DM') {
         log.addFields({
-          name: "CHANNEL",
+          name: 'CHANNEL',
           value: `${channelName} <#${channelId}>\n`,
           inline: false,
         });
@@ -1797,7 +1797,7 @@ export { sleep };
 function seasonToString(seasonValue) {
   return Number.isInteger(seasonValue)
     ? `s${seasonValue}`
-    : `s${String(seasonValue).replace(".", "_")}`;
+    : `s${String(seasonValue).replace('.', '_')}`;
 }
 export { seasonToString };
 

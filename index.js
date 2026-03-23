@@ -1,4 +1,4 @@
-import express from "express";
+import express from 'express';
 import {
   Client,
   GatewayIntentBits,
@@ -6,36 +6,36 @@ import {
   Events,
   EmbedBuilder,
   Collection,
-} from "discord.js";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath, pathToFileURL } from "url";
-import schedule from "./config/schedule.js";
-import appConfig from "./config/config.js";
-import config_coc from "./config/config_coc.js";
-import * as functions from "./functions/functions.js";
-import * as fLegend from "./functions/fLegend.js";
-import * as fMongo from "./functions/fMongo.js";
-import { post } from "./functions/post.js";
+} from 'discord.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
+import schedule from './config/schedule.js';
+import appConfig from './config/config.js';
+import config_coc from './config/config_coc.js';
+import * as functions from './functions/functions.js';
+import * as fLegend from './functions/fLegend.js';
+import * as fMongo from './functions/fMongo.js';
+import { post } from './functions/post.js';
 import {
   Client as ClientCoc,
   PollingClient,
   Util as CocUtil,
-} from "clashofclans.js";
+} from 'clashofclans.js';
 
 // ====== ENV ======
-const TOKEN = (process.env.BOT_TOKEN || "").trim();
-const MONGO_URI = (process.env.mongoURI || "").trim();
+const TOKEN = (process.env.BOT_TOKEN || '').trim();
+const MONGO_URI = (process.env.mongoURI || '').trim();
 
 if (!TOKEN) {
   console.error(
-    "❌ DISCORD_TOKEN (or BOT_TOKEN) is empty. Set it in Replit Secrets.",
+    '❌ DISCORD_TOKEN (or BOT_TOKEN) is empty. Set it in Replit Secrets.',
   );
   process.exit(1);
 }
 
 // ====== MongoDB ======
-import { MongoClient, ServerApiVersion } from "mongodb";
+import { MongoClient, ServerApiVersion } from 'mongodb';
 
 const clientMongo = new MongoClient(MONGO_URI, {
   serverApi: {
@@ -46,39 +46,39 @@ const clientMongo = new MongoClient(MONGO_URI, {
 });
 
 const isDeployment =
-  process.env.DEPLOYMENT === "true" &&
-  process.env.STARTUP_GUARD === "your-random-long-string";
+  process.env.DEPLOYMENT === 'true' &&
+  process.env.STARTUP_GUARD === 'your-random-long-string';
 
 if (!isDeployment) {
-  console.log("[GUARD] Bot startup blocked: Deployment-only mode.");
+  console.log('[GUARD] Bot startup blocked: Deployment-only mode.');
   process.exit(0);
 }
 
 // --- Web server (Preview/health & /post:POST only) ---
 const app = express();
 app.use(express.json());
-app.get("/", (_, res) => res.send("OK"));
-app.get("/ok", (_, res) => res.json({ ok: true, ts: Date.now() }));
+app.get('/', (_, res) => res.send('OK'));
+app.get('/ok', (_, res) => res.json({ ok: true, ts: Date.now() }));
 
 // /post は POST のみ許可（他メソッドは 405）
-app.all("/post", (req, res, next) => {
-  if (req.method !== "POST")
-    return res.status(405).send("Method Not Allowed: use POST");
+app.all('/post', (req, res, next) => {
+  if (req.method !== 'POST')
+    return res.status(405).send('Method Not Allowed: use POST');
   next();
 });
 // 受信ハンドラ（最小版）—必要に応じてDBや各処理をここに
-app.post("/post", async (req, res) => {
+app.post('/post', async (req, res) => {
   try {
     // functions/post.jsのpost関数を呼び出し
     await post(req, res, client, req.body);
   } catch (e) {
-    console.error("Error in /post:", e);
-    res.status(500).json({ error: "Internal server error" });
+    console.error('Error in /post:', e);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 const port = process.env.PORT || 3000;
-app.listen(port, "0.0.0.0", () =>
+app.listen(port, '0.0.0.0', () =>
   console.log(`🌐 Web server up on 0.0.0.0:${port}`),
 );
 
@@ -106,7 +106,7 @@ class CommandLoader {
   }
   async loadCommands() {
     this.client.commands = new Collection();
-    const commandsRoot = path.join(__dirname, "commands");
+    const commandsRoot = path.join(__dirname, 'commands');
     const commandFolders = fs
       .readdirSync(commandsRoot, { withFileTypes: true })
       .filter((d) => d.isDirectory())
@@ -115,13 +115,13 @@ class CommandLoader {
       const folderPath = path.join(commandsRoot, folder);
       const commandFiles = fs
         .readdirSync(folderPath)
-        .filter((f) => f.endsWith(".js"));
+        .filter((f) => f.endsWith('.js'));
       for (const file of commandFiles) {
         const fullPath = path.join(folderPath, file);
         try {
           const mod = await import(pathToFileURL(fullPath).href);
           const command = mod.default ?? mod;
-          if (!command?.data?.name || typeof command?.execute !== "function") {
+          if (!command?.data?.name || typeof command?.execute !== 'function') {
             console.warn(`⚠️ Skipped ${file}: invalid command shape`);
             continue;
           }
@@ -135,16 +135,16 @@ class CommandLoader {
     console.log(`⚡ Successfully loaded ${this.client.commands.size} commands`);
   }
   async loadEvents() {
-    const eventsRoot = path.join(__dirname, "events");
+    const eventsRoot = path.join(__dirname, 'events');
     const eventFiles = fs
       .readdirSync(eventsRoot)
-      .filter((f) => f.endsWith(".js"));
+      .filter((f) => f.endsWith('.js'));
     for (const file of eventFiles) {
       const fullPath = path.join(eventsRoot, file);
       try {
         const mod = await import(pathToFileURL(fullPath).href);
         const event = mod.default ?? mod;
-        if (!event?.name || typeof event?.execute !== "function") {
+        if (!event?.name || typeof event?.execute !== 'function') {
           console.warn(`⚠️ Skipped ${file}: invalid event shape`);
           continue;
         }
@@ -171,8 +171,8 @@ class CommandLoader {
 }
 
 // ===== ClashOfClans =====
-const COC_EMAIL = (process.env.clashEmail || "").trim();
-const COC_PW = (process.env.clashPW || "").trim();
+const COC_EMAIL = (process.env.clashEmail || '').trim();
+const COC_PW = (process.env.clashPW || '').trim();
 
 class ClashOfClans {
   constructor(config) {
@@ -188,7 +188,7 @@ class ClashOfClans {
     this.apiKey = await this.clientCoc.login({
       email: COC_EMAIL,
       password: COC_PW,
-      keyName: "replit_main",
+      keyName: 'replit_main',
     });
     console.log(`✅ LOGGED IN: clientCoc`);
     return this.clientCoc;
@@ -198,7 +198,7 @@ class ClashOfClans {
     this.apiKeyLegend = await this.clientCocLegend.login({
       email: COC_EMAIL,
       password: COC_PW,
-      keyName: "replit_legend",
+      keyName: 'replit_legend',
     });
     console.log(`✅ LOGGED IN: clientCocLegend`);
     return this.clientCocLegend;
@@ -213,13 +213,13 @@ class ClashOfClans {
     dcClient.utilCoc = this.utilCoc;
   }
   createMaintenancePolling() {
-    if (!this.apiKey) throw new Error("❌ Main CoC client not logged in");
+    if (!this.apiKey) throw new Error('❌ Main CoC client not logged in');
     const pollingClient = new PollingClient({ keys: [this.apiKey] });
     pollingClient.pollingInterval = 60000;
     return pollingClient;
   }
   createTrophyPolling() {
-    if (!this.apiKey) throw new Error("❌ Main CoC client not logged in");
+    if (!this.apiKey) throw new Error('❌ Main CoC client not logged in');
     const pollingClient = new PollingClient({ keys: [this.apiKey] });
     pollingClient.pollingInterval = 30000;
     return pollingClient;
@@ -245,22 +245,22 @@ class PollingSystem {
     try {
       this.pollingClientMaintenance = pollingClient;
       await this.pollingClientMaintenance.init();
-      console.log("⚙️ Maintenance polling initialized (60s)");
-      this.pollingClientMaintenance.on("maintenanceStart", () => {
+      console.log('⚙️ Maintenance polling initialized (60s)');
+      this.pollingClientMaintenance.on('maintenanceStart', () => {
         this.handleMaintenanceStart();
       });
       this.pollingClientMaintenance.on(
-        "maintenanceEnd",
+        'maintenanceEnd',
         (durationInMiliSec) => {
           this.handleMaintenanceEnd(durationInMiliSec);
         },
       );
-      this.pollingClientMaintenance.on("newSeasonStart", async () => {
+      this.pollingClientMaintenance.on('newSeasonStart', async () => {
         await this.handleNewSeasonStart();
       });
       return this.pollingClientMaintenance;
     } catch (error) {
-      console.error("❌ Failed to initialize maintenance polling:", error);
+      console.error('❌ Failed to initialize maintenance polling:', error);
       throw error;
     }
   }
@@ -271,14 +271,14 @@ class PollingSystem {
     if (now - this.lastMaintenanceStart < 2 * 60 * 1000) return;
     this.lastMaintenanceStart = now;
     const embed = new EmbedBuilder()
-      .setAuthor({ name: "CLASH OF CLANS", iconURL: this.config.urlImage?.coc })
-      .setTitle("MAINTENANCE HAS STARTED")
-      .setDescription("*The game is under maintenance.*")
-      .setColor(this.config.color?.red ?? "#ff0000")
+      .setAuthor({ name: 'CLASH OF CLANS', iconURL: this.config.urlImage?.coc })
+      .setTitle('MAINTENANCE HAS STARTED')
+      .setDescription('*The game is under maintenance.*')
+      .setColor(this.config.color?.red ?? '#ff0000')
       .setTimestamp();
     const ch = this.client.channels.cache.get(this.config.logch?.freeBotRoom);
     if (ch) ch.send({ embeds: [embed] });
-    else console.error("❌ channelFreeBotRoom not found");
+    else console.error('❌ channelFreeBotRoom not found');
   }
 
   // メンテナンスが終わったときの処理
@@ -288,7 +288,7 @@ class PollingSystem {
     // 重複防止: 2分以内の重複通知を防ぐ
     if (now - this.lastMaintenanceEnd < 2 * 60 * 1000) {
       console.log(
-        "⚠️ Maintenance end notification skipped (duplicate prevention)",
+        '⚠️ Maintenance end notification skipped (duplicate prevention)',
       );
       return;
     }
@@ -309,29 +309,29 @@ class PollingSystem {
     const m = Math.floor(sec / 60) % 60;
     const h = Math.floor(sec / 3600) % 24;
     const embed = new EmbedBuilder()
-      .setAuthor({ name: "CLASH OF CLANS", iconURL: this.config.urlImage?.coc })
-      .setTitle(":white_check_mark: MAINTENANCE HAS ENDED")
+      .setAuthor({ name: 'CLASH OF CLANS', iconURL: this.config.urlImage?.coc })
+      .setTitle(':white_check_mark: MAINTENANCE HAS ENDED')
       .setDescription(
-        `Maintenance time: ${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`,
+        `Maintenance time: ${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`,
       )
-      .setColor(this.config.color?.green ?? "#00ff00")
+      .setColor(this.config.color?.green ?? '#00ff00')
       .setTimestamp();
     const ch = this.client.channels.cache.get(this.config.logch?.freeBotRoom);
     if (ch) ch.send({ embeds: [embed] });
-    else console.error("channelFreeBotRoom not found");
+    else console.error('channelFreeBotRoom not found');
   }
 
   // 新しいシーズンが始まったときの処理
   async handleNewSeasonStart() {
     const embed = new EmbedBuilder()
-      .setAuthor({ name: "CLASH OF CLANS", iconURL: this.config.urlImage?.coc })
-      .setTitle("NEW SEASON HAS STARTED")
-      .setDescription("*The new season has started.*")
-      .setColor(this.config.color?.green ?? "#00ff00")
+      .setAuthor({ name: 'CLASH OF CLANS', iconURL: this.config.urlImage?.coc })
+      .setTitle('NEW SEASON HAS STARTED')
+      .setDescription('*The new season has started.*')
+      .setColor(this.config.color?.green ?? '#00ff00')
       .setTimestamp();
     const ch = this.client.channels.cache.get(this.config.logch?.freeBotRoom);
     if (ch) ch.send({ embeds: [embed] });
-    else console.error("❌ channelFreeBotRoom not found");
+    else console.error('❌ channelFreeBotRoom not found');
     await this.functions.sleep(30 * 1000);
     this.fLegend.autoUpdateLegendReset(this.client);
   }
@@ -341,18 +341,18 @@ class PollingSystem {
     try {
       this.pollingClientTrophies = pollingClient;
       await this.pollingClientTrophies.init();
-      console.log("⚙️ Trophy polling initialized (30s)");
+      console.log('⚙️ Trophy polling initialized (30s)');
       this.pollingClientTrophies.setPlayerEvent({
-        name: "playerStatsChange",
+        name: 'playerStatsChange',
         filter: (before, after) =>
           before.trophies !== after.trophies ||
           before.attackWins !== after.attackWins ||
           before.defenseWins !== after.defenseWins,
       });
-      console.log("🔧 Registered playerStatsChange event filter");
+      console.log('🔧 Registered playerStatsChange event filter');
       return this.pollingClientTrophies;
     } catch (error) {
-      console.error("❌ Failed to initialize trophy polling:", error);
+      console.error('❌ Failed to initialize trophy polling:', error);
       throw error;
     }
   }
@@ -363,27 +363,27 @@ class PollingSystem {
       const query = {
         status: true,
         $or: [
-          { "legend.logSettings.post": { $in: ["channel", "dm"] } },
-          { "leagueTier.id": config_coc.leagueId.legend },
-          { "leagueTier.id": config_coc.leagueId.electro33 },
-          { "leagueTier.id": config_coc.leagueId.electro32 },
-          { "leagueTier.id": config_coc.leagueId.electro31 },
+          { 'legend.logSettings.post': { $in: ['channel', 'dm'] } },
+          { 'leagueTier.id': config_coc.leagueId.legend },
+          { 'leagueTier.id': config_coc.leagueId.electro33 },
+          { 'leagueTier.id': config_coc.leagueId.electro32 },
+          { 'leagueTier.id': config_coc.leagueId.electro31 },
         ],
       };
       const options = {
         projection: {
           _id: 0,
           tag: 1,
-          "legend.logSettings": 1,
-          "legend.events": 1,
-          "pilotDC.id": 1,
+          'legend.logSettings': 1,
+          'legend.events': 1,
+          'pilotDC.id': 1,
           name: 1,
           townHallLevel: 1,
         },
       };
       const cursor = clientMongo
-        .db("jwc")
-        .collection("accounts")
+        .db('jwc')
+        .collection('accounts')
         .find(query, options);
       const newAccountsLegend = await cursor.toArray();
       await cursor.close();
@@ -402,14 +402,14 @@ class PollingSystem {
         }
       } else {
         console.warn(
-          "pollingClientTrophies is not initialized; skip addPlayers",
+          'pollingClientTrophies is not initialized; skip addPlayers',
         );
       }
       this.accountsLegend = newAccountsLegend;
       global.accountsLegend = newAccountsLegend;
       //console.log(`🔍 LEGEND ACCOUNTS MONITORING: ${newTags.length}`);
     } catch (error) {
-      console.error("❌ Error updating monitoring accounts:", error);
+      console.error('❌ Error updating monitoring accounts:', error);
     }
   }
 
@@ -488,13 +488,13 @@ class PollingSystem {
   // プレイヤーのステータス変化イベントのリスナー登録
   setupPlayerStatsChangeListener() {
     if (this.pollingClientTrophies) {
-      console.log("🔧 Attaching playerStatsChange listener");
-      this.pollingClientTrophies.on("playerStatsChange", (before, after) => {
+      console.log('🔧 Attaching playerStatsChange listener');
+      this.pollingClientTrophies.on('playerStatsChange', (before, after) => {
         this.handlePlayerStatsChange(before, after);
       });
-      console.log("🔧 Player stats change listener setup completed");
+      console.log('🔧 Player stats change listener setup completed');
     } else {
-      console.error("❌ pollingClientTrophies is not initialized");
+      console.error('❌ pollingClientTrophies is not initialized');
     }
   }
 }
@@ -503,7 +503,7 @@ class PollingSystem {
   try {
     // Mongo 接続
     await clientMongo.connect();
-    console.log("✅ connected to the Mongo database");
+    console.log('✅ connected to the Mongo database');
     client.clientMongo = clientMongo;
 
     const dbWeekNow = await fMongo.getWeekNowFromDb(clientMongo);
@@ -511,21 +511,21 @@ class PollingSystem {
       for (const key of Object.keys(appConfig.weekNow)) {
         if (dbWeekNow[key] != null) appConfig.weekNow[key] = dbWeekNow[key];
       }
-      console.log("✅ weekNow loaded from DB:", appConfig.weekNow);
+      console.log('✅ weekNow loaded from DB:', appConfig.weekNow);
     } else {
-      console.log("⚠️ weekNow not found in DB, using config default");
+      console.log('⚠️ weekNow not found in DB, using config default');
     }
 
     // コマンド・イベント
     const commandLoader = new CommandLoader(client);
     await commandLoader.loadAll();
-    console.log("⚡ Commands and events loaded successfully");
+    console.log('⚡ Commands and events loaded successfully');
 
     // CoC クライアント
     const clashOfClans = new ClashOfClans(appConfig);
     await clashOfClans.loginAll();
     clashOfClans.setupClient(client);
-    console.log("✅ Clash of Clans initialized successfully");
+    console.log('✅ Clash of Clans initialized successfully');
 
     // PollingSystem
     const pollingSystem = new PollingSystem(
@@ -539,25 +539,25 @@ class PollingSystem {
     const trophyPolling = clashOfClans.createTrophyPolling();
     await pollingSystem.initializeTrophyPolling(trophyPolling);
     await pollingSystem.initialize();
-    console.log("✅ Polling system initialized successfully");
+    console.log('✅ Polling system initialized successfully');
 
     // エラーハンドリング
-    process.on("uncaughtException", (error) => {
+    process.on('uncaughtException', (error) => {
       console.error(`❌ [${new Date().toISOString()}] ${error.stack}`);
       const embed = new EmbedBuilder()
-        .setTitle("ERROR - uncaughtException")
-        .setDescription("```\n" + error.stack + "\n```")
-        .setColor("#ff0000")
+        .setTitle('ERROR - uncaughtException')
+        .setDescription('```\n' + error.stack + '\n```')
+        .setColor('#ff0000')
         .setTimestamp();
       const channelError = client.channels.cache.get(appConfig.logch?.error);
       if (channelError) channelError.send({ embeds: [embed] });
     });
-    process.on("unhandledRejection", (reason, promise) => {
+    process.on('unhandledRejection', (reason, promise) => {
       console.error(`❌ [${new Date().toISOString()}] ${reason}`, promise);
       const embed = new EmbedBuilder()
-        .setTitle("ERROR - unhandledRejection")
-        .setDescription("```\n" + reason + "\n```")
-        .setColor("#ff0000")
+        .setTitle('ERROR - unhandledRejection')
+        .setDescription('```\n' + reason + '\n```')
+        .setColor('#ff0000')
         .setTimestamp();
       const channelError = client.channels.cache.get(appConfig.logch?.error);
       if (channelError) channelError.send({ embeds: [embed] });
@@ -565,7 +565,7 @@ class PollingSystem {
 
     await client.login(TOKEN);
   } catch (err) {
-    console.error("❌ Initialization error:", err);
+    console.error('❌ Initialization error:', err);
     process.exit(1);
   }
 })();

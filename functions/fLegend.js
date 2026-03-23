@@ -6,6 +6,40 @@ import config_coc from '../config/config_coc.js';
 import * as functions from './functions.js';
 import * as fRanking from './fRanking.js';
 
+/** レジェンドのシーズン開始トロフィーリセット（5000・一括減少）かどうか */
+function isLegendLeagueSeasonTrophyReset(beforePlayerStats, afterPlayerStats) {
+  if (afterPlayerStats.trophies !== 5000 || beforePlayerStats.trophies <= 5000) {
+    return false;
+  }
+  const diffTrophies = afterPlayerStats.trophies - beforePlayerStats.trophies;
+  // 単発防衛程度（おおよそ -40 前後）でちょうど 5000 になるケースと区別する
+  return diffTrophies <= -100;
+}
+
+async function createLogLegendNewSeason(
+  scPlayer,
+  mongoAcc,
+  eventData,
+  seasonData,
+) {
+  const myEmbed = new EmbedBuilder();
+  myEmbed.setTitle('**RANKED BATTLES LOG**');
+  let footer = '';
+  if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
+    footer = `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
+  } else {
+    footer = `${scPlayer.leagueTier.name.toUpperCase()}`;
+  }
+  myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
+  myEmbed.setColor(config.color.green);
+  myEmbed.setTimestamp();
+  let description = `${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}** | ${scPlayer.tag}\n\n`;
+  description += `:trophy: **${eventData.trophiesCurrent}**\n\n`;
+  description += `New season has started.\n`;
+  myEmbed.setDescription(description);
+  return myEmbed;
+}
+
 async function autoUpdateLegend(
   client,
   mongoAcc,
@@ -43,6 +77,16 @@ async function autoUpdateLegend(
   };
 
   if (afterPlayerStats.leagueTier.id == config_coc.leagueId.legend) {
+    if (isLegendLeagueSeasonTrophyReset(beforePlayerStats, afterPlayerStats)) {
+      const embed = await createLogLegendNewSeason(
+        afterPlayerStats,
+        mongoAcc,
+        baseEventData,
+        seasonData,
+      );
+      await sendLogEmbed(client, mongoAcc, embed);
+      return;
+    }
     const legendEventType = isAttackOrDefenseLegend(
       diffAttackWins,
       diffDefenseWins,

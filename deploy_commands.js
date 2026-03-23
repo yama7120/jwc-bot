@@ -1,4 +1,4 @@
-import { REST, Routes } from "discord.js";
+import { REST, Routes } from 'discord.js';
 import config from './config/config.js';
 import fs from 'node:fs';
 
@@ -13,8 +13,8 @@ function assertEnv(name, val) {
     process.exit(1);
   }
 }
-assertEnv("BOT_TOKEN", BOT_TOKEN);
-assertEnv("CLIENT_ID", CLIENT_ID);
+assertEnv('BOT_TOKEN', BOT_TOKEN);
+assertEnv('CLIENT_ID', CLIENT_ID);
 
 const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
 
@@ -23,7 +23,7 @@ const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
     const commands = [];
     const adminCommands = [];
     const commandFiles = fs.readdirSync('./commands/general').filter(file => file.endsWith('.js'));
-    const adminCommandFiles = fs.readdirSync("./commands/admin").filter(file => file.endsWith(".js"));
+    const adminCommandFiles = fs.readdirSync('./commands/admin').filter(file => file.endsWith('.js'));
 
     //JSON化
     for (const file of commandFiles) {

@@ -1,36 +1,36 @@
-import { EmbedBuilder, SlashCommandBuilder } from "discord.js";
-import config from "../../config/config.js";
-import * as functions from "../../functions/functions.js";
-import * as fMongo from "../../functions/fMongo.js";
+import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import config from '../../config/config.js';
+import * as functions from '../../functions/functions.js';
+import * as fMongo from '../../functions/fMongo.js';
 
-const nameCommand = "register_acc";
+const nameCommand = 'register_acc';
 let data = new SlashCommandBuilder()
   .setName(nameCommand)
-  .setDescription("no description")
+  .setDescription('no description')
   .addSubcommand(subcommand =>
     subcommand
-      .setName("new")
-      .setDescription(config.command[nameCommand].subCommand["new"])
+      .setName('new')
+      .setDescription(config.command[nameCommand].subCommand['new'])
       .addStringOption(option =>
         option
-          .setName("account")
-          .setDescription("プレイヤータグ")
+          .setName('account')
+          .setDescription('プレイヤータグ')
           .setRequired(true)
       )
       .addUserOption(option =>
         option
-          .setName("pilot_dc")
-          .setDescription("使用者の discord アカウント")
+          .setName('pilot_dc')
+          .setDescription('使用者の discord アカウント')
       )
   )
   .addSubcommand(subcommand =>
     subcommand
-      .setName("unregister")
-      .setDescription(config.command[nameCommand].subCommand["unregister"])
+      .setName('unregister')
+      .setDescription(config.command[nameCommand].subCommand['unregister'])
       .addStringOption(option =>
         option
-          .setName("account")
-          .setDescription("プレイヤータグ")
+          .setName('account')
+          .setDescription('プレイヤータグ')
           .setRequired(true)
           .setAutocomplete(true)
       )
@@ -43,12 +43,12 @@ export default {
     let focusedOption = interaction.options.getFocused(true);
     let focusedValue = interaction.options.getFocused();
 
-    if (focusedOption.name === "account") {
-      const query = { "pilotDC.id": interaction.user.id, status: { $ne: false } };
+    if (focusedOption.name === 'account') {
+      const query = { 'pilotDC.id': interaction.user.id, status: { $ne: false } };
       const projection = { _id: 0, tag: 1, name: 1, townHallLevel: 1 };
       const sort = { townHallLevel: -1 };
       const options = { projection: projection, sort: sort };
-      const cursor = client.clientMongo.db("jwc").collection("accounts").find(query, options);
+      const cursor = client.clientMongo.db('jwc').collection('accounts').find(query, options);
       let accs = await cursor.toArray();
       await cursor.close();
 
@@ -65,10 +65,10 @@ export default {
   },
 
   async execute(interaction, client) {
-    if (interaction.options.getSubcommand() == "unregister") {
+    if (interaction.options.getSubcommand() == 'unregister') {
       await unregister(interaction, client);
     }
-    else if (interaction.options.getSubcommand() == "new") {
+    else if (interaction.options.getSubcommand() == 'new') {
       await register(interaction, client);
     };
   }
@@ -76,12 +76,12 @@ export default {
 
 
 async function register(interaction, client) {
-  const iPlayerTag = await interaction.options.getString("account");
+  const iPlayerTag = await interaction.options.getString('account');
   const playerTag = functions.tagReplacer(iPlayerTag);
-  const iPilotDc = await interaction.options.getUser("pilot_dc");
+  const iPilotDc = await interaction.options.getUser('pilot_dc');
 
-  let title = "";
-  let description = "";
+  let title = '';
+  let description = '';
   let embed = new EmbedBuilder();
   embed.setColor(config.color.main);
   embed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
@@ -91,12 +91,12 @@ async function register(interaction, client) {
 
   let pilotDC = null;
 
-  let mongoAcc = await client.clientMongo.db("jwc").collection("accounts").findOne({ tag: playerTag, status: true });
+  let mongoAcc = await client.clientMongo.db('jwc').collection('accounts').findOne({ tag: playerTag, status: true });
   if (mongoAcc != null) {
     title = ``;
-    title = await functions.getAccInfoTitle(mongoAcc, "long");
-    description += await functions.getAccInfoDescriptionMain(mongoAcc, "long");
-    if (mongoAcc.pilotDC != "no discord acc" && mongoAcc.pilotDC != null && mongoAcc.pilotDC != "") {
+    title = await functions.getAccInfoTitle(mongoAcc, 'long');
+    description += await functions.getAccInfoDescriptionMain(mongoAcc, 'long');
+    if (mongoAcc.pilotDC != 'no discord acc' && mongoAcc.pilotDC != null && mongoAcc.pilotDC != '') {
       description += `:bust_in_silhouette: <@!${mongoAcc.pilotDC.id}>\n`;
     };
     description += `\n`;
@@ -111,8 +111,8 @@ async function register(interaction, client) {
       else {
         pilotDC.avatarUrl = `https://cdn.discordapp.com/avatars/${pilotDC.id}/${pilotDC.avatar}.png`;
       };
-      await client.clientMongo.db("jwc").collection("accounts").updateOne({ tag: playerTag }, { $set: { pilotDC: pilotDC, status: true } });
-      let nameDiscord = "";
+      await client.clientMongo.db('jwc').collection('accounts').updateOne({ tag: playerTag }, { $set: { pilotDC: pilotDC, status: true } });
+      let nameDiscord = '';
       if (iPilotDc.globalName != null) {
         nameDiscord = iPilotDc.globalName;
       }
@@ -122,11 +122,11 @@ async function register(interaction, client) {
       embed.setAuthor({ name: nameDiscord, iconURL: pilotDC.avatarUrl });
     };
 
-    if (resultScan.status == "ok") {
+    if (resultScan.status == 'ok') {
       await fMongo.registerAcc(client, playerTag, null, null, null, pilotDC);
       await fMongo.updateAcc(client, playerTag);
-      title = await functions.getAccInfoTitle(resultScan.scPlayer, "long");
-      description += await functions.getAccInfoDescriptionMain(resultScan.scPlayer, "long");
+      title = await functions.getAccInfoTitle(resultScan.scPlayer, 'long');
+      description += await functions.getAccInfoDescriptionMain(resultScan.scPlayer, 'long');
       description += `\n`;
       description += `:white_check_mark: *The account has been successfully registered.*\n`;
       if (iPilotDc == null) {
@@ -135,7 +135,7 @@ async function register(interaction, client) {
         description += ` to link the CoC account to a discord account.`;
       };
     }
-    else if (resultScan.status == "notFound") {
+    else if (resultScan.status == 'notFound') {
       title = `:x: **${resultScan.status}**`;
       description = `*Invalid tag was inputted.*`;
     }
@@ -155,17 +155,17 @@ async function register(interaction, client) {
 async function unregister(interaction, client) {
   const iSenderId = interaction.user.id;
 
-  const iPlayerTag = await interaction.options.getString("account");
+  const iPlayerTag = await interaction.options.getString('account');
   const playerTag = functions.tagReplacer(iPlayerTag);
 
-  let mongoAcc = await client.clientMongo.db("jwc").collection("accounts").findOne({ tag: playerTag });
+  let mongoAcc = await client.clientMongo.db('jwc').collection('accounts').findOne({ tag: playerTag });
   if (!mongoAcc) {
     const embed = new EmbedBuilder()
       .setColor(config.color.main)
       .setFooter({ text: config.footer, iconURL: config.urlImage.jwc })
       .setTimestamp()
-      .setTitle(":x: **not found**")
-      .setDescription("*The account is not registered in the JWC bot database.*");
+      .setTitle(':x: **not found**')
+      .setDescription('*The account is not registered in the JWC bot database.*');
     await interaction.followUp({ embeds: [embed], ephemeral: true });
     return;
   }
@@ -177,23 +177,23 @@ async function unregister(interaction, client) {
     isConfermed = true;
   }
   else {
-    const cursor = client.clientMongo.db("jwc").collection("clans")
+    const cursor = client.clientMongo.db('jwc').collection('clans')
       .find({}, { sort: { clan_abbr: 1 }, projection: { score: 0 } });
     let clans = await cursor.toArray();
     await cursor.close();
 
     let clan1 = clans.filter(function(clan) {
-      if (clan.rep_1st != null && clan.rep_1st != "non-registered") {
+      if (clan.rep_1st != null && clan.rep_1st != 'non-registered') {
         return clan.rep_1st.id.includes(iSenderId);
       };
     });
     let clan2 = clans.filter(function(clan) {
-      if (clan.rep_2nd != null && clan.rep_2nd != "non-registered") {
+      if (clan.rep_2nd != null && clan.rep_2nd != 'non-registered') {
         return clan.rep_2nd.id.includes(iSenderId);
       };
     });
     let clan3 = clans.filter(function(clan) {
-      if (clan.rep_3rd != null && clan.rep_3rd != "non-registered") {
+      if (clan.rep_3rd != null && clan.rep_3rd != 'non-registered') {
         return clan.rep_3rd.id.includes(iSenderId);
       };
     });
@@ -206,22 +206,22 @@ async function unregister(interaction, client) {
     };
   };
 
-  let title = "";
-  let description = "";
+  let title = '';
+  let description = '';
   let embed = new EmbedBuilder();
   embed.setColor(config.color.main);
   embed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
   embed.setTimestamp();
 
-  title = await functions.getAccInfoTitle(mongoAcc, "long");
-  description += await functions.getAccInfoDescriptionMain(mongoAcc, "long");
+  title = await functions.getAccInfoTitle(mongoAcc, 'long');
+  description += await functions.getAccInfoDescriptionMain(mongoAcc, 'long');
   description += `\n`;
 
   if (isConfermed == false) {
     description += `:exclamation: *You can unregister only your account.*`;
   }
   else {
-    await client.clientMongo.db("jwc").collection("accounts").updateOne({ tag: playerTag }, { $set: { status: false } });
+    await client.clientMongo.db('jwc').collection('accounts').updateOne({ tag: playerTag }, { $set: { status: false } });
     description += `:white_check_mark: *The account has been unregistered from the JWC bot database.* :wave:`;
   };
 

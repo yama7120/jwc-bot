@@ -1,8 +1,8 @@
-import { EmbedBuilder } from "discord.js";
+import { EmbedBuilder } from 'discord.js';
 
-import config from "../config/config.js";
-import config_coc from "../config/config_coc.js";
-import * as functions from "./functions.js";
+import config from '../config/config.js';
+import config_coc from '../config/config_coc.js';
+import * as functions from './functions.js';
 
 async function registerAcc(
   client,
@@ -16,8 +16,8 @@ async function registerAcc(
   listing.status = true;
 
   let mongoAcc = await client.clientMongo
-    .db("jwc")
-    .collection("accounts")
+    .db('jwc')
+    .collection('accounts')
     .findOne(
       { tag: playerTag },
       {
@@ -34,14 +34,14 @@ async function registerAcc(
   if (mongoAcc == null) {
     // 初回登録
     listing.tag = playerTag;
-    listing.homeClanAbbr = { j: "", swiss: "", mix: "", five: "" };
-    listing.league = { j: "", swiss: "", mix: "", five: "" };
-    listing.pilotName = { j: "", swiss: "", mix: "", five: "" };
+    listing.homeClanAbbr = { j: '', swiss: '', mix: '', five: '' };
+    listing.league = { j: '', swiss: '', mix: '', five: '' };
+    listing.pilotName = { j: '', swiss: '', mix: '', five: '' };
     let resultScan = await functions.scanAcc(client.clientCoc, playerTag);
     listing.name = resultScan.scPlayer.name;
     listing.townHallLevel = resultScan.scPlayer.townHallLevel;
 
-    if (typeof pilotDC === "string") {
+    if (typeof pilotDC === 'string') {
       let pilotDCnew = { id: pilotDC };
       listing.pilotDC = pilotDCnew;
     } else if (pilotDC != null) {
@@ -50,27 +50,27 @@ async function registerAcc(
   } else {
     // 追加登録（更新）
     if (mongoAcc.homeClanAbbr == null) {
-      listing.homeClanAbbr = { j: "", swiss: "", mix: "", five: "" };
+      listing.homeClanAbbr = { j: '', swiss: '', mix: '', five: '' };
     } else {
       listing.homeClanAbbr = mongoAcc.homeClanAbbr;
     }
     if (mongoAcc.league == null) {
-      listing.league = { j: "", swiss: "", mix: "", five: "" };
+      listing.league = { j: '', swiss: '', mix: '', five: '' };
     } else {
       listing.league = mongoAcc.league;
     }
     if (mongoAcc.pilotName == null) {
-      listing.pilotName = { j: "", swiss: "", mix: "", five: "" };
+      listing.pilotName = { j: '', swiss: '', mix: '', five: '' };
     } else {
       listing.pilotName = mongoAcc.pilotName;
     }
 
     if (
       mongoAcc.pilotDC == null ||
-      mongoAcc.pilotDC == "" ||
-      mongoAcc.pilotDC == "no discord acc"
+      mongoAcc.pilotDC == '' ||
+      mongoAcc.pilotDC == 'no discord acc'
     ) {
-      if (typeof pilotDC === "string") {
+      if (typeof pilotDC === 'string') {
         let pilotDCnew = { id: pilotDC };
         listing.pilotDC = pilotDCnew;
       } else if (pilotDC != null) {
@@ -80,25 +80,25 @@ async function registerAcc(
   }
 
   if (league != null) {
-    if (league.indexOf("j") != -1) {
+    if (league.indexOf('j') != -1) {
       listing.homeClanAbbr.j = clanAbbr;
       listing.league.j = league;
       if (pilotName != null) {
         listing.pilotName.j = pilotName;
       }
-    } else if (league.indexOf("swiss") != -1) {
+    } else if (league.indexOf('swiss') != -1) {
       listing.homeClanAbbr.swiss = clanAbbr;
       listing.league.swiss = league;
       if (pilotName != null) {
         listing.pilotName.swiss = pilotName;
       }
-    } else if (league.indexOf("mix") != -1) {
+    } else if (league.indexOf('mix') != -1) {
       listing.homeClanAbbr.mix = clanAbbr;
       listing.league.mix = league;
       if (pilotName != null) {
         listing.pilotName.mix = pilotName;
       }
-    } else if (league.indexOf("five") != -1) {
+    } else if (league.indexOf('five') != -1) {
       listing.homeClanAbbr.five = clanAbbr;
       listing.league.five = league;
       if (pilotName != null) {
@@ -110,14 +110,14 @@ async function registerAcc(
   if (mongoAcc == null) {
     // 初回登録
     await client.clientMongo
-      .db("jwc")
-      .collection("accounts")
+      .db('jwc')
+      .collection('accounts')
       .insertOne(listing);
   } else {
     // 追加登録（更新）
     await client.clientMongo
-      .db("jwc")
-      .collection("accounts")
+      .db('jwc')
+      .collection('accounts')
       .updateOne({ tag: playerTag }, { $set: listing });
   }
 
@@ -127,8 +127,8 @@ export { registerAcc };
 
 async function updateAcc(client, tagAccount) {
   let mongoAcc = await client.clientMongo
-    .db("jwc")
-    .collection("accounts")
+    .db('jwc')
+    .collection('accounts')
     .findOne({ tag: tagAccount });
 
   let scPlayer = null;
@@ -136,17 +136,17 @@ async function updateAcc(client, tagAccount) {
     scPlayer = await client.clientCoc.getPlayer(tagAccount);
   } catch (error) {
     console.log(error);
-    if (error.reason == "notFound") {
+    if (error.reason == 'notFound') {
       let myEmbed = new EmbedBuilder();
       let title = `**ERROR**`;
-      let description = "";
+      let description = '';
       description += `${tagAccount}\n`;
       description += `*${error.reason}*\n`;
       myEmbed.setTitle(title);
       myEmbed.setDescription(description);
       myEmbed.setColor(config.color.red);
       myEmbed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
-      await functions.safeSend(client, config.logch.freeBotRoom, { embeds: [myEmbed] }, "legends200:error");
+      await functions.safeSend(client, config.logch.freeBotRoom, { embeds: [myEmbed] }, 'legends200:error');
     }
     return;
   }
@@ -330,15 +330,15 @@ async function updateAcc(client, tagAccount) {
   const homeHeroNames = new Set(config_coc.heroes.map((hero) => hero.name));
   if (scPlayer.heroes != null) {
     scPlayer.heroes.map((hero) => {
-      const isHomeHero = hero.village == "home" || homeHeroNames.has(hero.name);
+      const isHomeHero = hero.village == 'home' || homeHeroNames.has(hero.name);
       if (isHomeHero) {
         lvHeroes.level += hero.level;
-        if (hero.name == "Minion Prince") {
+        if (hero.name == 'Minion Prince') {
           lvHeroes.maxLevel +=
             config_coc.maxLevel.heroes.minionPrince[
               `th${scPlayer.townHallLevel}`
             ] ?? 0;
-        } else if (hero.name == "Dragon Duke") {
+        } else if (hero.name == 'Dragon Duke') {
           lvHeroes.maxLevel +=
             config_coc.maxLevel.heroes.dragonDuke[
               `th${scPlayer.townHallLevel}`
@@ -347,17 +347,17 @@ async function updateAcc(client, tagAccount) {
           lvHeroes.maxLevel += hero.hallMaxLevel ?? 0;
         }
       }
-      if (hero.name == "Barbarian King") {
+      if (hero.name == 'Barbarian King') {
         lvHeroes.BK = hero.level;
-      } else if (hero.name == "Archer Queen") {
+      } else if (hero.name == 'Archer Queen') {
         lvHeroes.AQ = hero.level;
-      } else if (hero.name == "Grand Warden") {
+      } else if (hero.name == 'Grand Warden') {
         lvHeroes.GW = hero.level;
-      } else if (hero.name == "Royal Champion") {
+      } else if (hero.name == 'Royal Champion') {
         lvHeroes.RC = hero.level;
-      } else if (hero.name == "Minion Prince") {
+      } else if (hero.name == 'Minion Prince') {
         lvHeroes.MP = hero.level;
-      } else if (hero.name == "Dragon Duke") {
+      } else if (hero.name == 'Dragon Duke') {
         lvHeroes.DD = hero.level;
       }
     });
@@ -375,7 +375,7 @@ async function updateAcc(client, tagAccount) {
       mp: { level: 0, maxLevel: 0 },
     };
     const epicEquipments = config_coc.heroEquipments.filter(
-      (eq) => eq.type === "epic",
+      (eq) => eq.type === 'epic',
     );
 
     if (scPlayer.heroEquipment) {
@@ -391,8 +391,8 @@ async function updateAcc(client, tagAccount) {
                 `th${scPlayer.townHallLevel}`
               ] ?? 0;
             const key =
-              equipment.name.replace(/\s+/g, "").charAt(0).toLowerCase() +
-              equipment.name.replace(/\s+/g, "").slice(1);
+              equipment.name.replace(/\s+/g, '').charAt(0).toLowerCase() +
+              equipment.name.replace(/\s+/g, '').slice(1);
 
             // 合計と個別の装備レベルを更新
             lvHeroEquipment.total.level += equipment.level;
@@ -400,19 +400,19 @@ async function updateAcc(client, tagAccount) {
             lvHeroEquipment[key] = { level: equipment.level, maxLevel };
 
             // ヒーロー別の装備レベルを更新
-            if (foundEquipment.hero === "Barbarian King") {
+            if (foundEquipment.hero === 'Barbarian King') {
               lvHeroEquipment.bk.level += equipment.level;
               lvHeroEquipment.bk.maxLevel += maxLevel;
-            } else if (foundEquipment.hero === "Archer Queen") {
+            } else if (foundEquipment.hero === 'Archer Queen') {
               lvHeroEquipment.aq.level += equipment.level;
               lvHeroEquipment.aq.maxLevel += maxLevel;
-            } else if (foundEquipment.hero === "Grand Warden") {
+            } else if (foundEquipment.hero === 'Grand Warden') {
               lvHeroEquipment.gw.level += equipment.level;
               lvHeroEquipment.gw.maxLevel += maxLevel;
-            } else if (foundEquipment.hero === "Royal Champion") {
+            } else if (foundEquipment.hero === 'Royal Champion') {
               lvHeroEquipment.rc.level += equipment.level;
               lvHeroEquipment.rc.maxLevel += maxLevel;
-            } else if (foundEquipment.hero === "Minion Prince") {
+            } else if (foundEquipment.hero === 'Minion Prince') {
               lvHeroEquipment.mp.level += equipment.level;
               lvHeroEquipment.mp.maxLevel += maxLevel;
             }
@@ -424,8 +424,8 @@ async function updateAcc(client, tagAccount) {
     // 未所持の装備も0で初期化
     epicEquipments.forEach(({ name }) => {
       const key =
-        name.replace(/\s+/g, "").charAt(0).toLowerCase() +
-        name.replace(/\s+/g, "").slice(1);
+        name.replace(/\s+/g, '').charAt(0).toLowerCase() +
+        name.replace(/\s+/g, '').slice(1);
       if (!lvHeroEquipment[key]) {
         lvHeroEquipment[key] = { level: 0, maxLevel: 0 };
       }
@@ -465,8 +465,8 @@ async function updateAcc(client, tagAccount) {
     listing.lvAll = lvAll;
 
     await client.clientMongo
-      .db("jwc")
-      .collection("accounts")
+      .db('jwc')
+      .collection('accounts')
       .updateOne({ tag: tagAccount }, { $set: listing });
   };
 
@@ -479,19 +479,19 @@ export { updateAcc };
 
 async function deleteRoster(clientMongo, league, playerTag) {
   let mongoAcc = await clientMongo
-    .db("jwc")
-    .collection("accounts")
+    .db('jwc')
+    .collection('accounts')
     .findOne({ tag: playerTag });
   let listingSet = {};
   listingSet.homeClanAbbr = mongoAcc.homeClanAbbr;
-  if (league.includes("j")) {
-    listingSet.homeClanAbbr.j = "";
+  if (league.includes('j')) {
+    listingSet.homeClanAbbr.j = '';
   } else {
-    listingSet.homeClanAbbr[league] = "";
+    listingSet.homeClanAbbr[league] = '';
   }
   const result = await clientMongo
-    .db("jwc")
-    .collection("accounts")
+    .db('jwc')
+    .collection('accounts')
     .updateOne({ tag: playerTag }, { $set: listingSet });
 
   return [result, mongoAcc];
@@ -499,11 +499,11 @@ async function deleteRoster(clientMongo, league, playerTag) {
 export { deleteRoster };
 
 async function legends200(client) {
-  const name = "legends200";
+  const name = 'legends200';
   let listing = {};
   // ランキング取得
   listing.japan = await client.clientCoc.getPlayerRanks(config_coc.locationId.japan);
-  listing.global = await client.clientCoc.getPlayerRanks("global");
+  listing.global = await client.clientCoc.getPlayerRanks('global');
 
   // 取得したランキング200件について、Mongoのaccountsに登録済みかを照合し、
   // 登録済みであれば homeClanAbbrを各要素に付与する
@@ -513,8 +513,8 @@ async function legends200(client) {
     if (tags.length === 0) return players;
 
     const cursor = client.clientMongo
-      .db("jwc")
-      .collection("accounts")
+      .db('jwc')
+      .collection('accounts')
       .find(
         { tag: { $in: tags } },
         { projection: { _id: 0, tag: 1, homeClanAbbr: 1 } },
@@ -524,7 +524,7 @@ async function legends200(client) {
 
     const tagToHomeJ = new Map();
     accs.forEach((acc) => {
-      const homeJ = acc?.homeClanAbbr?.j ?? "";
+      const homeJ = acc?.homeClanAbbr?.j ?? '';
       if (acc?.tag) tagToHomeJ.set(acc.tag, homeJ);
     });
 
@@ -542,10 +542,10 @@ async function legends200(client) {
   listing.date = new Date();
   listing.unixTimeRequest = Math.round(Date.now() / 1000);
   await client.clientMongo
-    .db("jwc")
-    .collection("ranking")
+    .db('jwc')
+    .collection('ranking')
     .updateOne({ name: name }, { $set: listing });
-  console.dir("done: legends200");
+  console.dir('done: legends200');
   return;
 }
 export { legends200 };
@@ -553,50 +553,50 @@ export { legends200 };
 async function standings(clientMongo, league) {
   const query = {
     league: league,
-    [`status.${functions.seasonToString(config.season[league])}`]: "true",
+    [`status.${functions.seasonToString(config.season[league])}`]: 'true',
   };
   const options = {
     projection: { _id: 0, clan_abbr: 1, team_name: 1, division: 1, score: 1 },
   };
   let sort = {};
-  if (league == "j1") {
+  if (league == 'j1') {
     sort = {
-      "score.sumQ.point": -1,
-      "score.sumQ.numWar": 1,
-      "score.sumQ.starDifference": -1,
-      "score.sumQ.clan.destruction": -1,
-      "score.sumQ.h2h": -1,
+      'score.sumQ.point': -1,
+      'score.sumQ.numWar': 1,
+      'score.sumQ.starDifference': -1,
+      'score.sumQ.clan.destruction': -1,
+      'score.sumQ.h2h': -1,
       clan_abbr: 1,
     };
-  } else if (league == "j2") {
+  } else if (league == 'j2') {
     sort = {
-      "score.sum.point": -1,
-      "score.sum.numWar": 1,
-      "score.sum.starDifference": -1,
-      "score.sum.clan.destruction": -1,
+      'score.sum.point': -1,
+      'score.sum.numWar': 1,
+      'score.sum.starDifference': -1,
+      'score.sum.clan.destruction': -1,
       clan_abbr: 1,
     };
-  } else if (league == "mix") {
+  } else if (league == 'mix') {
     sort = {
-      "score.sumQ.point": -1,
-      "score.sumQ.numWar": 1,
-      "score.sumQ.starDifference": -1,
-      "score.sumQ.clan.destruction": -1,
+      'score.sumQ.point': -1,
+      'score.sumQ.numWar': 1,
+      'score.sumQ.starDifference': -1,
+      'score.sumQ.clan.destruction': -1,
       clan_abbr: 1,
     };
-  } else if (league == "swiss" || league == "five") {
+  } else if (league == 'swiss' || league == 'five') {
     sort = {
-      "score.sum.point": -1,
-      //"score.sum.numWar": 1,
-      "score.sum.starDifference": -1,
-      "score.sum.clan.destruction": -1,
+      'score.sum.point': -1,
+      //'score.sum.numWar': 1,
+      'score.sum.starDifference': -1,
+      'score.sum.clan.destruction': -1,
       clan_abbr: 1,
     };
   }
 
   const cursor = clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .find(query, options)
     .sort(sort);
   let standings = await cursor.toArray();
@@ -607,9 +607,9 @@ async function standings(clientMongo, league) {
   standings.forEach((team, index) => {
     let teamStats = {};
     if (team.score) {
-      if (league == "j1" || league == "mix") {
+      if (league == 'j1' || league == 'mix') {
         teamStats.sumScore = team.score.sumQ;
-      } else if (league == "j2" || league == "swiss" || league == "five") {
+      } else if (league == 'j2' || league == 'swiss' || league == 'five') {
         teamStats.sumScore = team.score.sum;
       }
       if (team.score.penalty != null) {
@@ -643,8 +643,8 @@ async function standings(clientMongo, league) {
   let listing = {};
   listing.standings = arrStandings;
   await clientMongo
-    .db("jwc")
-    .collection("leagues")
+    .db('jwc')
+    .collection('leagues')
     .updateOne({ league: league }, { $set: listing });
 
   return;
@@ -654,34 +654,34 @@ export { standings };
 async function standingsGroupStage(clientMongo, league, div1, div2) {
   const query = {
     league: league,
-    [`status.${functions.seasonToString(config.season[league])}`]: "true",
+    [`status.${functions.seasonToString(config.season[league])}`]: 'true',
     division: { $in: [div1, div2] },
   };
   const options = {
     projection: { _id: 0, clan_abbr: 1, team_name: 1, division: 1, score: 1 },
   };
   let sort = {};
-  if (league == "five") {
+  if (league == 'five') {
     sort = {
-      "score.sumGS.point": -1,
-      "score.sumGS.numWar": 1,
-      "score.sumGS.starDifference": -1,
-      "score.sumGS.clan.destruction": -1,
+      'score.sumGS.point': -1,
+      'score.sumGS.numWar': 1,
+      'score.sumGS.starDifference': -1,
+      'score.sumGS.clan.destruction': -1,
       clan_abbr: 1,
     };
-  } else if (league == "j1") {
+  } else if (league == 'j1') {
     sort = {
-      "score.sumQ.point": -1,
-      "score.sumQ.numWar": 1,
-      "score.sumQ.starDifference": -1,
-      "score.sumQ.clan.destruction": -1,
+      'score.sumQ.point': -1,
+      'score.sumQ.numWar': 1,
+      'score.sumQ.starDifference': -1,
+      'score.sumQ.clan.destruction': -1,
       clan_abbr: 1,
     };
   }
 
   const cursor = clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .find(query, options)
     .sort(sort);
   let standings = await cursor.toArray();
@@ -693,9 +693,9 @@ async function standingsGroupStage(clientMongo, league, div1, div2) {
   let teamStatsAbove = {};
   standings.forEach((team, index) => {
     let teamStats = {};
-    if (league == "five") {
+    if (league == 'five') {
       teamStats.sumScore = team.score.sumGS;
-    } else if (league == "j1") {
+    } else if (league == 'j1') {
       teamStats.sumScore = team.score.sumQ;
     }
     if (
@@ -730,8 +730,8 @@ async function standingsGroupStage(clientMongo, league, div1, div2) {
   let listing = {};
   listing.standings_gs = arrStandings;
   await clientMongo
-    .db("jwc")
-    .collection("leagues")
+    .db('jwc')
+    .collection('leagues')
     .updateOne({ league: league }, { $set: listing });
 
   return;
@@ -744,7 +744,7 @@ async function teamList(clientMongo, league) {
 
   const query = {
     [`status.${functions.seasonToString(config.season[league])}`]: {
-      $in: ["true", "question"],
+      $in: ['true', 'question'],
     },
     league: league,
   };
@@ -760,8 +760,8 @@ async function teamList(clientMongo, league) {
   };
   const sort = { clan_abbr: 1 };
   const cursor = clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .find(query, options)
     .sort(sort);
   const teams = await cursor.toArray();
@@ -777,8 +777,8 @@ async function teamList(clientMongo, league) {
 
       // count accounts
       let leagueM = league;
-      if (team.league == "j1" || team.league == "j2") {
-        leagueM = "j";
+      if (team.league == 'j1' || team.league == 'j2') {
+        leagueM = 'j';
       }
       const query2 = {
         [`homeClanAbbr.${leagueM}`]: team.clan_abbr,
@@ -786,8 +786,8 @@ async function teamList(clientMongo, league) {
       };
       const options2 = { projection: { _id: 0, pilotName: 1 } };
       const cursor = clientMongo
-        .db("jwc")
-        .collection("accounts")
+        .db('jwc')
+        .collection('accounts')
         .find(query2, options2);
       const accs = await cursor.toArray();
       await cursor.close();
@@ -811,9 +811,9 @@ async function teamList(clientMongo, league) {
   });
 
   await clientMongo
-    .db("jwc")
-    .collection("config")
-    .updateOne({ _id: "teamList" }, { $set: listingUpdate });
+    .db('jwc')
+    .collection('config')
+    .updateOne({ _id: 'teamList' }, { $set: listingUpdate });
   console.log(`Mongo: teamList has been updated.`);
 
   return;
@@ -821,82 +821,82 @@ async function teamList(clientMongo, league) {
 export { teamList };
 
 async function jwcAttacks(clientMongo, league) {
-  const name = "jwcAttacks";
+  const name = 'jwcAttacks';
   let listing = {};
   listing.date = new Date();
   listing.unixTimeRequest = Math.round(Date.now() / 1000);
 
   listing[league] = {};
-  let attackType = "";
-  if (league == "j1" || league == "j2") {
-    attackType = "total";
+  let attackType = '';
+  if (league == 'j1' || league == 'j2') {
+    attackType = 'total';
     listing[league][attackType] = await getRankingAcc(
       clientMongo,
       config.lvTH,
       league,
       attackType,
     );
-    attackType = "fresh";
+    attackType = 'fresh';
     listing[league][attackType] = await getRankingAcc(
       clientMongo,
       config.lvTH,
       league,
       attackType,
     );
-    attackType = "cleanup";
+    attackType = 'cleanup';
     listing[league][attackType] = await getRankingAcc(
       clientMongo,
       config.lvTH,
       league,
       attackType,
     );
-    attackType = "overkill";
+    attackType = 'overkill';
     listing[league][attackType] = await getRankingAcc(
       clientMongo,
       config.lvTH,
       league,
       attackType,
     );
-  } else if (league == "swiss") {
+  } else if (league == 'swiss') {
     listing[league] = await getRankingAcc(
       clientMongo,
       config.lvTH,
       league,
-      (attackType = "total"),
+      (attackType = 'total'),
     );
-  } else if (league == "mix") {
+  } else if (league == 'mix') {
     for (const lvTH of config.lvTHmix) {
       const keyLvTH = `th${lvTH}`;
       listing[league][keyLvTH] = await getRankingAcc(
         clientMongo,
         lvTH,
         league,
-        (attackType = "total"),
+        (attackType = 'total'),
       );
     }
-  } else if (league == "five") {
+  } else if (league == 'five') {
     listing[league] = await getRankingAcc(
       clientMongo,
       config.lvTH,
       league,
-      (attackType = "total"),
+      (attackType = 'total'),
     );
   }
 
   await clientMongo
-    .db("jwc")
-    .collection("ranking")
+    .db('jwc')
+    .collection('ranking')
     .updateOne({ name: name }, { $set: listing });
-  console.dir("done: jwcAttacks");
+  console.dir('done: jwcAttacks');
 
   return;
 }
 export { jwcAttacks };
 
 async function getRankingAcc(clientMongo, lvTH, league, iAttackType) {
-  let leagueM = "";
-  if (league == "j1" || league == "j2") {
-    leagueM = "j";
+  let leagueM = '';
+  if (league == 'j1' || league == 'j2') {
+    leagueM = 'j';
   } else {
     leagueM = league;
   }
@@ -927,8 +927,8 @@ async function getRankingAcc(clientMongo, lvTH, league, iAttackType) {
   };
 
   const cursor = clientMongo
-    .db("jwc")
-    .collection("accounts")
+    .db('jwc')
+    .collection('accounts')
     .find(query, options)
     .sort(sort);
   let accs = await cursor.toArray();
@@ -1046,15 +1046,15 @@ async function statsPlayer(clientMongo) {
 
   var query = {};
   var options = { projection: { _id: 1, stats: 0, pilotDC: 0 } };
-  var cursor = clientMongo.db("jwc").collection("players").find(query, options);
+  var cursor = clientMongo.db('jwc').collection('players').find(query, options);
   let players = await cursor.toArray();
   await cursor.close();
 
   await Promise.all(
     players.map(async (player, index) => {
       await clientMongo
-        .db("jwc")
-        .collection("players")
+        .db('jwc')
+        .collection('players')
         .updateOne({ _id: player._id }, { $set: listingNew });
     }),
   );
@@ -1062,15 +1062,15 @@ async function statsPlayer(clientMongo) {
   // stats 書き込み
   var query = {
     status: { $ne: false },
-    "pilotDC.username": { $ne: null },
+    'pilotDC.username': { $ne: null },
     stats: { $ne: null },
   };
   var options = {
     projection: { _id: 0, pilotDC: 1, stats: 1, townHallLevel: 1 },
   };
   var cursor = clientMongo
-    .db("jwc")
-    .collection("accounts")
+    .db('jwc')
+    .collection('accounts')
     .find(query, options);
   let accs = await cursor.toArray();
   //console.log(accs.length);
@@ -1079,25 +1079,25 @@ async function statsPlayer(clientMongo) {
   for await (const acc of accs) {
     //console.log(acc.pilotDC.username);
     let dbValuePlayer = await clientMongo
-      .db("jwc")
-      .collection("players")
-      .findOne({ "pilotDC.id": acc.pilotDC.id });
+      .db('jwc')
+      .collection('players')
+      .findOne({ 'pilotDC.id': acc.pilotDC.id });
     // 新規
     if (dbValuePlayer == null) {
       let listing = {};
       listing.pilotDC = acc.pilotDC;
       listing.stats = statsNew;
-      await clientMongo.db("jwc").collection("players").insertOne(listing);
+      await clientMongo.db('jwc').collection('players').insertOne(listing);
     }
     // 更新
     let dbValuePlayerNew = await clientMongo
-      .db("jwc")
-      .collection("players")
-      .findOne({ "pilotDC.id": acc.pilotDC.id });
+      .db('jwc')
+      .collection('players')
+      .findOne({ 'pilotDC.id': acc.pilotDC.id });
     let stats = {};
     if (
       acc.stats.j1.attacks != null &&
-      acc.stats.j1.attacks != "no attack" &&
+      acc.stats.j1.attacks != 'no attack' &&
       acc.townHallLevel == config.lvTH &&
       acc.stats.j1.season == config.season.j1
     ) {
@@ -1107,7 +1107,7 @@ async function statsPlayer(clientMongo) {
     }
     if (
       acc.stats.j2.attacks != null &&
-      acc.stats.j2.attacks != "no attack" &&
+      acc.stats.j2.attacks != 'no attack' &&
       acc.townHallLevel == config.lvTH &&
       acc.stats.j2.season == config.season.j2
     ) {
@@ -1117,7 +1117,7 @@ async function statsPlayer(clientMongo) {
     }
     if (
       acc.stats.swiss.attacks != null &&
-      acc.stats.swiss.attacks != "no attack" &&
+      acc.stats.swiss.attacks != 'no attack' &&
       acc.townHallLevel == config.lvTH &&
       acc.stats.swiss.season == config.season.swiss
     ) {
@@ -1130,7 +1130,7 @@ async function statsPlayer(clientMongo) {
     }
     if (
       acc.stats.mix.attacks != null &&
-      acc.stats.mix.attacks != "no attack" &&
+      acc.stats.mix.attacks != 'no attack' &&
       acc.stats.mix.season == config.season.mix
     ) {
       if (acc.townHallLevel == config.lvTHmix[0]) {
@@ -1173,7 +1173,7 @@ async function statsPlayer(clientMongo) {
     }
     if (
       acc.stats.five.attacks != null &&
-      acc.stats.five.attacks != "no attack" &&
+      acc.stats.five.attacks != 'no attack' &&
       acc.townHallLevel == config.lvTH &&
       acc.stats.five.season == config.season.five
     ) {
@@ -1184,9 +1184,9 @@ async function statsPlayer(clientMongo) {
     let listing = {};
     listing.stats = stats;
     await clientMongo
-      .db("jwc")
-      .collection("players")
-      .updateOne({ "pilotDC.id": acc.pilotDC.id }, { $set: listing });
+      .db('jwc')
+      .collection('players')
+      .updateOne({ 'pilotDC.id': acc.pilotDC.id }, { $set: listing });
   }
   return;
 }
@@ -1299,10 +1299,10 @@ async function createZapQuakeTable(clientMongo, thLevel) {
   let tableUpdate = [];
 
   config_coc.buildings.forEach((building) => {
-    if (building.name != "Clan Castle") {
+    if (building.name != 'Clan Castle') {
       let objBuilding = {};
       Object.entries(building.hp).forEach(([th, hp]) => {
-        let thLvelInt = Number(th.replace("th", ""));
+        let thLvelInt = Number(th.replace('th', ''));
         if (thLvelInt == thLevel) {
           objBuilding.id = building.id;
           objBuilding.emote = building.emote;
@@ -1339,10 +1339,10 @@ async function createZapQuakeTable(clientMongo, thLevel) {
   });
 
   config_coc.heroes.forEach((hero) => {
-    if (hero.name != "Barbarian King") {
+    if (hero.name != 'Barbarian King') {
       let objHero = {};
       Object.entries(hero.hp).forEach(([th, hp]) => {
-        let thLvelInt = Number(th.replace("th", ""));
+        let thLvelInt = Number(th.replace('th', ''));
         if (thLvelInt == thLevel) {
           hp = Math.round(hp * 1.2);
           objHero.id = 90 + hero.id;
@@ -1373,10 +1373,10 @@ async function createZapQuakeTable(clientMongo, thLevel) {
   let listingUpdate = {};
   listingUpdate[thLevelStr] = tableUpdate;
 
-  const query = { name: "zapQuakeTable" };
+  const query = { name: 'zapQuakeTable' };
   await clientMongo
-    .db("jwc")
-    .collection("config")
+    .db('jwc')
+    .collection('config')
     .updateOne(query, { $set: listingUpdate });
   console.log(`Mongo: zapQuakeTable has been updated.`);
 
@@ -1393,7 +1393,7 @@ async function createFireballTable(clientMongo, thLevel, mode) {
 
   let damageFireball;
   let epicLevel;
-  if (mode == "eSports") {
+  if (mode == 'eSports') {
     epicLevel = config_coc.maxLevel.heroEquipments.epic[thLevelStr] - 6;
   } else {
     epicLevel = config_coc.maxLevel.heroEquipments.epic[thLevelStr];
@@ -1403,7 +1403,7 @@ async function createFireballTable(clientMongo, thLevel, mode) {
   config_coc.buildings.forEach((building) => {
     let objBuilding = {};
     Object.entries(building.hp).forEach(([th, hp]) => {
-      let thLvelInt = Number(th.replace("th", ""));
+      let thLvelInt = Number(th.replace('th', ''));
       if (thLvelInt == thLevel) {
         objBuilding.id = building.id;
         objBuilding.emote = building.emote;
@@ -1440,9 +1440,9 @@ async function createFireballTable(clientMongo, thLevel, mode) {
       // Barbarian King 以外
       let objHero = {};
       Object.entries(hero.hp).forEach(([th, hp]) => {
-        let thLvelInt = Number(th.replace("th", ""));
+        let thLvelInt = Number(th.replace('th', ''));
         if (thLvelInt == thLevel) {
-          if (mode == "eSports") {
+          if (mode == 'eSports') {
             hp = Math.round(hp * 1.2);
           }
           objHero.id = 90 + hero.id;
@@ -1483,8 +1483,8 @@ async function createFireballTable(clientMongo, thLevel, mode) {
   let name = `fireballTable_${mode}`;
   const query = { name: name };
   await clientMongo
-    .db("jwc")
-    .collection("config")
+    .db('jwc')
+    .collection('config')
     .updateOne(query, { $set: listingUpdate });
   console.log(`Mongo: ${name} has been updated.`);
 
@@ -1500,23 +1500,23 @@ async function updateTrophyHistory(client, mongoAcc, scPlayer, diffAttackWins) {
 
   // 設定情報を取得
   const { day, season } = await client.clientMongo
-    .db("jwc")
-    .collection("config")
-    .findOne({ name: "legend" });
+    .db('jwc')
+    .collection('config')
+    .findOne({ name: 'legend' });
 
   // 攻撃と防衛の記録を集計
   const logCurrent = mongoAcc.legend?.logCurrent || [];
   const todayLogs = logCurrent.filter((log) => log.day === day);
 
   // 攻撃の集計
-  const attackLogs = todayLogs.filter((log) => log.action === "attack");
+  const attackLogs = todayLogs.filter((log) => log.action === 'attack');
   const attacks = attackLogs.length;
   const perfectAttacks = attackLogs.filter(
     (log) => log.diffTrophies === 40,
   ).length;
 
   // 防衛の集計
-  const defenseLogs = todayLogs.filter((log) => log.action === "defense");
+  const defenseLogs = todayLogs.filter((log) => log.action === 'defense');
   const defenses = defenseLogs.length;
   const perfectDefenses = defenseLogs.filter(
     (log) => log.diffTrophies === -40,
@@ -1529,7 +1529,7 @@ async function updateTrophyHistory(client, mongoAcc, scPlayer, diffAttackWins) {
     diffAttackWins: diffAttackWins,
     season,
     day,
-    rank: scPlayer.legendStatistics?.currentSeason?.rank || "NaN",
+    rank: scPlayer.legendStatistics?.currentSeason?.rank || 'NaN',
     attacks,
     perfectAttacks,
     defenses,
@@ -1559,9 +1559,9 @@ async function updateTrophyHistory(client, mongoAcc, scPlayer, diffAttackWins) {
 
 async function getWeekNowFromDb(clientMongo) {
   const doc = await clientMongo
-    .db("jwc")
-    .collection("config")
-    .findOne({ name: "weekNow" });
+    .db('jwc')
+    .collection('config')
+    .findOne({ name: 'weekNow' });
   return doc;
 }
 export { getWeekNowFromDb };
@@ -1571,10 +1571,10 @@ async function setWeekNowInDb(clientMongo, league, week) {
   updateField[league] = week;
   updateField.unixTimeRequest = Math.round(Date.now() / 1000);
   await clientMongo
-    .db("jwc")
-    .collection("config")
+    .db('jwc')
+    .collection('config')
     .updateOne(
-      { name: "weekNow" },
+      { name: 'weekNow' },
       { $set: updateField },
       { upsert: true },
     );
@@ -1583,10 +1583,10 @@ export { setWeekNowInDb };
 
 /*
 async function updateLegendDay(clientMongo, seasonId, isReset) {
-  const name = "legend";
+  const name = 'legend';
   const mongoLegend = await clientMongo
-    .db("jwc")
-    .collection("config")
+    .db('jwc')
+    .collection('config')
     .findOne({ name: name });
   let dayNew = mongoLegend.day;
 
@@ -1605,15 +1605,15 @@ async function updateLegendDay(clientMongo, seasonId, isReset) {
 
   try {
     await clientMongo
-      .db("jwc")
-      .collection("config")
+      .db('jwc')
+      .collection('config')
       .updateOne({ name: name }, { $set: updatedListing });
     console.dir(updatedListing);
-    const result = { result: "success", dayNew: dayNew };
+    const result = { result: 'success', dayNew: dayNew };
     return result;
   } catch (error) {
     console.log(error);
-    const result = { result: "error", dayNew: dayNew };
+    const result = { result: 'error', dayNew: dayNew };
     return result;
   }
 }
@@ -1622,11 +1622,11 @@ exports.updateLegendDay = updateLegendDay;
 
 /*
 async function rezeroLegendCount(clientMongo) {
-  let query = { status: true, "legend.logSettings": { $ne: null } };
+  let query = { status: true, 'legend.logSettings': { $ne: null } };
   let sort = {};
   let cursor = clientMongo
-    .db("jwc")
-    .collection("accounts")
+    .db('jwc')
+    .collection('accounts')
     .find(query)
     .sort(sort);
   let accountsLegends = await cursor.toArray();
@@ -1635,14 +1635,14 @@ async function rezeroLegendCount(clientMongo) {
   console.log(`Rezeroing legend count for ${accountsLegends.length} accounts`);
 
   const nToday = { attacks: 0, defenses: 0 };
-  const updatedListing = { "legend.nToday": nToday };
+  const updatedListing = { 'legend.nToday': nToday };
 
   try {
     let count = 0;
     for (const acc of accountsLegends) {
       await clientMongo
-        .db("jwc")
-        .collection("accounts")
+        .db('jwc')
+        .collection('accounts')
         .updateOne({ tag: acc.tag }, { $set: updatedListing });
       count++;
       if (count % 10 === 0) {
@@ -1653,10 +1653,10 @@ async function rezeroLegendCount(clientMongo) {
     console.log(
       `Completed: Reset legend count for all ${accountsLegends.length} accounts`,
     );
-    return "success";
+    return 'success';
   } catch (error) {
     console.log(error);
-    return "error";
+    return 'error';
   }
 }
 exports.rezeroLegendCount = rezeroLegendCount;

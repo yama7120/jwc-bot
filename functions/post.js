@@ -149,7 +149,7 @@ async function calendar(client, dataObject) {
   //embed.setFields(JSON.parse(dataObject.fields)[0]);
   embed.setDescription(dataObject.description);
   embed.setFooter({ text: footer, iconURL: config.urlImage.jwc });
-  await functions.safeSend(client, config.logch.calendar, { embeds: [embed] }, "calendar");
+  await functions.safeSend(client, config.logch.calendar, { embeds: [embed] }, 'calendar');
 
   return;
 };

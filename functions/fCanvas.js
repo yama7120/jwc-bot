@@ -1,12 +1,12 @@
-import { AttachmentBuilder } from "discord.js";
-import config from "../config/config.js";
-import config_coc from "../config/config_coc.js";
-import * as functions from "./functions.js";
-import Canvas from "@napi-rs/canvas";
-import path from "node:path";
-import { format } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
-import { ChartJSNodeCanvas } from "chartjs-node-canvas";
+import { AttachmentBuilder } from 'discord.js';
+import config from '../config/config.js';
+import config_coc from '../config/config_coc.js';
+import * as functions from './functions.js';
+import Canvas from '@napi-rs/canvas';
+import path from 'node:path';
+import { format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
+import { ChartJSNodeCanvas } from 'chartjs-node-canvas';
 
 // ***** 共通フォント定義 ***** //
 // フォントを一度だけ登録（GlobalFontsは一度登録すれば全体で利用可能）
@@ -14,62 +14,62 @@ let fontsRegistered = false;
 function registerFonts() {
   if (fontsRegistered) return;
   try {
-    Canvas.GlobalFonts.registerFromPath("./fonts/OPTIMA_B.TTF", "Optima");
+    Canvas.GlobalFonts.registerFromPath('./fonts/OPTIMA_B.TTF', 'Optima');
     Canvas.GlobalFonts.registerFromPath(
-      "./fonts/Noto_Serif_JP/NotoSerifJP-Black.otf",
-      "NotoSerifJP",
+      './fonts/Noto_Serif_JP/NotoSerifJP-Black.otf',
+      'NotoSerifJP',
     );
     Canvas.GlobalFonts.registerFromPath(
-      "./fonts/SourceHanSans-VF.ttf",
-      "HanSans",
+      './fonts/SourceHanSans-VF.ttf',
+      'HanSans',
     );
     Canvas.GlobalFonts.registerFromPath(
-      "./fonts/Supercell-magic.ttf",
-      "Supercell",
+      './fonts/Supercell-magic.ttf',
+      'Supercell',
     );
     Canvas.GlobalFonts.registerFromPath(
-      "./fonts/Graduate-Regular.ttf",
-      "Graduate",
+      './fonts/Graduate-Regular.ttf',
+      'Graduate',
     );
     Canvas.GlobalFonts.registerFromPath(
-      "./fonts/Kameron-VariableFont_wght.ttf",
-      "Kameron",
+      './fonts/Kameron-VariableFont_wght.ttf',
+      'Kameron',
     );
     fontsRegistered = true;
   } catch (error) {
     // 既に登録されている場合はエラーを無視
-    console.warn("Font registration warning:", error.message);
+    console.warn('Font registration warning:', error.message);
   }
 }
 
 // フォント名定数
 const FONTS = {
-  MAIN: "Optima",
-  JP: "NotoSerifJP",
-  SC: "Supercell",
-  NUMBER: "Kameron",
+  MAIN: 'Optima',
+  JP: 'NotoSerifJP',
+  SC: 'Supercell',
+  NUMBER: 'Kameron',
 };
 
 // フォントサイズ定数（config.canvasFontSizeへのエイリアス）
 const fontSize = config.canvasFontSize;
 
 // フォント設定ヘルパー関数
-function setFont(ctx, fontSize, fontName = FONTS.MAIN, style = "") {
-  const stylePrefix = style ? `${style} ` : "";
+function setFont(ctx, fontSize, fontName = FONTS.MAIN, style = '') {
+  const stylePrefix = style ? `${style} ` : '';
   ctx.font = `${stylePrefix}${fontSize}px ${fontName}`;
 }
 
 // 日本語フォントを使用する場合のヘルパー
-function setFontJP(ctx, fontSize, fontName = FONTS.MAIN, style = "") {
+function setFontJP(ctx, fontSize, fontName = FONTS.MAIN, style = '') {
   const fontFamily = `${fontName}, ${FONTS.JP}, sans-serif`;
-  const stylePrefix = style ? `${style} ` : "";
+  const stylePrefix = style ? `${style} ` : '';
   ctx.font = `${stylePrefix}${fontSize}px ${fontFamily}`;
 }
 
 // 絵文字・特殊文字対応フォントを使用する場合のヘルパー
-function setFontName(ctx, fontSize, fontName = FONTS.MAIN, style = "") {
-  const fontFamily = `${fontName}, ${FONTS.JP}, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "EmojiOne Color", "Twemoji Mozilla", "Apple Symbols", "Segoe UI Symbol", sans-serif`;
-  const stylePrefix = style ? `${style} ` : "";
+function setFontName(ctx, fontSize, fontName = FONTS.MAIN, style = '') {
+  const fontFamily = `${fontName}, ${FONTS.JP}, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'EmojiOne Color', 'Twemoji Mozilla', 'Apple Symbols', 'Segoe UI Symbol', sans-serif`;
+  const stylePrefix = style ? `${style} ` : '';
   ctx.font = `${stylePrefix}${fontSize}px ${fontFamily}`;
 }
 
@@ -127,7 +127,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
     config.canvasSize.width,
     config.canvasSize.height,
   );
-  let ctx = myCanvas.getContext("2d");
+  let ctx = myCanvas.getContext('2d');
 
   const widthCenter = widthCanvas / 2;
   const heightCenter = heightCanvas / 2;
@@ -156,8 +156,8 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
     pos[`v${String(i)}2`] = heightCenter + (heightCanvas * i) / 40;
   }
 
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
 
   ctx.fillStyle = config.rgb.black;
   ctx.globalAlpha = 0.2;
@@ -233,7 +233,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
   ctx.fillText(text, pos.h111, pos.v161);
 
   ctx.fillStyle = config.rgb.snowWhite;
-  text = mongoTeam.team_name.replace(/\\/g, "").replace(/‪⋆͛/g, "");
+  text = mongoTeam.team_name.replace(/\\/g, '').replace(/‪⋆͛/g, '');
   let fontSize_teamName = config.canvasFontSize.large;
   //console.log(text.length);
   const ratz = /[a-z]/,
@@ -252,8 +252,8 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
     }
   }
   if (
-    mongoTeam.clan_abbr.includes("omi") ||
-    mongoTeam.clan_abbr.includes("lily")
+    mongoTeam.clan_abbr.includes('omi') ||
+    mongoTeam.clan_abbr.includes('lily')
   ) {
     setFont(ctx, fontSize_teamName, FONTS.JP);
   } else {
@@ -280,25 +280,25 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
   }
 
   // subtitles
-  ctx.textAlign = "center";
+  ctx.textAlign = 'center';
   setFont(ctx, config.canvasFontSize.medium);
   //text = 'STATS';
   //ctx.fillText(text, pos.h181, pos.v121);
-  text = "WARS";
+  text = 'WARS';
   ctx.fillText(text, pos.h101, pos.v61);
-  text = "TOP PLAYERS";
+  text = 'TOP PLAYERS';
   ctx.fillText(text, pos.h102, pos.v61);
 
   // STATS
-  ctx.textAlign = "center";
-  ctx.textBaseline = "alphabetic";
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
   setFont(ctx, config.canvasFontSize.medium);
-  text = "W";
+  text = 'W';
   ctx.fillText(text, pos.h161, pos.v111);
   setFont(ctx, config.canvasFontSize.small);
-  text = "L";
+  text = 'L';
   ctx.fillText(text, pos.h131 + 10, pos.v111);
-  text = "T";
+  text = 'T';
   ctx.fillText(text, pos.h101 + 10, pos.v111);
   setFont(ctx, config.canvasFontSize.xLarge);
   text = String(mongoTeam.score.sum.nWin);
@@ -324,12 +324,12 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
   } else {
     text = `+${String(sd)}`;
   }
-  ctx.textAlign = "left";
+  ctx.textAlign = 'left';
   setFont(ctx, config.canvasFontSize.medium);
   ctx.fillText(text, pos.h51 - 20, pos.v111);
 
   // hitrates
-  if (league == "j1" || league == "j2") {
+  if (league == 'j1' || league == 'j2') {
     var imgRatio = 0.5;
     var imgStars = await Canvas.loadImage(`./image/scStarTriple.png`);
     var posImgStarsH = pos.h161 + 30 - (300 * imgRatio) / 2 - 30;
@@ -371,8 +371,8 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
     );
 
     const posHirtateV = pos.v91;
-    ctx.textAlign = "right";
-    ctx.textBaseline = "middle";
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
     setFont(ctx, config.canvasFontSize.medium);
     text = `${Math.round(mongoTeam.score.sum.clan.allAttackTypes.hitrate.total)}`;
     ctx.fillText(text, pos.h161 + 30, posHirtateV);
@@ -383,7 +383,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
     ctx.fillText(text, pos.h81 + 30, posHirtateV - 3);
     text = `${Math.round(mongoTeam.score.sum.clan.overkill.hitrate.total)}`;
     ctx.fillText(text, pos.h41 + 30, posHirtateV - 3);
-    ctx.textAlign = "left";
+    ctx.textAlign = 'left';
     setFont(ctx, config.canvasFontSize.small);
     text = `%`;
     ctx.fillText(text, pos.h161 + 30, posHirtateV + 5);
@@ -393,7 +393,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
     ctx.fillText(text, pos.h41 + 30, posHirtateV + 2);
 
     const pos_triple = pos.v81;
-    ctx.textAlign = "right";
+    ctx.textAlign = 'right';
     setFont(ctx, config.canvasFontSize.medium);
     text = `${mongoTeam.score.sum.clan.allAttackTypes.nTriple.total}`;
     ctx.fillText(text, pos.h161 + 20, pos_triple - 10);
@@ -404,7 +404,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
     ctx.fillText(text, pos.h81 + 30, pos_triple - 5);
     text = `${mongoTeam.score.sum.clan.overkill.nTriple.total}`;
     ctx.fillText(text, pos.h41 + 30, pos_triple - 5);
-    ctx.textAlign = "left";
+    ctx.textAlign = 'left';
     setFont(ctx, config.canvasFontSize.small);
     text = `/${mongoTeam.score.sum.clan.allAttackTypes.nAt.total}`;
     ctx.fillText(text, pos.h161 + 20, pos_triple);
@@ -415,7 +415,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
     ctx.fillText(text, pos.h81 + 30, pos_triple);
     text = `/${mongoTeam.score.sum.clan.overkill.nAt.total}`;
     ctx.fillText(text, pos.h41 + 30, pos_triple);
-  } else if (league == "swiss" || league == "five") {
+  } else if (league == 'swiss' || league == 'five') {
     var imgRatio = 0.5;
     var imgStars = await Canvas.loadImage(`./image/scStarTriple.png`);
     var posImgStarsH = pos.h91 - (300 * imgRatio) / 2 - 50;
@@ -429,34 +429,34 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
     );
 
     const posHirtateV = pos.v91;
-    ctx.textAlign = "right";
-    ctx.textBaseline = "middle";
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
     setFont(ctx, config.canvasFontSize.medium);
     ctx.fillText(
       `${Math.round(mongoTeam.score.sum.clan.allAttackTypes.hitrate.total)}`,
       pos.h101 + 10,
       posHirtateV,
     );
-    ctx.textAlign = "left";
+    ctx.textAlign = 'left';
     setFont(ctx, config.canvasFontSize.small);
     ctx.fillText(`%`, pos.h101 + 10, posHirtateV + 5);
 
     const pos_triple = pos.v81;
-    ctx.textAlign = "right";
+    ctx.textAlign = 'right';
     setFont(ctx, config.canvasFontSize.medium);
     ctx.fillText(
       `${mongoTeam.score.sum.clan.allAttackTypes.nTriple.total}`,
       pos.h101 + 0,
       pos_triple - 10,
     );
-    ctx.textAlign = "left";
+    ctx.textAlign = 'left';
     setFont(ctx, config.canvasFontSize.small);
     ctx.fillText(
       `/${mongoTeam.score.sum.clan.allAttackTypes.nAt.total}`,
       pos.h101 + 0,
       pos_triple,
     );
-  } else if (league == "mix") {
+  } else if (league == 'mix') {
     const imgRatio = 0.5;
     const imgStars = await Canvas.loadImage(`./image/scStarTriple.png`);
     const posImgStarsH = pos.h161 - (300 * imgRatio) / 2 + 17;
@@ -472,10 +472,10 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
     const posHirtateV = pos.v91;
     const posTripleV = pos.v81 - 10;
 
-    ctx.textBaseline = "middle";
+    ctx.textBaseline = 'middle';
 
     // 合計ヒットレートを描画
-    ctx.textAlign = "right";
+    ctx.textAlign = 'right';
     setFont(ctx, config.canvasFontSize.medium);
     ctx.fillText(
       `${Math.round(mongoTeam.score.sum.clan.allAttackTypes.hitrate.total)}`,
@@ -487,9 +487,9 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
       pos.h161 + 20,
       posTripleV - 10,
     );
-    ctx.textAlign = "left";
+    ctx.textAlign = 'left';
     setFont(ctx, config.canvasFontSize.small);
-    ctx.fillText("%", pos.h161 + 30, posHirtateV + 5);
+    ctx.fillText('%', pos.h161 + 30, posHirtateV + 5);
     ctx.fillText(
       `/${mongoTeam.score.sum.clan.allAttackTypes.nAt.total}`,
       pos.h161 + 20,
@@ -500,32 +500,32 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
     const imgLength = 80;
     const townhalls = [
       {
-        level: "th17",
-        img: "./image/th17_cam3.png",
+        level: 'th17',
+        img: './image/th17_cam3.png',
         posH: pos.h121,
         posV: pos.v101,
       },
       {
-        level: "th16",
-        img: "./image/th16_cam3.png",
+        level: 'th16',
+        img: './image/th16_cam3.png',
         posH: pos.h101,
         posV: pos.v101,
       },
       {
-        level: "th15",
-        img: "./image/th15_cam3.png",
+        level: 'th15',
+        img: './image/th15_cam3.png',
         posH: pos.h81,
         posV: pos.v101 + 5,
       },
       {
-        level: "th14",
-        img: "./image/th14_cam3.png",
+        level: 'th14',
+        img: './image/th14_cam3.png',
         posH: pos.h61,
         posV: pos.v101,
       },
       {
-        level: "th13",
-        img: "./image/th13_cam3.png",
+        level: 'th13',
+        img: './image/th13_cam3.png',
         posH: pos.h41,
         posV: pos.v101,
       },
@@ -545,7 +545,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
       );
 
       // ヒットレートを描画
-      ctx.textAlign = "right";
+      ctx.textAlign = 'right';
       setFont(ctx, config.canvasFontSize.small);
       ctx.fillText(
         `${Math.round(mongoTeam.score.sum.clan.allAttackTypes.hitrate[th.level])}`,
@@ -557,9 +557,9 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
         th.posH + 20,
         posTripleV - 5,
       );
-      ctx.textAlign = "left";
+      ctx.textAlign = 'left';
       setFont(ctx, config.canvasFontSize.xxSmall);
-      ctx.fillText("%", th.posH + 40, posHirtateV + 2);
+      ctx.fillText('%', th.posH + 40, posHirtateV + 2);
       ctx.fillText(
         `/${mongoTeam.score.sum.clan.allAttackTypes.nAt[th.level]}`,
         th.posH + 20,
@@ -578,16 +578,16 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
   let chartLabels = [];
   let chartDataAvg = [];
   let chartDataTeam = [];
-  if (league == "j1" || league == "j2") {
+  if (league == 'j1' || league == 'j2') {
     chartLabels = [
-      "All att.",
-      "Fresh att.",
-      "Cleanup att.",
-      "Overkill att.",
-      "All def.",
-      "Fresh def.",
-      "Cleanup def.",
-      "Overkill def.",
+      'All att.',
+      'Fresh att.',
+      'Cleanup att.',
+      'Overkill att.',
+      'All def.',
+      'Fresh def.',
+      'Cleanup def.',
+      'Overkill def.',
     ];
     chartDataAvg = [50, 50, 50, 50, 50, 50, 50, 50];
     chartDataTeam[0] = mongoTeam.stats.tScore.sum.allAttackTypes.total;
@@ -598,25 +598,25 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
     chartDataTeam[5] = mongoTeam.stats.tScoreDef.sum.fresh.total;
     chartDataTeam[6] = mongoTeam.stats.tScoreDef.sum.cleanup.total;
     chartDataTeam[7] = mongoTeam.stats.tScoreDef.sum.overkill.total;
-  } else if (league == "swiss" || league == "five") {
-    chartLabels = ["All att.", "Fresh att.", "All def.", "Fresh def."];
+  } else if (league == 'swiss' || league == 'five') {
+    chartLabels = ['All att.', 'Fresh att.', 'All def.', 'Fresh def.'];
     chartDataAvg = [50, 50, 50, 50];
     chartDataTeam[0] = mongoTeam.stats.tScore.sum.allAttackTypes.total;
     chartDataTeam[1] = mongoTeam.stats.tScore.sum.fresh.total;
     chartDataTeam[2] = mongoTeam.stats.tScoreDef.sum.allAttackTypes.total;
     chartDataTeam[3] = mongoTeam.stats.tScoreDef.sum.fresh.total;
-  } else if (league == "mix") {
+  } else if (league == 'mix') {
     chartLabels = [
-      "TH17 att.",
-      "TH16 att.",
-      "TH15 att.",
-      "TH14 att.",
-      "TH13 att.",
-      "TH17 def.",
-      "TH16 def.",
-      "TH15 def.",
-      "TH14 def.",
-      "TH13 def.",
+      'TH17 att.',
+      'TH16 att.',
+      'TH15 att.',
+      'TH14 att.',
+      'TH13 att.',
+      'TH17 def.',
+      'TH16 def.',
+      'TH15 def.',
+      'TH14 def.',
+      'TH13 def.',
     ];
     chartDataAvg = Array(10).fill(50);
     chartDataTeam = [17, 16, 15, 14, 13].flatMap((th) => [
@@ -662,11 +662,11 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
     ],
   };
   const fontChartString = {
-    family: "Helvetica Neue",
+    family: 'Helvetica Neue',
     size: 20,
   };
   const fontChartNumber = {
-    family: "Helvetica Neue",
+    family: 'Helvetica Neue',
     size: 16,
   };
   const chartOptions = {
@@ -685,7 +685,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
         ticks: {
           font: fontChartNumber,
           color: config.rgb.silverWhite,
-          backdropColor: "rgba(255, 255, 255, 0)",
+          backdropColor: 'rgba(255, 255, 255, 0)',
         },
         pointLabels: {
           font: fontChartString,
@@ -705,7 +705,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
   };
 
   const configuration = {
-    type: "radar",
+    type: 'radar',
     data: chartData,
     options: chartOptions,
   };
@@ -723,18 +723,18 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
 
   // ***** WARS ***** //
   const pos_wars = pos.v41;
-  ctx.textAlign = "center";
+  ctx.textAlign = 'center';
   ctx.fillStyle = config.rgb.gray200;
   setFont(ctx, config.canvasFontSize.xxSmall);
-  text = "Week";
+  text = 'Week';
   ctx.fillText(text, pos.h171, pos_wars);
-  text = "Result";
+  text = 'Result';
   ctx.fillText(text, pos.h141, pos_wars);
-  text = "Hitrate";
+  text = 'Hitrate';
   ctx.fillText(text, pos.h111, pos_wars);
-  text = "Triples";
+  text = 'Triples';
   ctx.fillText(text, pos.h81, pos_wars);
-  text = "vs.";
+  text = 'vs.';
   ctx.fillText(text, pos.h41, pos_wars);
 
   const query = {
@@ -750,8 +750,8 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
   };
   const sort = {};
   const cursor = clientMongo
-    .db("jwc")
-    .collection("wars")
+    .db('jwc')
+    .collection('wars')
     .find(query, options)
     .sort(sort);
   const wars = await cursor.toArray();
@@ -769,22 +769,22 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
   setFont(ctx, config.canvasFontSize.xSmall);
   let spacing = 220;
   let weekMax = 9;
-  if (league == "j1") {
+  if (league == 'j1') {
     spacing = 220;
     weekMax = 8;
   }
-  if (league == "j2" || league == "swiss") {
+  if (league == 'j2' || league == 'swiss') {
     spacing = 220;
     weekMax = 9;
-  } else if (league == "mix") {
+  } else if (league == 'mix') {
     spacing = 140;
     weekMax = 14;
-  } else if (league == "five") {
+  } else if (league == 'five') {
     spacing = 160;
     weekMax = 12;
   }
   for (let week = 1; week <= weekMax; week++) {
-    ctx.textAlign = "center";
+    ctx.textAlign = 'center';
     const score = mongoTeam.score[`w${week}`];
     let pos_wars_i = pos_wars + week * spacing;
     text = String(week);
@@ -805,19 +805,19 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
       ctx.fill();
 
       if (score.point == 2) {
-        text = "W";
+        text = 'W';
       } else if (score.point == 1) {
-        text = "T";
+        text = 'T';
       } else if (score.point == 0) {
-        text = "L";
+        text = 'L';
       }
       ctx.globalAlpha = 1.0;
       ctx.fillStyle = config.rgb.snowWhite;
       setFont(ctx, config.canvasFontSize.xSmall);
       ctx.fillText(text, pos.h151, pos_wars_i);
 
-      if (score.state != "forfeited") {
-        ctx.textBaseline = "bottom";
+      if (score.state != 'forfeited') {
+        ctx.textBaseline = 'bottom';
 
         setFont(ctx, config.canvasFontSize.medium);
         text = `${score.clan.stars}`;
@@ -826,51 +826,51 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
         text = `${score.opponent.stars}`;
         ctx.fillText(text, pos.h131 - 20, pos_wars_i + 50);
 
-        ctx.textAlign = "right";
+        ctx.textAlign = 'right';
         setFont(ctx, config.canvasFontSize.medium);
         text = `${Math.round(score.clan.allAttackTypes.hitrate.total)}`;
         ctx.fillText(text, pos.h111 + 20, pos_wars_i + 5);
-        ctx.textAlign = "left";
+        ctx.textAlign = 'left';
         setFont(ctx, config.canvasFontSize.small);
         text = `%`;
         ctx.fillText(text, pos.h111 + 20, pos_wars_i + 5);
-        ctx.textAlign = "right";
+        ctx.textAlign = 'right';
         setFont(ctx, config.canvasFontSize.small);
         text = `${Math.round(score.opponent.allAttackTypes.hitrate.total)}`;
         ctx.fillText(text, pos.h111 + 20, pos_wars_i + 50);
-        ctx.textAlign = "left";
+        ctx.textAlign = 'left';
         setFont(ctx, config.canvasFontSize.xSmall);
         text = `%`;
         ctx.fillText(text, pos.h111 + 20, pos_wars_i + 50);
 
-        ctx.textAlign = "right";
+        ctx.textAlign = 'right';
         setFont(ctx, config.canvasFontSize.medium);
         text = `${score.clan.allAttackTypes.nTriple.total}`;
         ctx.fillText(text, pos.h81 + 10, pos_wars_i + 5);
-        ctx.textAlign = "left";
+        ctx.textAlign = 'left';
         setFont(ctx, config.canvasFontSize.small);
         text = `/${score.clan.allAttackTypes.nAt.total}`;
         ctx.fillText(text, pos.h81 + 10, pos_wars_i + 5);
-        ctx.textAlign = "right";
+        ctx.textAlign = 'right';
         setFont(ctx, config.canvasFontSize.small);
         text = `${score.opponent.allAttackTypes.nTriple.total}`;
         ctx.fillText(text, pos.h81 + 10, pos_wars_i + 50);
-        ctx.textAlign = "left";
+        ctx.textAlign = 'left';
         setFont(ctx, config.canvasFontSize.xSmall);
         text = `/${score.opponent.allAttackTypes.nAt.total}`;
         ctx.fillText(text, pos.h81 + 10, pos_wars_i + 50);
       }
     }
 
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "center";
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
     setFont(ctx, config.canvasFontSize.xSmall);
     let opponentAbbr = arrOpponentAbbr[week];
     if (opponentAbbr == undefined) {
-      if (league == "j2" && week <= 9) {
-        opponentAbbr = "BYE";
+      if (league == 'j2' && week <= 9) {
+        opponentAbbr = 'BYE';
       } else {
-        opponentAbbr = "";
+        opponentAbbr = '';
       }
       setFont(ctx, config.canvasFontSize.xxSmall);
     }
@@ -881,14 +881,14 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
   // TOP PLAYERS
   let posStart_topPlayers = {};
 
-  if (league == "j1" || league == "j2") {
+  if (league == 'j1' || league == 'j2') {
     posStart_topPlayers = {
       total: pos.v41,
       fresh: pos.v42 + 48,
       cleanup: pos.v92,
       overkill: pos.v132 + 48,
     };
-    ctx.textAlign = "center";
+    ctx.textAlign = 'center';
     var imgRatio = 0.35;
     var imgStars = await Canvas.loadImage(`./image/scStarTriple.png`);
     var posImgStarsH = pos.h32 - (300 * imgRatio) / 2;
@@ -930,16 +930,16 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
       130 * imgRatio,
     );
 
-    ctx.textAlign = "left";
+    ctx.textAlign = 'left';
     setFont(ctx, config.canvasFontSize.small);
-    text = "Total";
+    text = 'Total';
     ctx.fillText(text, pos.h42 + 30, posStart_topPlayers.total);
     setFont(ctx, config.canvasFontSize.xSmall);
-    text = "Fresh";
+    text = 'Fresh';
     ctx.fillText(text, pos.h42 + 30, posStart_topPlayers.fresh);
-    text = "Cleanup";
+    text = 'Cleanup';
     ctx.fillText(text, pos.h42 + 30, posStart_topPlayers.cleanup);
-    text = "Overkill";
+    text = 'Overkill';
     ctx.fillText(text, pos.h42 + 30, posStart_topPlayers.overkill);
 
     spacing = 68;
@@ -948,7 +948,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
       if (counter > 10) return;
       if (acc.homeClanAbbr == mongoTeam.clan_abbr) {
         let pos_ranking = posStart_topPlayers.total + counter * spacing;
-        ctx.textAlign = "center";
+        ctx.textAlign = 'center';
         ctx.fillStyle = config.rgb.snowWhite;
         text = String(counter);
         setFont(ctx, config.canvasFontSize.xSmall);
@@ -961,12 +961,12 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
         text = String(acc.name);
         setFontJP(ctx, config.canvasFontSize.xSmall);
         ctx.fillText(text, pos.h102, pos_ranking);
-        ctx.textAlign = "right";
+        ctx.textAlign = 'right';
         setFont(ctx, config.canvasFontSize.small);
         text = String(acc.nTriples);
         ctx.fillText(text, pos.h162, pos_ranking);
         setFont(ctx, config.canvasFontSize.xSmall);
-        ctx.textAlign = "left";
+        ctx.textAlign = 'left';
         text = String(`/${acc.nAttacks}`);
         ctx.fillText(text, pos.h162, pos_ranking + 3);
         counter += 1;
@@ -978,7 +978,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
       if (counter > 5) return;
       if (acc.homeClanAbbr == mongoTeam.clan_abbr) {
         let pos_ranking = posStart_topPlayers.fresh + counter * spacing;
-        ctx.textAlign = "center";
+        ctx.textAlign = 'center';
         ctx.fillStyle = config.rgb.snowWhite;
         text = String(counter);
         setFont(ctx, config.canvasFontSize.xxSmall);
@@ -991,12 +991,12 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
         text = String(acc.name);
         setFontJP(ctx, config.canvasFontSize.xxSmall);
         ctx.fillText(text, pos.h102, pos_ranking);
-        ctx.textAlign = "right";
+        ctx.textAlign = 'right';
         setFont(ctx, config.canvasFontSize.xSmall);
         text = String(acc.nTriples);
         ctx.fillText(text, pos.h162, pos_ranking);
         setFont(ctx, config.canvasFontSize.xxSmall);
-        ctx.textAlign = "left";
+        ctx.textAlign = 'left';
         text = String(`/${acc.nAttacks}`);
         ctx.fillText(text, pos.h162, pos_ranking + 2);
         counter += 1;
@@ -1007,7 +1007,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
       if (counter > 5) return;
       if (acc.homeClanAbbr == mongoTeam.clan_abbr) {
         let pos_ranking = posStart_topPlayers.cleanup + counter * spacing;
-        ctx.textAlign = "center";
+        ctx.textAlign = 'center';
         ctx.fillStyle = config.rgb.snowWhite;
         text = String(counter);
         setFont(ctx, config.canvasFontSize.xxSmall);
@@ -1020,12 +1020,12 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
         text = String(acc.name);
         setFontJP(ctx, config.canvasFontSize.xxSmall);
         ctx.fillText(text, pos.h102, pos_ranking);
-        ctx.textAlign = "right";
+        ctx.textAlign = 'right';
         setFont(ctx, config.canvasFontSize.xSmall);
         text = String(acc.nTriples);
         ctx.fillText(text, pos.h162, pos_ranking);
         setFont(ctx, config.canvasFontSize.xxSmall);
-        ctx.textAlign = "left";
+        ctx.textAlign = 'left';
         text = String(`/${acc.nAttacks}`);
         ctx.fillText(text, pos.h162, pos_ranking + 2);
         counter += 1;
@@ -1036,7 +1036,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
       if (counter > 5) return;
       if (acc.homeClanAbbr == mongoTeam.clan_abbr) {
         let pos_ranking = posStart_topPlayers.overkill + counter * spacing;
-        ctx.textAlign = "center";
+        ctx.textAlign = 'center';
         ctx.fillStyle = config.rgb.snowWhite;
         text = String(counter);
         setFont(ctx, config.canvasFontSize.xxSmall);
@@ -1049,18 +1049,18 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
         text = String(acc.name);
         setFontJP(ctx, config.canvasFontSize.xxSmall);
         ctx.fillText(text, pos.h102, pos_ranking);
-        ctx.textAlign = "right";
+        ctx.textAlign = 'right';
         setFont(ctx, config.canvasFontSize.xSmall);
         text = String(acc.nTriples);
         ctx.fillText(text, pos.h162, pos_ranking);
         setFont(ctx, config.canvasFontSize.xxSmall);
-        ctx.textAlign = "left";
+        ctx.textAlign = 'left';
         text = String(`/${acc.nAttacks}`);
         ctx.fillText(text, pos.h162, pos_ranking + 2);
         counter += 1;
       }
     });
-  } else if (league == "swiss" || league == "five") {
+  } else if (league == 'swiss' || league == 'five') {
     posStart_topPlayers.total = pos.v51;
     spacing = 70;
     let counter = 1;
@@ -1068,7 +1068,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
       if (counter > 20) return;
       if (acc.homeClanAbbr == mongoTeam.clan_abbr) {
         let pos_ranking = posStart_topPlayers.total + counter * spacing;
-        ctx.textAlign = "center";
+        ctx.textAlign = 'center';
         ctx.fillStyle = config.rgb.snowWhite;
         text = String(counter);
         setFont(ctx, config.canvasFontSize.xSmall);
@@ -1081,18 +1081,18 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
         text = String(acc.name);
         setFontJP(ctx, config.canvasFontSize.xSmall);
         ctx.fillText(text, pos.h102, pos_ranking);
-        ctx.textAlign = "right";
+        ctx.textAlign = 'right';
         setFont(ctx, config.canvasFontSize.small);
         text = String(acc.nTriples);
         ctx.fillText(text, pos.h162, pos_ranking);
         setFont(ctx, config.canvasFontSize.xSmall);
-        ctx.textAlign = "left";
+        ctx.textAlign = 'left';
         text = String(`/${acc.nAttacks}`);
         ctx.fillText(text, pos.h162, pos_ranking + 3);
         counter += 1;
       }
     });
-  } else if (league == "mix") {
+  } else if (league == 'mix') {
     const posStart_topPlayers = {
       th17: pos.v41,
       th16: pos.v12,
@@ -1109,16 +1109,16 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
       const posImgStarsV = posV - imgLength / 2;
       ctx.drawImage(imgTH, posImgStarsH, posImgStarsV, imgLength, imgLength);
 
-      ctx.textAlign = "right";
+      ctx.textAlign = 'right';
       setFont(ctx, config.canvasFontSize.xSmall);
-      ctx.fillText("TH", pos.h52 + 0, posV + 7);
+      ctx.fillText('TH', pos.h52 + 0, posV + 7);
 
-      ctx.textAlign = "left";
+      ctx.textAlign = 'left';
       setFont(ctx, config.canvasFontSize.small);
-      ctx.fillText(th.replace("th", ""), pos.h52 + 0, posV + 5);
+      ctx.fillText(th.replace('th', ''), pos.h52 + 0, posV + 5);
 
       spacing = 70;
-      const levels = ["th17", "th16", "th15", "th14", "th13"];
+      const levels = ['th17', 'th16', 'th15', 'th14', 'th13'];
       const limits = { th17: 5, th16: 2, th15: 4, th14: 4, th13: 4 };
 
       levels.forEach((lvTH) => {
@@ -1128,7 +1128,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
           if (counter > limit) return;
           if (acc.homeClanAbbr == mongoTeam.clan_abbr) {
             const pos_ranking = posStart_topPlayers[lvTH] + counter * spacing;
-            ctx.textAlign = "center";
+            ctx.textAlign = 'center';
             ctx.fillStyle = config.rgb.snowWhite;
             let text = String(counter);
             setFont(ctx, config.canvasFontSize.xSmall);
@@ -1141,12 +1141,12 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
             text = String(acc.name);
             setFontJP(ctx, config.canvasFontSize.xSmall);
             ctx.fillText(text, pos.h102, pos_ranking);
-            ctx.textAlign = "right";
+            ctx.textAlign = 'right';
             setFont(ctx, config.canvasFontSize.small);
             text = String(acc.nTriples);
             ctx.fillText(text, pos.h162, pos_ranking);
             setFont(ctx, config.canvasFontSize.xSmall);
-            ctx.textAlign = "left";
+            ctx.textAlign = 'left';
             text = String(`/${acc.nAttacks}`);
             ctx.fillText(text, pos.h162, pos_ranking + 3);
             counter += 1;
@@ -1157,9 +1157,9 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
   }
 
   // ***** 中央下 ***** //
-  ctx.textAlign = "center";
+  ctx.textAlign = 'center';
   const lengthLogoJwc = 150;
-  const imgJwcLogo = await Canvas.loadImage("./image/JWC.png");
+  const imgJwcLogo = await Canvas.loadImage('./image/JWC.png');
   ctx.drawImage(
     imgJwcLogo,
     widthCenter - lengthLogoJwc / 2,
@@ -1175,16 +1175,16 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
   // ***** 左下 ***** //
   ctx.fillStyle = config.rgb.gray200;
   const timeUtc = Date.now();
-  const timeJst = toZonedTime(timeUtc, "Asia/Tokyo");
-  setFont(ctx, config.canvasFontSize.xxxSmall, FONTS.MAIN, "italic");
-  text = format(timeJst, "pp, PPPP") + " [JST]";
+  const timeJst = toZonedTime(timeUtc, 'Asia/Tokyo');
+  setFont(ctx, config.canvasFontSize.xxxSmall, FONTS.MAIN, 'italic');
+  text = format(timeJst, 'pp, PPPP') + ' [JST]';
   ctx.fillText(text, pos.h111, heightCanvas - 110);
-  setFont(ctx, config.canvasFontSize.xxxxSmall, FONTS.MAIN, "italic");
-  text = "Automatically generated by JWC bot";
+  setFont(ctx, config.canvasFontSize.xxxxSmall, FONTS.MAIN, 'italic');
+  text = 'Automatically generated by JWC bot';
   ctx.fillText(text, pos.h111, heightCanvas - 70);
 
   // ***** 後処理 ***** //
-  const pngData = await myCanvas.encode("png");
+  const pngData = await myCanvas.encode('png');
 
   const attachment = new AttachmentBuilder(pngData, {
     name: `teamStats_${league}.png`,
@@ -1201,7 +1201,7 @@ async function standings(league, standings, leagueStats) {
     config.canvasSize.width,
     config.canvasSize.height,
   );
-  let ctx = myCanvas.getContext("2d");
+  let ctx = myCanvas.getContext('2d');
 
   const widthCenter = widthCanvas / 2;
   const heightCenter = heightCanvas / 2;
@@ -1228,8 +1228,8 @@ async function standings(league, standings, leagueStats) {
     pos[`h${String(i)}2`] = widthCenter + (widthCanvas * i) / 40;
   }
 
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
 
   // ***** 中央上 ***** //
   let text = `STANDINGS | ${config.league[league]}`;
@@ -1238,7 +1238,7 @@ async function standings(league, standings, leagueStats) {
 
   // ***** 中央下 ***** //
   const lengthLogoJwc = 100;
-  const imgJwcLogo = await Canvas.loadImage("./image/JWC.png");
+  const imgJwcLogo = await Canvas.loadImage('./image/JWC.png');
   ctx.drawImage(
     imgJwcLogo,
     widthCenter - lengthLogoJwc / 2,
@@ -1254,12 +1254,12 @@ async function standings(league, standings, leagueStats) {
   // ***** 左下 ***** //
   ctx.fillStyle = config.rgb.gray200;
   const timeUtc = Date.now();
-  const timeJst = toZonedTime(timeUtc, "Asia/Tokyo");
-  setFont(ctx, config.canvasFontSize.xxxSmall, FONTS.MAIN, "italic");
-  text = format(timeJst, "pp, PPPP") + " [JST]";
+  const timeJst = toZonedTime(timeUtc, 'Asia/Tokyo');
+  setFont(ctx, config.canvasFontSize.xxxSmall, FONTS.MAIN, 'italic');
+  text = format(timeJst, 'pp, PPPP') + ' [JST]';
   ctx.fillText(text, pos.h111, heightCanvas - 110);
-  setFont(ctx, config.canvasFontSize.xxxxSmall, FONTS.MAIN, "italic");
-  text = "Automatically generated by JWC bot";
+  setFont(ctx, config.canvasFontSize.xxxxSmall, FONTS.MAIN, 'italic');
+  text = 'Automatically generated by JWC bot';
   ctx.fillText(text, pos.h111, heightCanvas - 70);
 
   // ***** STANDINGS ***** //
@@ -1296,25 +1296,25 @@ async function standings(league, standings, leagueStats) {
   posH.th13 = pos.h162;
 
   setFont(ctx, config.canvasFontSize.xxSmall);
-  text = "Rank";
+  text = 'Rank';
   ctx.fillText(text, posH.rank, headerHeight);
-  text = "Team";
+  text = 'Team';
   ctx.fillText(text, posH.team, headerHeight);
-  text = "W-L(-T)";
+  text = 'W-L(-T)';
   ctx.fillText(text, posH.score, headerHeight);
-  text = "SD";
+  text = 'SD';
   ctx.fillText(text, posH.sd + 20, headerHeight);
-  text = "%";
+  text = '%';
   ctx.fillText(text, posH.dp, headerHeight);
-  text = "Hitrate";
+  text = 'Hitrate';
   ctx.fillText(text, posH.hitrate[league], headerHeight);
   setFont(ctx, config.canvasFontSize.xxxSmall);
-  if (league == "j1" || league == "j2") {
-    text = "Fresh";
+  if (league == 'j1' || league == 'j2') {
+    text = 'Fresh';
     ctx.fillText(text, posH.fresh, headerHeight);
-    text = "Cleanup";
+    text = 'Cleanup';
     ctx.fillText(text, posH.cleanup, headerHeight);
-    text = "Overkill";
+    text = 'Overkill';
     ctx.fillText(text, posH.overkill, headerHeight);
     /*
     if (league == 'j1') {
@@ -1322,18 +1322,18 @@ async function standings(league, standings, leagueStats) {
       ctx.fillText(text, pos.h172, headerHeight);
     };
     */
-  } else if (league == "swiss" || league == "five") {
-  } else if (league == "mix") {
+  } else if (league == 'swiss' || league == 'five') {
+  } else if (league == 'mix') {
     // change TH level
-    text = "TH17";
+    text = 'TH17';
     ctx.fillText(text, posH.th17 + 30, headerHeight);
-    text = "TH16";
+    text = 'TH16';
     ctx.fillText(text, posH.th16 + 30, headerHeight);
-    text = "TH15";
+    text = 'TH15';
     ctx.fillText(text, posH.th15 + 30, headerHeight);
-    text = "TH14";
+    text = 'TH14';
     ctx.fillText(text, posH.th14 + 30, headerHeight);
-    text = "TH13";
+    text = 'TH13';
     ctx.fillText(text, posH.th13 + 30, headerHeight);
     const lengthTh = 60;
     const imgTh17 = await Canvas.loadImage(`./image/th17_cam3.png`);
@@ -1384,17 +1384,17 @@ async function standings(league, standings, leagueStats) {
   }
   ctx.fillStyle = config.rgb.gray200;
   setFont(ctx, config.canvasFontSize.xxxxSmall);
-  text = "Star Difference";
+  text = 'Star Difference';
   ctx.fillText(text, posH.sd, headerHeight + 50);
-  text = "Destruction Percentage";
+  text = 'Destruction Percentage';
   ctx.fillText(text, posH.dp, headerHeight + 50);
-  if (league == "swiss" || league == "five") {
+  if (league == 'swiss' || league == 'five') {
     ctx.fillStyle = config.rgb.snowWhite;
     setFont(ctx, config.canvasFontSize.xxSmall);
-    text = "Triples / Attacks";
+    text = 'Triples / Attacks';
     ctx.fillText(text, posH.triple + 20, headerHeight);
   } else {
-    text = "Triples / Attacks";
+    text = 'Triples / Attacks';
     ctx.fillText(text, posH.hitrate[league], headerHeight + 50);
   }
   const lengthStar = 30;
@@ -1461,14 +1461,14 @@ async function standings(league, standings, leagueStats) {
       setFont(ctx, config.canvasFontSize.small);
       ctx.fillText(text, posH.teamName, pos0);
 
-      text = team.team_name.replace(/\\/g, "").replace(/‪⋆͛/g, "");
-      let fontSizeTeamName = "";
-      if (league == "swiss" || league == "five") {
+      text = team.team_name.replace(/\\/g, '').replace(/‪⋆͛/g, '');
+      let fontSizeTeamName = '';
+      if (league == 'swiss' || league == 'five') {
         fontSizeTeamName = config.canvasFontSize.xxxxSmall;
       } else {
         fontSizeTeamName = config.canvasFontSize.xxSmall;
       }
-      if (team.clan_abbr.includes("omi") || team.clan_abbr.includes("lily")) {
+      if (team.clan_abbr.includes('omi') || team.clan_abbr.includes('lily')) {
         setFont(ctx, fontSizeTeamName, FONTS.JP);
       } else {
         setFontJP(ctx, fontSizeTeamName);
@@ -1480,7 +1480,7 @@ async function standings(league, standings, leagueStats) {
 
       if (score) {
         text = `${score.nWin}-${score.nLoss}`;
-        text += score.nTie == 0 ? "" : `-${score.nTie}`;
+        text += score.nTie == 0 ? '' : `-${score.nTie}`;
         setFont(ctx, config.canvasFontSize.smallMedium);
         ctx.fillText(text, posH.score, pos0);
 
@@ -1491,20 +1491,20 @@ async function standings(league, standings, leagueStats) {
         setFont(ctx, config.canvasFontSize.smallMedium);
         ctx.fillText(text, posH.sd, pos0);
 
-        ctx.textAlign = "right";
+        ctx.textAlign = 'right';
         text = String(Math.round(score.clan.destruction * 10) / 10);
         setFont(ctx, config.canvasFontSize.xSmall);
         ctx.fillText(text, posH.dp + 25, pos0);
-        ctx.textAlign = "left";
-        text = "%";
+        ctx.textAlign = 'left';
+        text = '%';
         setFont(ctx, config.canvasFontSize.xxxSmall);
         ctx.fillText(text, posH.dp + 25, pos0 + 5);
 
-        if (league == "j1" || league == "j2") {
+        if (league == 'j1' || league == 'j2') {
           ctxHitrate(
             ctx,
             score.clan.allAttackTypes,
-            "total",
+            'total',
             posH.hitrate[league],
             pos0,
             myFont,
@@ -1515,7 +1515,7 @@ async function standings(league, standings, leagueStats) {
           ctxTriples(
             ctx,
             score.clan.allAttackTypes,
-            "total",
+            'total',
             posH.hitrate[league],
             pos0,
             myFont,
@@ -1529,7 +1529,7 @@ async function standings(league, standings, leagueStats) {
           ctxHitrate(
             ctx,
             score.clan.fresh,
-            "total",
+            'total',
             posH.fresh,
             pos0,
             myFont,
@@ -1540,7 +1540,7 @@ async function standings(league, standings, leagueStats) {
           ctxTriples(
             ctx,
             score.clan.fresh,
-            "total",
+            'total',
             posH.fresh,
             pos0,
             myFont,
@@ -1554,7 +1554,7 @@ async function standings(league, standings, leagueStats) {
           ctxHitrate(
             ctx,
             score.clan.cleanup,
-            "total",
+            'total',
             posH.cleanup,
             pos0,
             myFont,
@@ -1565,7 +1565,7 @@ async function standings(league, standings, leagueStats) {
           ctxTriples(
             ctx,
             score.clan.cleanup,
-            "total",
+            'total',
             posH.cleanup,
             pos0,
             myFont,
@@ -1579,7 +1579,7 @@ async function standings(league, standings, leagueStats) {
           ctxHitrate(
             ctx,
             score.clan.overkill,
-            "total",
+            'total',
             posH.overkill,
             pos0,
             myFont,
@@ -1590,7 +1590,7 @@ async function standings(league, standings, leagueStats) {
           ctxTriples(
             ctx,
             score.clan.overkill,
-            "total",
+            'total',
             posH.overkill,
             pos0,
             myFont,
@@ -1600,11 +1600,11 @@ async function standings(league, standings, leagueStats) {
             10,
             spacing / 4,
           );
-        } else if (league == "swiss" || league == "five") {
+        } else if (league == 'swiss' || league == 'five') {
           ctxHitrate(
             ctx,
             score.clan.allAttackTypes,
-            "total",
+            'total',
             posH.hitrate[league],
             pos0,
             myFont,
@@ -1615,7 +1615,7 @@ async function standings(league, standings, leagueStats) {
           ctxTriples(
             ctx,
             score.clan.allAttackTypes,
-            "total",
+            'total',
             posH.triple,
             pos0,
             myFont,
@@ -1625,12 +1625,12 @@ async function standings(league, standings, leagueStats) {
             0,
             0,
           );
-        } else if (league == "mix") {
+        } else if (league == 'mix') {
           // change TH level
           ctxHitrate(
             ctx,
             score.clan.allAttackTypes,
-            "total",
+            'total',
             posH.hitrate[league],
             pos0,
             myFont,
@@ -1641,7 +1641,7 @@ async function standings(league, standings, leagueStats) {
           ctxTriples(
             ctx,
             score.clan.allAttackTypes,
-            "total",
+            'total',
             posH.hitrate[league],
             pos0,
             myFont,
@@ -1655,7 +1655,7 @@ async function standings(league, standings, leagueStats) {
           ctxHitrate(
             ctx,
             score.clan.fresh,
-            "th17",
+            'th17',
             posH.th17,
             pos0,
             myFont,
@@ -1666,7 +1666,7 @@ async function standings(league, standings, leagueStats) {
           ctxTriples(
             ctx,
             score.clan.fresh,
-            "th17",
+            'th17',
             posH.th17,
             pos0,
             myFont,
@@ -1680,7 +1680,7 @@ async function standings(league, standings, leagueStats) {
           ctxHitrate(
             ctx,
             score.clan.fresh,
-            "th16",
+            'th16',
             posH.th16,
             pos0,
             myFont,
@@ -1691,7 +1691,7 @@ async function standings(league, standings, leagueStats) {
           ctxTriples(
             ctx,
             score.clan.fresh,
-            "th16",
+            'th16',
             posH.th16,
             pos0,
             myFont,
@@ -1705,7 +1705,7 @@ async function standings(league, standings, leagueStats) {
           ctxHitrate(
             ctx,
             score.clan.fresh,
-            "th15",
+            'th15',
             posH.th15,
             pos0,
             myFont,
@@ -1716,7 +1716,7 @@ async function standings(league, standings, leagueStats) {
           ctxTriples(
             ctx,
             score.clan.fresh,
-            "th15",
+            'th15',
             posH.th15,
             pos0,
             myFont,
@@ -1730,7 +1730,7 @@ async function standings(league, standings, leagueStats) {
           ctxHitrate(
             ctx,
             score.clan.fresh,
-            "th14",
+            'th14',
             posH.th14,
             pos0,
             myFont,
@@ -1741,7 +1741,7 @@ async function standings(league, standings, leagueStats) {
           ctxTriples(
             ctx,
             score.clan.fresh,
-            "th14",
+            'th14',
             posH.th14,
             pos0,
             myFont,
@@ -1755,7 +1755,7 @@ async function standings(league, standings, leagueStats) {
           ctxHitrate(
             ctx,
             score.clan.fresh,
-            "th13",
+            'th13',
             posH.th13,
             pos0,
             myFont,
@@ -1766,7 +1766,7 @@ async function standings(league, standings, leagueStats) {
           ctxTriples(
             ctx,
             score.clan.fresh,
-            "th13",
+            'th13',
             posH.th13,
             pos0,
             myFont,
@@ -1779,7 +1779,7 @@ async function standings(league, standings, leagueStats) {
         }
       }
 
-      ctx.textAlign = "center";
+      ctx.textAlign = 'center';
       ctx.fillStyle = config.rgb.snowWhite;
 
       /*
@@ -1796,22 +1796,22 @@ async function standings(league, standings, leagueStats) {
   let statsLeague = {};
   if (leagueStats.stats) {
     if (
-      league == "j1" ||
-      league == "swiss" ||
-      league == "mix" ||
-      league == "five"
+      league == 'j1' ||
+      league == 'swiss' ||
+      league == 'mix' ||
+      league == 'five'
     ) {
       statsLeague = leagueStats.stats.sumQ;
-    } else if (league == "j2") {
+    } else if (league == 'j2') {
       statsLeague = leagueStats.stats.sum;
     }
 
     if (statsLeague) {
-      if (league == "j1" || league == "j2") {
+      if (league == 'j1' || league == 'j2') {
         ctxHitrate(
           ctx,
           statsLeague.allAttackTypes,
-          "total",
+          'total',
           posH.hitrate[league],
           posAll,
           myFont,
@@ -1822,7 +1822,7 @@ async function standings(league, standings, leagueStats) {
         ctxTriples(
           ctx,
           statsLeague.allAttackTypes,
-          "total",
+          'total',
           posH.hitrate[league],
           posAll,
           myFont,
@@ -1836,7 +1836,7 @@ async function standings(league, standings, leagueStats) {
         ctxHitrate(
           ctx,
           statsLeague.fresh,
-          "total",
+          'total',
           posH.fresh,
           posAll,
           myFont,
@@ -1847,7 +1847,7 @@ async function standings(league, standings, leagueStats) {
         ctxTriples(
           ctx,
           statsLeague.fresh,
-          "total",
+          'total',
           posH.fresh,
           posAll,
           myFont,
@@ -1861,7 +1861,7 @@ async function standings(league, standings, leagueStats) {
         ctxHitrate(
           ctx,
           statsLeague.cleanup,
-          "total",
+          'total',
           posH.cleanup,
           posAll,
           myFont,
@@ -1872,7 +1872,7 @@ async function standings(league, standings, leagueStats) {
         ctxTriples(
           ctx,
           statsLeague.cleanup,
-          "total",
+          'total',
           posH.cleanup,
           posAll,
           myFont,
@@ -1886,7 +1886,7 @@ async function standings(league, standings, leagueStats) {
         ctxHitrate(
           ctx,
           statsLeague.overkill,
-          "total",
+          'total',
           posH.overkill,
           posAll,
           myFont,
@@ -1897,7 +1897,7 @@ async function standings(league, standings, leagueStats) {
         ctxTriples(
           ctx,
           statsLeague.overkill,
-          "total",
+          'total',
           posH.overkill,
           posAll,
           myFont,
@@ -1907,11 +1907,11 @@ async function standings(league, standings, leagueStats) {
           10,
           spacing / 4,
         );
-      } else if (league == "swiss" || league == "five") {
+      } else if (league == 'swiss' || league == 'five') {
         ctxHitrate(
           ctx,
           statsLeague.allAttackTypes,
-          "total",
+          'total',
           posH.hitrate[league],
           posAll,
           myFont,
@@ -1922,7 +1922,7 @@ async function standings(league, standings, leagueStats) {
         ctxTriples(
           ctx,
           statsLeague.allAttackTypes,
-          "total",
+          'total',
           posH.triple,
           posAll,
           myFont,
@@ -1932,12 +1932,12 @@ async function standings(league, standings, leagueStats) {
           10,
           0,
         );
-      } else if (league == "mix") {
+      } else if (league == 'mix') {
         // change TH level
         ctxHitrate(
           ctx,
           statsLeague.allAttackTypes,
-          "total",
+          'total',
           posH.hitrate[league],
           posAll,
           myFont,
@@ -1948,7 +1948,7 @@ async function standings(league, standings, leagueStats) {
         ctxTriples(
           ctx,
           statsLeague.allAttackTypes,
-          "total",
+          'total',
           posH.hitrate[league],
           posAll,
           myFont,
@@ -1962,7 +1962,7 @@ async function standings(league, standings, leagueStats) {
         ctxHitrate(
           ctx,
           statsLeague.fresh,
-          "th17",
+          'th17',
           posH.th17,
           posAll,
           myFont,
@@ -1973,7 +1973,7 @@ async function standings(league, standings, leagueStats) {
         ctxTriples(
           ctx,
           statsLeague.fresh,
-          "th17",
+          'th17',
           posH.th17,
           posAll,
           myFont,
@@ -1987,7 +1987,7 @@ async function standings(league, standings, leagueStats) {
         ctxHitrate(
           ctx,
           statsLeague.fresh,
-          "th16",
+          'th16',
           posH.th16,
           posAll,
           myFont,
@@ -1998,7 +1998,7 @@ async function standings(league, standings, leagueStats) {
         ctxTriples(
           ctx,
           statsLeague.fresh,
-          "th16",
+          'th16',
           posH.th16,
           posAll,
           myFont,
@@ -2012,7 +2012,7 @@ async function standings(league, standings, leagueStats) {
         ctxHitrate(
           ctx,
           statsLeague.fresh,
-          "th15",
+          'th15',
           posH.th15,
           posAll,
           myFont,
@@ -2023,7 +2023,7 @@ async function standings(league, standings, leagueStats) {
         ctxTriples(
           ctx,
           statsLeague.fresh,
-          "th15",
+          'th15',
           posH.th15,
           posAll,
           myFont,
@@ -2037,7 +2037,7 @@ async function standings(league, standings, leagueStats) {
         ctxHitrate(
           ctx,
           statsLeague.fresh,
-          "th14",
+          'th14',
           posH.th14,
           posAll,
           myFont,
@@ -2048,7 +2048,7 @@ async function standings(league, standings, leagueStats) {
         ctxTriples(
           ctx,
           statsLeague.fresh,
-          "th14",
+          'th14',
           posH.th14,
           posAll,
           myFont,
@@ -2062,7 +2062,7 @@ async function standings(league, standings, leagueStats) {
         ctxHitrate(
           ctx,
           statsLeague.fresh,
-          "th13",
+          'th13',
           posH.th13,
           posAll,
           myFont,
@@ -2073,7 +2073,7 @@ async function standings(league, standings, leagueStats) {
         ctxTriples(
           ctx,
           statsLeague.fresh,
-          "th13",
+          'th13',
           posH.th13,
           posAll,
           myFont,
@@ -2088,7 +2088,7 @@ async function standings(league, standings, leagueStats) {
   }
 
   // ***** 後処理 ***** //
-  const pngData = await myCanvas.encode("png");
+  const pngData = await myCanvas.encode('png');
 
   const attachment = new AttachmentBuilder(pngData, {
     name: `standings_${league}.png`,
@@ -2106,7 +2106,7 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
   const widthCanvas = bgImage.width;
   const heightCanvas = bgImage.height;
   let myCanvas = Canvas.createCanvas(widthCanvas, heightCanvas);
-  let ctx = myCanvas.getContext("2d");
+  let ctx = myCanvas.getContext('2d');
   ctx.drawImage(bgImage, 0, 0, widthCanvas, heightCanvas);
 
   const widthCenter = widthCanvas / 2;
@@ -2129,8 +2129,8 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
     pos[`h${String(i)}2`] = widthCenter + (widthCanvas * i) / 80;
   }
 
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
 
   // ***** 中央上 ***** //
   let text = `STANDINGS | ${config.league[league]}`;
@@ -2141,18 +2141,18 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
   ctx.fillText(text, widthCenter, 200);
   ctx.fillStyle = config.rgb.gray200;
   setFont(ctx, config.canvasFontSize.large);
-  if (league == "j1") {
-    ctx.fillText("FIST", pos.h201, 250);
-    ctx.fillText("CLOAK", pos.h202, 250);
+  if (league == 'j1') {
+    ctx.fillText('FIST', pos.h201, 250);
+    ctx.fillText('CLOAK', pos.h202, 250);
   } else {
-    ctx.fillText("A", pos.h201, 250);
-    ctx.fillText("B", pos.h202, 250);
+    ctx.fillText('A', pos.h201, 250);
+    ctx.fillText('B', pos.h202, 250);
   }
   ctx.fillStyle = config.rgb.snowWhite;
 
   // ***** 中央下 ***** //
   const lengthLogoJwc = 150;
-  const imgJwcLogo = await Canvas.loadImage("./image/JWC.png");
+  const imgJwcLogo = await Canvas.loadImage('./image/JWC.png');
   ctx.drawImage(
     imgJwcLogo,
     widthCenter - lengthLogoJwc / 2,
@@ -2168,12 +2168,12 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
   // ***** 左下 ***** //
   ctx.fillStyle = config.rgb.gray200;
   const timeUtc = Date.now();
-  const timeJst = toZonedTime(timeUtc, "Asia/Tokyo");
-  setFont(ctx, config.canvasFontSize.small, FONTS.MAIN, "italic");
-  text = format(timeJst, "pp, PPPP") + " [JST]";
+  const timeJst = toZonedTime(timeUtc, 'Asia/Tokyo');
+  setFont(ctx, config.canvasFontSize.small, FONTS.MAIN, 'italic');
+  text = format(timeJst, 'pp, PPPP') + ' [JST]';
   ctx.fillText(text, pos.h211, heightCanvas - 180);
-  setFont(ctx, config.canvasFontSize.xSmall, FONTS.MAIN, "italic");
-  text = "Automatically generated by JWC bot";
+  setFont(ctx, config.canvasFontSize.xSmall, FONTS.MAIN, 'italic');
+  text = 'Automatically generated by JWC bot';
   ctx.fillText(text, pos.h211, heightCanvas - 120);
 
   // ***** STANDINGS ***** //
@@ -2183,15 +2183,15 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
   let numTeamLeft = 8;
 
   let spacing = {};
-  if (league == "five") {
-    if (strRound == "QUALIFIER") {
+  if (league == 'five') {
+    if (strRound == 'QUALIFIER') {
       headerHeight = 400;
       marginTop = 600;
       spacing = {
         left: (heightCanvas - 800) / numTeamLeft,
         right: (heightCanvas - 800) / (standings.length - numTeamLeft),
       };
-    } else if (strRound == "GROUP STAGE") {
+    } else if (strRound == 'GROUP STAGE') {
       headerHeight = 400;
       marginTop = 700;
       spacing = {
@@ -2199,7 +2199,7 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
         right: (heightCanvas - 800) / 4,
       };
     }
-  } else if (league == "j1") {
+  } else if (league == 'j1') {
     headerHeight = 450;
     marginTop = 650;
     spacing = {
@@ -2220,37 +2220,37 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
   posH.triple = { left: pos.h71, right: pos.h332 };
 
   setFont(ctx, config.canvasFontSize.xSmall);
-  text = "Rank";
+  text = 'Rank';
   ctx.fillText(text, posH.rank.left, headerHeight);
   ctx.fillText(text, posH.rank.right, headerHeight);
-  text = "Team";
+  text = 'Team';
   ctx.fillText(text, posH.team.left, headerHeight);
   ctx.fillText(text, posH.team.right, headerHeight);
-  text = "W-L(-T)";
+  text = 'W-L(-T)';
   ctx.fillText(text, posH.score.left, headerHeight);
   ctx.fillText(text, posH.score.right, headerHeight);
-  text = "SD";
+  text = 'SD';
   ctx.fillText(text, posH.sd.left + 20, headerHeight);
   ctx.fillText(text, posH.sd.right + 20, headerHeight);
-  text = "%";
+  text = '%';
   ctx.fillText(text, posH.dp.left, headerHeight);
   ctx.fillText(text, posH.dp.right, headerHeight);
-  text = "Hitrate";
+  text = 'Hitrate';
   ctx.fillText(text, posH.hitrate.left, headerHeight);
   ctx.fillText(text, posH.hitrate.right, headerHeight);
   setFont(ctx, config.canvasFontSize.xxSmall);
 
   ctx.fillStyle = config.rgb.gray200;
   setFont(ctx, config.canvasFontSize.xxxxSmall);
-  text = "Star Difference";
+  text = 'Star Difference';
   ctx.fillText(text, posH.sd.left, headerHeight + 50);
   ctx.fillText(text, posH.sd.right, headerHeight + 50);
-  text = "Destruction Percentage";
+  text = 'Destruction Percentage';
   ctx.fillText(text, posH.dp.left, headerHeight + 50);
   ctx.fillText(text, posH.dp.right, headerHeight + 50);
   ctx.fillStyle = config.rgb.snowWhite;
   setFont(ctx, config.canvasFontSize.xSmall);
-  text = "Triples / Attacks";
+  text = 'Triples / Attacks';
   ctx.fillText(text, posH.triple.left + 20, headerHeight);
   ctx.fillText(text, posH.triple.right + 20, headerHeight);
   const lengthStar = 50;
@@ -2280,37 +2280,37 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
       //console.dir(team);
       let rank = 0;
       let ratioSpacing = 0;
-      if (league == "five") {
-        if (strRound == "QUALIFIER") {
+      if (league == 'five') {
+        if (strRound == 'QUALIFIER') {
           rank = team.rank;
           if (index < numTeamLeft) {
-            posSide[index] = "left";
+            posSide[index] = 'left';
             pos0[index] = marginTop + index * spacing[posSide[index]];
           } else if (index >= numTeamLeft) {
-            posSide[index] = "right";
+            posSide[index] = 'right';
             pos0[index] =
               marginTop + (index - numTeamLeft) * spacing[posSide[index]];
           }
           ratioSpacing = 0.4;
           ctx.globalAlpha = 0.6;
-        } else if (strRound == "GROUP STAGE") {
+        } else if (strRound == 'GROUP STAGE') {
           rank = team.rank_div;
-          if (team.division == "a") {
-            posSide[index] = "left";
-          } else if (team.division == "b") {
-            posSide[index] = "right";
+          if (team.division == 'a') {
+            posSide[index] = 'left';
+          } else if (team.division == 'b') {
+            posSide[index] = 'right';
           }
           pos0[index] =
             marginTop + (team.rank_div - 1) * spacing[posSide[index]];
           ratioSpacing = 0.3;
           ctx.globalAlpha = 0.5;
         }
-      } else if (league == "j1") {
+      } else if (league == 'j1') {
         rank = team.rank_div;
-        if (team.division == "fist") {
-          posSide[index] = "left";
-        } else if (team.division == "cloak") {
-          posSide[index] = "right";
+        if (team.division == 'fist') {
+          posSide[index] = 'left';
+        } else if (team.division == 'cloak') {
+          posSide[index] = 'right';
         }
         pos0[index] = marginTop + (team.rank_div - 1) * spacing[posSide[index]];
         ratioSpacing = 0.4;
@@ -2318,7 +2318,7 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
       }
 
       // black row back ground
-      if (posSide[index] == "left") {
+      if (posSide[index] == 'left') {
         ctx.fillStyle = config.rgb.black;
         ctx.beginPath();
         ctx.moveTo(
@@ -2337,7 +2337,7 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
           pos.h381,
           pos0[index] + spacing[posSide[index]] * ratioSpacing,
         );
-      } else if (posSide[index] == "right") {
+      } else if (posSide[index] == 'right') {
         ctx.fillStyle = config.rgb.black;
         ctx.beginPath();
         ctx.moveTo(
@@ -2400,9 +2400,9 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
       ctx.fillText(text, posH.teamName[posSide[index]], pos0[index]);
 
       // team name
-      text = team.team_name.replace(/\\/g, "").replace(/‪⋆͛/g, "");
+      text = team.team_name.replace(/\\/g, '').replace(/‪⋆͛/g, '');
       let fontSizeTeamName = config.canvasFontSize.xxSmall;
-      if (team.clan_abbr.includes("omi") || team.clan_abbr.includes("lily")) {
+      if (team.clan_abbr.includes('omi') || team.clan_abbr.includes('lily')) {
         setFont(ctx, fontSizeTeamName, FONTS.JP);
       } else {
         setFontJP(ctx, fontSizeTeamName);
@@ -2417,7 +2417,7 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
       score = team.sumScore;
 
       text = `${score.nWin}-${score.nLoss}`;
-      text += score.nTie == 0 ? "" : `-${score.nTie}`;
+      text += score.nTie == 0 ? '' : `-${score.nTie}`;
       setFont(ctx, config.canvasFontSize.smallMedium);
       ctx.fillText(text, posH.score[posSide[index]], pos0[index]);
 
@@ -2428,19 +2428,19 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
       setFont(ctx, config.canvasFontSize.smallMedium);
       ctx.fillText(text, posH.sd[posSide[index]], pos0[index]);
 
-      ctx.textAlign = "right";
+      ctx.textAlign = 'right';
       text = String(Math.round(score.clan.destruction * 10) / 10);
       setFont(ctx, config.canvasFontSize.xSmall);
       ctx.fillText(text, posH.dp[posSide[index]] + 25, pos0[index]);
-      ctx.textAlign = "left";
-      text = "%";
+      ctx.textAlign = 'left';
+      text = '%';
       setFont(ctx, config.canvasFontSize.xxxSmall);
       ctx.fillText(text, posH.dp[posSide[index]] + 25, pos0[index] + 5);
 
       ctxHitrate(
         ctx,
         score.clan.allAttackTypes,
-        "total",
+        'total',
         posH.hitrate[posSide[index]],
         pos0[index],
         myFont,
@@ -2451,7 +2451,7 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
       ctxTriples(
         ctx,
         score.clan.allAttackTypes,
-        "total",
+        'total',
         posH.triple[posSide[index]],
         pos0[index],
         myFont,
@@ -2462,12 +2462,12 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
         0,
       );
 
-      ctx.textAlign = "center";
+      ctx.textAlign = 'center';
       ctx.fillStyle = config.rgb.snowWhite;
     }),
   );
 
-  if (strRound == "QUALIFIER") {
+  if (strRound == 'QUALIFIER') {
     let posAll = heightCanvas - 200;
     let statsLeague = {};
     statsLeague = leagueStats.stats.sumQ;
@@ -2475,7 +2475,7 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
     ctxHitrate(
       ctx,
       statsLeague.allAttackTypes,
-      "total",
+      'total',
       posH.hitrate.right,
       posAll,
       myFont,
@@ -2486,7 +2486,7 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
     ctxTriples(
       ctx,
       statsLeague.allAttackTypes,
-      "total",
+      'total',
       posH.triple.right,
       posAll,
       myFont,
@@ -2499,7 +2499,7 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
   }
 
   // ***** 後処理 ***** //
-  const pngData = await myCanvas.encode("png");
+  const pngData = await myCanvas.encode('png');
 
   const attachment = new AttachmentBuilder(pngData, {
     name: `standings_${league}.png`,
@@ -2523,12 +2523,12 @@ function ctxHitrate(
   ctx.fillStyle = config.rgb.snowWhite;
 
   if (score) {
-    ctx.textAlign = "right";
+    ctx.textAlign = 'right';
     let text = `${Math.round(score.hitrate[th])}`;
     setFont(ctx, fontSize, myFont);
     ctx.fillText(text, pos + hMargin, pos0);
 
-    ctx.textAlign = "left";
+    ctx.textAlign = 'left';
     text = `%`;
     setFont(ctx, fontSizePercent, myFont);
     ctx.fillText(text, pos + hMargin, pos0 + 5);
@@ -2553,12 +2553,12 @@ function ctxTriples(
   ctx.fillStyle = color;
 
   if (score) {
-    ctx.textAlign = "right";
+    ctx.textAlign = 'right';
     let text = `${score.nTriple[th]}`;
     setFont(ctx, fontSize, myFont);
     ctx.fillText(text, pos + hMargin, pos0 + vMargin);
 
-    ctx.textAlign = "left";
+    ctx.textAlign = 'left';
     text = `/${score.nAt[th]}`;
     setFont(ctx, fontSize2, myFont);
     ctx.fillText(text, pos + hMargin, pos0 + vMargin + 5);
@@ -2581,14 +2581,14 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   }
 
   const dayStatsNewest = mongoAcc.legend.days[0]; // 最新のデータ
-  if (iDay == "current") {
+  if (iDay == 'current') {
     if (dayStatsNewest.day == seasonData.daysNow) {
       dayStats = dayStatsNewest;
     } else {
       // 最新のデータがまだ翌日
       return { attachment: null, isPerfect: false };
     }
-  } else if (iDay == "previous") {
+  } else if (iDay == 'previous') {
     if (daysLength == 1) {
       if (dayStatsNewest.day == seasonData.daysNow) {
         // 最新のデータが当日
@@ -2612,7 +2612,7 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   const widthCanvas = 1920;
   const heightCanvas = 1600;
   let myCanvas = Canvas.createCanvas(widthCanvas, heightCanvas);
-  let ctx = myCanvas.getContext("2d");
+  let ctx = myCanvas.getContext('2d');
 
   const widthCenter = widthCanvas / 2;
   const heightCenter = heightCanvas / 2;
@@ -2625,9 +2625,9 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   // ***** background image ***** //
   let bgImage = null;
   if (mongoAcc.leagueTier.id == config_coc.leagueId.legend) {
-    bgImage = await Canvas.loadImage("./image/bg/bgOrange.jpg");
+    bgImage = await Canvas.loadImage('./image/bg/bgOrange.jpg');
   } else {
-    bgImage = await Canvas.loadImage("./image/bg/bgBlue.png");
+    bgImage = await Canvas.loadImage('./image/bg/bgBlue.png');
   }
   ctx.drawImage(bgImage, 0, 0, widthCanvas, heightCanvas);
 
@@ -2654,7 +2654,7 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   const h92 = widthCenter + (widthCanvas * 9) / 28;
 
   // ***** 中央上 ***** //
-  ctx.textAlign = "center";
+  ctx.textAlign = 'center';
   let text = mongoAcc.leagueTier.name;
   setFont(ctx, fontSize.xxSmall, FONTS.SC);
   ctx.fillText(text, widthCenter, 100);
@@ -2670,20 +2670,20 @@ async function legendStatsR1(client, mongoAcc, iDay) {
     lengthLogoLegend,
   );
 
-  text = "Start";
+  text = 'Start';
   setFont(ctx, fontSize.xxSmall);
   ctx.fillText(text, widthCenter, 500);
 
   let tophiesStart = 5000;
   if (!dayStats || dayStats.day != 1) {
-    if (iDay == "current") {
+    if (iDay == 'current') {
       tophiesStart = mongoAcc.legend.current
         ? mongoAcc.legend.current.trophies
-        : "no data";
-    } else if (iDay == "previous") {
+        : 'no data';
+    } else if (iDay == 'previous') {
       tophiesStart =
         mongoAcc.legend.previousDay == null
-          ? "?"
+          ? '?'
           : mongoAcc.legend.previousDay.trophies;
     }
   } else {
@@ -2693,7 +2693,7 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   setFont(ctx, fontSize.xSmall, FONTS.SC);
   ctx.fillText(text, widthCenter, 580);
 
-  text = iDay == "current" ? "Current" : "End";
+  text = iDay == 'current' ? 'Current' : 'End';
   setFont(ctx, fontSize.xxSmall);
   ctx.fillText(text, widthCenter, 1000);
 
@@ -2702,13 +2702,13 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   } else {
     text = String(mongoAcc.trophies);
   }
-  setFont(ctx, fontSize.small, FONTS.SC, "bold");
+  setFont(ctx, fontSize.small, FONTS.SC, 'bold');
   ctx.fillText(text, widthCenter, 1080);
 
-  setFont(ctx, fontSize.xSmall, FONTS.SC, "bold");
-  text = "Attacks";
+  setFont(ctx, fontSize.xSmall, FONTS.SC, 'bold');
+  text = 'Attacks';
   ctx.fillText(text, h71, 280);
-  text = "Defenses";
+  text = 'Defenses';
   ctx.fillText(text, h72, 280);
 
   // ***** ATTACKS & DEFENSES ***** //
@@ -2717,14 +2717,14 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   if (dayStats) {
     const dayEvents = (mongoAcc.legend?.events ?? []).filter(
       (log) =>
-        log.season === (dayStats.season || "") && log.day === dayStats.day,
+        log.season === (dayStats.season || '') && log.day === dayStats.day,
     );
 
     setFont(ctx, fontSize.xSmall, FONTS.SC);
 
     // 攻撃と防衛を分離して処理
-    const attackLogs = dayEvents.filter((log) => log.action === "attack");
-    const defenseLogs = dayEvents.filter((log) => log.action === "defense");
+    const attackLogs = dayEvents.filter((log) => log.action === 'attack');
+    const defenseLogs = dayEvents.filter((log) => log.action === 'defense');
 
     // 攻撃ログを処理
     await Promise.all(
@@ -2761,29 +2761,29 @@ async function legendStatsR1(client, mongoAcc, iDay) {
     count.defenses = defenseLogs.length;
 
     // 合計値を表示
-    setFont(ctx, fontSize.small, FONTS.SC, "bold");
+    setFont(ctx, fontSize.small, FONTS.SC, 'bold');
     ctx.fillText(`+${sumDiffTrophies.attacks}`, h71, 1250);
     ctx.fillText(String(sumDiffTrophies.defenses), h72, 1250);
 
     // パーフェクトメッセージ（攻撃合計が320の場合）
     if (sumDiffTrophies.attacks === 320) {
-      setFont(ctx, fontSize.smallMedium, FONTS.SC, "bold");
+      setFont(ctx, fontSize.smallMedium, FONTS.SC, 'bold');
       ctx.fillStyle = config.rgb.gold;
-      ctx.fillText("PERFECT DAY!", h71, 1350);
+      ctx.fillText('PERFECT DAY!', h71, 1350);
       ctx.fillStyle = config.rgb.snowWhite;
     }
   }
 
   // ***** TOTAL ***** //
-  setFont(ctx, fontSize.medium, FONTS.SC, "bold");
+  setFont(ctx, fontSize.medium, FONTS.SC, 'bold');
   let totalDiffTrophies = sumDiffTrophies.attacks + sumDiffTrophies.defenses;
   text =
-    totalDiffTrophies < 0 ? String(totalDiffTrophies) : "+" + totalDiffTrophies;
+    totalDiffTrophies < 0 ? String(totalDiffTrophies) : '+' + totalDiffTrophies;
   ctx.fillText(text, widthCenter, 1250);
 
   // ***** 中央下 ***** //
   const lengthLogoJwc = 100;
-  const imgJwcLogo = await Canvas.loadImage("./image/JWC.png");
+  const imgJwcLogo = await Canvas.loadImage('./image/JWC.png');
   ctx.drawImage(
     imgJwcLogo,
     widthCenter - lengthLogoJwc / 2,
@@ -2799,14 +2799,14 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   // ***** 左下 ***** //
   if (dayStats) {
     text = `Day ${dayStats.day}`;
-    setFont(ctx, fontSize.xSmall, FONTS.SC, "bold");
+    setFont(ctx, fontSize.xSmall, FONTS.SC, 'bold');
     ctx.fillText(text, h71, heightCanvas - 170);
-    text = `${dayStats.season || "Unknown"} Season`;
+    text = `${dayStats.season || 'Unknown'} Season`;
     setFontJP(ctx, fontSize.xxSmall, FONTS.SC);
     ctx.fillText(text, h71, heightCanvas - 100);
   } else {
     text = `Day ${seasonData.daysNow}`;
-    setFont(ctx, fontSize.xSmall, FONTS.SC, "bold");
+    setFont(ctx, fontSize.xSmall, FONTS.SC, 'bold');
     ctx.fillText(text, h71, heightCanvas - 170);
     text = `${seasonData.seasonId} Season`;
     setFontJP(ctx, fontSize.xxSmall, FONTS.SC);
@@ -2815,22 +2815,22 @@ async function legendStatsR1(client, mongoAcc, iDay) {
 
   // ***** 右下 ***** //
   text = mongoAcc.name;
-  setFontJP(ctx, fontSize.xSmall, FONTS.SC, "bold");
+  setFontJP(ctx, fontSize.xSmall, FONTS.SC, 'bold');
   ctx.fillText(text, h72, heightCanvas - 170);
   let textPilot;
   if (mongoAcc.pilotDC) {
     textPilot = mongoAcc.pilotDC.globalName ?? mongoAcc.pilotDC.username;
   } else {
-    textPilot = "UNKNOWN";
+    textPilot = 'UNKNOWN';
   }
-  setFontJP(ctx, fontSize.xxSmall, FONTS.MAIN, "bold");
+  setFontJP(ctx, fontSize.xxSmall, FONTS.MAIN, 'bold');
   ctx.fillText(textPilot, h72, heightCanvas - 100);
 
   // ***** 後処理 ***** //
-  const pngData = await myCanvas.encode("png");
+  const pngData = await myCanvas.encode('png');
 
   const attachment = new AttachmentBuilder(pngData, {
-    name: "warProgress.png",
+    name: 'warProgress.png',
   });
 
   // パーフェクトフラグを返す
@@ -2858,15 +2858,15 @@ async function drawImageStars(ctx, stars, posH, posV) {
   if (stars < 0) {
     return;
   }
-  let imgStars = "";
+  let imgStars = '';
   if (stars == 3) {
-    imgStars = await Canvas.loadImage("./image/iconStars3.png");
+    imgStars = await Canvas.loadImage('./image/iconStars3.png');
   } else if (stars == 2) {
-    imgStars = await Canvas.loadImage("./image/iconStars2.png");
+    imgStars = await Canvas.loadImage('./image/iconStars2.png');
   } else if (stars == 1) {
-    imgStars = await Canvas.loadImage("./image/iconStars1.png");
+    imgStars = await Canvas.loadImage('./image/iconStars1.png');
   } else if (stars == 0) {
-    imgStars = await Canvas.loadImage("./image/iconStars0.png");
+    imgStars = await Canvas.loadImage('./image/iconStars0.png');
   }
   const ratio = 0.5;
   const posImageH = posH - (300 * ratio) / 2;
@@ -2881,10 +2881,10 @@ async function legendHistory(mongoAcc) {
   const widthCanvas = 1920;
   const heightCanvas = 2530;
   let myCanvas = Canvas.createCanvas(widthCanvas, heightCanvas);
-  let ctx = myCanvas.getContext("2d");
+  let ctx = myCanvas.getContext('2d');
 
   // ***** ヘルパー関数 ***** //
-  function setTextStyle(font, color, align = "center", baseline = "middle") {
+  function setTextStyle(font, color, align = 'center', baseline = 'middle') {
     ctx.font = font;
     ctx.fillStyle = color;
     ctx.textAlign = align;
@@ -2903,7 +2903,7 @@ async function legendHistory(mongoAcc) {
     ctx.shadowBlur = shadowBlur;
     ctx.shadowOffsetY = shadowOffsetY;
     ctx.fillText(text, x, y);
-    ctx.shadowColor = "transparent";
+    ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
   }
@@ -2925,7 +2925,7 @@ async function legendHistory(mongoAcc) {
   //ctx.fillRect(0, 0, widthCanvas, heightCanvas);
 
   // ***** background image ***** //
-  const bgImage = await Canvas.loadImage("./image/bg/bgOrange.jpg");
+  const bgImage = await Canvas.loadImage('./image/bg/bgOrange.jpg');
   ctx.drawImage(bgImage, 0, 0, widthCanvas, heightCanvas);
 
   // ***** text & line color ***** //
@@ -2954,9 +2954,9 @@ async function legendHistory(mongoAcc) {
   ctx.save();
   setFontJP(ctx, config.canvasFontSize.xxSmall, FONTS.SC);
   ctx.fillStyle = config.rgb.snowWhite;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  let text = "LEGEND HISTORY";
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  let text = 'LEGEND HISTORY';
   ctx.lineWidth = 1;
   ctx.strokeStyle = config.rgb.orange.default;
   ctx.strokeText(text, widthCenter, 100);
@@ -2977,28 +2977,28 @@ async function legendHistory(mongoAcc) {
   // ***** トロフィー表示 ***** //
   ctx.save();
   ctx.fillStyle = config.rgb.snowWhite;
-  ctx.textBaseline = "bottom";
+  ctx.textBaseline = 'bottom';
 
   setFontJP(ctx, config.canvasFontSize.xxxSmall, FONTS.SC);
-  ctx.textAlign = "right";
-  drawTextWithShadow("LAST DAY", h82 - 30, 190);
+  ctx.textAlign = 'right';
+  drawTextWithShadow('LAST DAY', h82 - 30, 190);
 
   setFontJP(ctx, config.canvasFontSize.xSmall, FONTS.SC);
-  ctx.textAlign = "left";
+  ctx.textAlign = 'left';
   drawTextWithShadow(String(mongoAcc.trophies), h82, 200);
 
   setFontJP(ctx, config.canvasFontSize.xxSmall, FONTS.SC);
-  ctx.textAlign = "right";
-  drawTextWithShadow("CURRENT", h82 - 30, 290);
+  ctx.textAlign = 'right';
+  drawTextWithShadow('CURRENT', h82 - 30, 290);
 
-  setFontJP(ctx, config.canvasFontSize.small, FONTS.SC, "bold");
-  ctx.textAlign = "left";
+  setFontJP(ctx, config.canvasFontSize.small, FONTS.SC, 'bold');
+  ctx.textAlign = 'left';
   drawTextWithShadow(String(mongoAcc.legend.days[0].trophies), h82, 300);
   ctx.restore();
 
   // ***** 中央下 ***** //
   const lengthLogoJwc = 100;
-  const imgJwcLogo = await Canvas.loadImage("./image/JWC.png");
+  const imgJwcLogo = await Canvas.loadImage('./image/JWC.png');
   ctx.drawImage(
     imgJwcLogo,
     widthCenter - lengthLogoJwc / 2,
@@ -3010,10 +3010,10 @@ async function legendHistory(mongoAcc) {
   ctx.save();
   setFontJP(ctx, config.canvasFontSize.xxxSmall, FONTS.MAIN);
   ctx.fillStyle = config.rgb.snowWhite;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   drawTextWithShadow(
-    "designed by JWC bot with Supercell",
+    'designed by JWC bot with Supercell',
     widthCenter,
     heightCanvas - 50,
   );
@@ -3023,8 +3023,8 @@ async function legendHistory(mongoAcc) {
   let legendDaysSorted = [...mongoAcc.legend.days].sort((a, b) => {
     if (a.season !== b.season) {
       // seasonがundefinedまたはnullの場合の安全な処理
-      const seasonA = a.season || "";
-      const seasonB = b.season || "";
+      const seasonA = a.season || '';
+      const seasonB = b.season || '';
       return seasonA.localeCompare(seasonB);
     }
     return a.day - b.day;
@@ -3058,12 +3058,12 @@ async function legendHistory(mongoAcc) {
   // ***** 左下 ***** //
   ctx.save();
   ctx.fillStyle = config.rgb.snowWhite;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  setFontJP(ctx, fontSize.xSmall, FONTS.SC, "bold");
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  setFontJP(ctx, fontSize.xSmall, FONTS.SC, 'bold');
   drawTextWithShadow(mongoAcc.name, h71, heightCanvas - 170);
   if (mongoAcc.pilotDC) {
-    setFontJP(ctx, fontSize.xxSmall, FONTS.MAIN, "bold");
+    setFontJP(ctx, fontSize.xxSmall, FONTS.MAIN, 'bold');
     drawTextWithShadow(
       mongoAcc.pilotDC.globalName ?? mongoAcc.pilotDC.username,
       h71,
@@ -3074,19 +3074,19 @@ async function legendHistory(mongoAcc) {
 
   // ***** 右下 ***** //
   ctx.save();
-  setFontJP(ctx, fontSize.xxSmall, FONTS.SC, "bold");
+  setFontJP(ctx, fontSize.xxSmall, FONTS.SC, 'bold');
   ctx.fillStyle = config.rgb.snowWhite;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   if (mongoAcc.leagueTier.id == config_coc.leagueId.legend) {
     drawTextWithShadow(
-      `${mongoAcc.legend.days[0].season || "Unknown"} SEASON`,
+      `${mongoAcc.legend.days[0].season || 'Unknown'} SEASON`,
       h72,
       heightCanvas - 170,
     );
   } else {
     drawTextWithShadow(
-      "Not in Legend League",
+      'Not in Legend League',
       h72,
       heightCanvas - 170,
       config.rgb.discordBlack,
@@ -3098,11 +3098,11 @@ async function legendHistory(mongoAcc) {
 
   // ***** Font for Chart ***** //
   const fontChartString = {
-    family: "Helvetica Neue",
+    family: 'Helvetica Neue',
     size: 24,
   };
   const fontChartNumber = {
-    family: "Helvetica Neue",
+    family: 'Helvetica Neue',
     size: 20,
   };
 
@@ -3123,14 +3123,14 @@ async function legendHistory(mongoAcc) {
 
   if (mongoAcc.legend.days.length <= 40) {
     for (let i = 0; i < 40 - mongoAcc.legend.days.length; i++) {
-      cdpAttacks.push("NaN");
-      cdpDefenses.push("NaN");
-      cdpTriples.push("NaN");
-      cdpDefTriples.push("NaN");
-      cdpTrophies.push("NaN");
-      cdpAtkTrophies.push("NaN");
-      cdpDefTrophies.push("NaN");
-      cdpDiffTrophies.push("NaN");
+      cdpAttacks.push('NaN');
+      cdpDefenses.push('NaN');
+      cdpTriples.push('NaN');
+      cdpDefTriples.push('NaN');
+      cdpTrophies.push('NaN');
+      cdpAtkTrophies.push('NaN');
+      cdpDefTrophies.push('NaN');
+      cdpDiffTrophies.push('NaN');
     }
   }
 
@@ -3176,7 +3176,7 @@ async function legendHistory(mongoAcc) {
     labels: chartLabels,
     datasets: [
       {
-        label: "Trophies",
+        label: 'Trophies',
         data: cdpTrophies,
         fill: true,
         backgroundColor: (ctx) => {
@@ -3196,14 +3196,14 @@ async function legendHistory(mongoAcc) {
           gradient.addColorStop(1, config.rgb.orange.zero);
           return gradient;
         },
-        pointStyle: "rectRot",
+        pointStyle: 'rectRot',
         pointRadius: 5,
         pointBorderColor: config.rgb.discordBlack,
         pointBackgroundColor: config.rgb.orange.default,
         borderWidth: 1,
         borderColor: config.rgb.orange.default,
-        yAxisID: "y",
-        type: "line",
+        yAxisID: 'y',
+        type: 'line',
       },
     ],
   };
@@ -3216,13 +3216,13 @@ async function legendHistory(mongoAcc) {
         border: { color: config.rgb.silverWhite },
         title: {
           display: true,
-          text: "Days ago",
+          text: 'Days ago',
           font: fontChartString,
           color: config.rgb.silverWhite,
         },
       },
       y: {
-        position: "left",
+        position: 'left',
         beginAtZero: false,
         max: maxYscale,
         min: minYscale,
@@ -3235,12 +3235,12 @@ async function legendHistory(mongoAcc) {
         border: { color: config.rgb.silverWhite },
         title: {
           display: true,
-          text: "Trophies",
+          text: 'Trophies',
           font: fontChartString,
           color: config.rgb.silverWhite,
         },
         grid: {
-          color: "rgba(255,255,255,0.2)",
+          color: 'rgba(255,255,255,0.2)',
           lineWidth: 0.5,
         },
       },
@@ -3279,36 +3279,36 @@ async function legendHistory(mongoAcc) {
     labels: chartLabels,
     datasets: [
       {
-        label: "Attack Trophies",
+        label: 'Attack Trophies',
         data: cdpAtkTrophies,
-        type: "bar",
+        type: 'bar',
         backgroundColor: gainedBarColors,
-        yAxisID: "y",
-        stack: "trophiesStack",
+        yAxisID: 'y',
+        stack: 'trophiesStack',
         borderSkipped: false,
         order: 2,
       },
       {
-        label: "Defense Trophies",
+        label: 'Defense Trophies',
         data: cdpDefTrophies,
-        type: "bar",
+        type: 'bar',
         backgroundColor: lostBarColors,
-        yAxisID: "y",
-        stack: "trophiesStack",
+        yAxisID: 'y',
+        stack: 'trophiesStack',
         borderSkipped: false,
         order: 2,
       },
       {
-        label: "Diff Trophies",
+        label: 'Diff Trophies',
         data: cdpDiffTrophies,
-        type: "line",
-        pointStyle: "rectRot",
+        type: 'line',
+        pointStyle: 'rectRot',
         pointRadius: 5,
         pointBorderColor: config.rgb.discordBlack,
         pointBackgroundColor: config.rgb.orange.default,
         borderWidth: 1,
         borderColor: config.rgb.orange.default,
-        yAxisID: "y",
+        yAxisID: 'y',
         order: 1,
       },
     ],
@@ -3322,7 +3322,7 @@ async function legendHistory(mongoAcc) {
         border: { color: config.rgb.silverWhite },
         title: {
           display: true,
-          text: "Days ago",
+          text: 'Days ago',
           font: fontChartString,
           color: config.rgb.silverWhite,
         },
@@ -3340,7 +3340,7 @@ async function legendHistory(mongoAcc) {
         border: { color: config.rgb.silverWhite },
         title: {
           display: true,
-          text: "Trophies Gained / Lost",
+          text: 'Trophies Gained / Lost',
           font: fontChartString,
           color: config.rgb.silverWhite,
         },
@@ -3348,8 +3348,8 @@ async function legendHistory(mongoAcc) {
         grid: {
           color: (ctx) =>
             ctx.tick && ctx.tick.value === 0
-              ? "rgba(255,255,255,0.4)"
-              : "rgba(255,255,255,0.2)",
+              ? 'rgba(255,255,255,0.4)'
+              : 'rgba(255,255,255,0.2)',
           lineWidth: (ctx) => (ctx.tick && ctx.tick.value === 0 ? 1.5 : 0.5),
         },
       },
@@ -3372,21 +3372,21 @@ async function legendHistory(mongoAcc) {
     labels: chartLabels,
     datasets: [
       {
-        label: "Triples",
+        label: 'Triples',
         data: cdpTriples,
         fill: true,
         backgroundColor: config.rgb.darkOrange,
-        yAxisID: "y",
-        type: "bar",
+        yAxisID: 'y',
+        type: 'bar',
         categoryPercentage: 0.2,
       },
       {
-        label: "Def Triples",
+        label: 'Def Triples',
         data: cdpDefTriples,
         fill: true,
         backgroundColor: config.rgb.gray150,
-        yAxisID: "y",
-        type: "bar",
+        yAxisID: 'y',
+        type: 'bar',
         categoryPercentage: 0.2,
       },
     ],
@@ -3400,13 +3400,13 @@ async function legendHistory(mongoAcc) {
         border: { color: config.rgb.silverWhite },
         title: {
           display: true,
-          text: "Days ago",
+          text: 'Days ago',
           font: fontChartString,
           color: config.rgb.silverWhite,
         },
       },
       y: {
-        position: "left",
+        position: 'left',
         beginAtZero: true,
         max: 8,
         ticks: {
@@ -3417,12 +3417,12 @@ async function legendHistory(mongoAcc) {
         border: { color: config.rgb.silverWhite },
         title: {
           display: true,
-          text: "Triples / Def Triples",
+          text: 'Triples / Def Triples',
           font: fontChartString,
           color: config.rgb.silverWhite,
         },
         grid: {
-          color: "rgba(255,255,255,0.2)",
+          color: 'rgba(255,255,255,0.2)',
           lineWidth: 0.5,
         },
       },
@@ -3445,21 +3445,21 @@ async function legendHistory(mongoAcc) {
     labels: chartLabels,
     datasets: [
       {
-        label: "Attacks",
+        label: 'Attacks',
         data: cdpAttacks,
         fill: true,
         backgroundColor: config.rgb.darkOrange,
-        yAxisID: "y",
-        type: "bar",
+        yAxisID: 'y',
+        type: 'bar',
         categoryPercentage: 0.2,
       },
       {
-        label: "Defenses",
+        label: 'Defenses',
         data: cdpDefenses,
         fill: true,
         backgroundColor: config.rgb.gray150,
-        yAxisID: "y",
-        type: "bar",
+        yAxisID: 'y',
+        type: 'bar',
         categoryPercentage: 0.2,
       },
     ],
@@ -3473,13 +3473,13 @@ async function legendHistory(mongoAcc) {
         border: { color: config.rgb.silverWhite },
         title: {
           display: true,
-          text: "Days ago",
+          text: 'Days ago',
           font: fontChartString,
           color: config.rgb.silverWhite,
         },
       },
       y: {
-        position: "left",
+        position: 'left',
         beginAtZero: true,
         max: 8,
         ticks: {
@@ -3490,12 +3490,12 @@ async function legendHistory(mongoAcc) {
         border: { color: config.rgb.silverWhite },
         title: {
           display: true,
-          text: "Attacks / Defenses",
+          text: 'Attacks / Defenses',
           font: fontChartString,
           color: config.rgb.silverWhite,
         },
         grid: {
-          color: "rgba(255,255,255,0.2)",
+          color: 'rgba(255,255,255,0.2)',
           lineWidth: 0.5,
         },
       },
@@ -3533,17 +3533,17 @@ async function legendHistory(mongoAcc) {
   });
 
   const configurationLine = {
-    type: "line",
+    type: 'line',
     data: chartDataLine,
     options: chartOptionsLine,
   };
   const configurationStack = {
-    type: "bar",
+    type: 'bar',
     data: chartDataStack,
     options: chartOptionsStack,
   };
   const configurationBarsAD = {
-    type: "bar",
+    type: 'bar',
     data: chartDataBarsAD,
     options: chartOptionsBarsAD,
   };
@@ -3599,32 +3599,32 @@ async function legendHistory(mongoAcc) {
 
   // サマリー部分の描画
   ctx.save();
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
 
   let yCursor = summaryTop + 100;
   setFontJP(ctx, config.canvasFontSize.xSmall, FONTS.SC);
   ctx.fillStyle = config.rgb.darkOrange;
-  ctx.fillText("LAST 10 DAYS", xCenter, yCursor);
+  ctx.fillText('LAST 10 DAYS', xCenter, yCursor);
 
   yCursor += 50;
   setFontJP(ctx, config.canvasFontSize.xxSmall, FONTS.SC);
-  ctx.fillText("ATTACKS", h71, yCursor);
-  ctx.fillText("DEFENSES", h72, yCursor);
+  ctx.fillText('ATTACKS', h71, yCursor);
+  ctx.fillText('DEFENSES', h72, yCursor);
 
   yCursor += 100;
   setFontJP(ctx, config.canvasFontSize.xxSmall, FONTS.SC);
   ctx.fillStyle = config.rgb.darkOrange;
-  ctx.fillText("AVG TROPHIES / DAY", xCenter, yCursor);
-  setFontJP(ctx, config.canvasFontSize.xSmall, FONTS.SC, "bold");
+  ctx.fillText('AVG TROPHIES / DAY', xCenter, yCursor);
+  setFontJP(ctx, config.canvasFontSize.xSmall, FONTS.SC, 'bold');
   ctx.fillStyle = config.rgb.silverWhite;
   ctx.fillText(
-    `${avgPerDayAttackTrophies >= 0 ? "+" : ""}${avgPerDayAttackTrophies}`,
+    `${avgPerDayAttackTrophies >= 0 ? '+' : ''}${avgPerDayAttackTrophies}`,
     h71,
     yCursor,
   );
   ctx.fillText(
-    `${avgPerDayDefenseTrophies >= 0 ? "+" : ""}${avgPerDayDefenseTrophies}`,
+    `${avgPerDayDefenseTrophies >= 0 ? '+' : ''}${avgPerDayDefenseTrophies}`,
     h72,
     yCursor,
   );
@@ -3632,7 +3632,7 @@ async function legendHistory(mongoAcc) {
   yCursor += 100;
   setFontJP(ctx, config.canvasFontSize.xxSmall, FONTS.SC);
   ctx.fillStyle = config.rgb.darkOrange;
-  ctx.fillText("N OF ATTACKS / DEFENSES", xCenter, yCursor);
+  ctx.fillText('N OF ATTACKS / DEFENSES', xCenter, yCursor);
   setFontJP(ctx, config.canvasFontSize.xxSmall, FONTS.SC);
   ctx.fillStyle = config.rgb.silverWhite;
   ctx.fillText(String(sumAttacks10), h71, yCursor);
@@ -3641,25 +3641,25 @@ async function legendHistory(mongoAcc) {
   yCursor += 100;
   setFontJP(ctx, config.canvasFontSize.xxSmall, FONTS.SC);
   ctx.fillStyle = config.rgb.darkOrange;
-  ctx.fillText("AVG TROPHIES / ATTACK", xCenter, yCursor);
-  setFontJP(ctx, config.canvasFontSize.xSmall, FONTS.SC, "bold");
+  ctx.fillText('AVG TROPHIES / ATTACK', xCenter, yCursor);
+  setFontJP(ctx, config.canvasFontSize.xSmall, FONTS.SC, 'bold');
   ctx.fillStyle = config.rgb.silverWhite;
   ctx.fillText(
-    `${avgPerAttackAttackTrophies >= 0 ? "+" : ""}${avgPerAttackAttackTrophies}`,
+    `${avgPerAttackAttackTrophies >= 0 ? '+' : ''}${avgPerAttackAttackTrophies}`,
     h71,
     yCursor,
   );
   ctx.fillText(
-    `${avgPerDefenseDefenseTrophies >= 0 ? "+" : ""}${avgPerDefenseDefenseTrophies}`,
+    `${avgPerDefenseDefenseTrophies >= 0 ? '+' : ''}${avgPerDefenseDefenseTrophies}`,
     h72,
     yCursor,
   );
   ctx.restore();
 
-  const pngData = await myCanvas.encode("png");
+  const pngData = await myCanvas.encode('png');
 
   const attachment = new AttachmentBuilder(pngData, {
-    name: "legendHistory.png",
+    name: 'legendHistory.png',
   });
 
   return attachment;
@@ -3675,18 +3675,18 @@ async function warProgress(mongoWar) {
   // ***** Chart Data Points ***** //
   let cdpStars = [[0], [0]];
   let cdpDestruction = [[0], [0]];
-  let cdpAverageDestruction = { clan: ["NaN"], opponent: ["NaN"] };
+  let cdpAverageDestruction = { clan: ['NaN'], opponent: ['NaN'] };
   let cdpTriples = [[0], [0]];
-  let cdpHitrate = { clan: ["NaN"], opponent: ["NaN"] };
+  let cdpHitrate = { clan: ['NaN'], opponent: ['NaN'] };
   let chartLabels = [0];
 
   // ***** Font for Chart ***** //
   const fontChartString = {
-    family: "Helvetica Neue",
+    family: 'Helvetica Neue',
     size: 24,
   };
   const fontChartNumber = {
-    family: "Helvetica Neue",
+    family: 'Helvetica Neue',
     size: 20,
   };
 
@@ -3717,7 +3717,7 @@ async function warProgress(mongoWar) {
     // 平均破壊率を計算
     const avgDestruction =
       lastDestruction / (cdpDestruction[teamIndex].length - 1);
-    const targetKey = teamIndex === 0 ? "clan" : "opponent";
+    const targetKey = teamIndex === 0 ? 'clan' : 'opponent';
     cdpAverageDestruction[targetKey].push(avgDestruction);
 
     // トリプル数を更新
@@ -3738,11 +3738,11 @@ async function warProgress(mongoWar) {
 
   if (mongoWar.result?.arrAttacksPlus) {
     mongoWar.result.arrAttacksPlus
-      .filter((attack) => attack.attackType !== "remaining")
+      .filter((attack) => attack.attackType !== 'remaining')
       .forEach((attack) => {
-        if (attack.action === "attack") {
+        if (attack.action === 'attack') {
           processAttackData(attack, 0);
-        } else if (attack.action === "defense") {
+        } else if (attack.action === 'defense') {
           processAttackData(attack, 1);
         }
       });
@@ -3760,53 +3760,53 @@ async function warProgress(mongoWar) {
           label: `Stars [${mongoWar.clan_abbr.toUpperCase()}]`,
           data: cdpStars[0],
           fill: false,
-          pointStyle: "circle",
+          pointStyle: 'circle',
           pointRadius: pointRadius.circle,
           borderDash: [15, 20],
           borderColor: config.rgb.orange.default,
           backgroundColor: config.rgb.orange.default,
           pointBorderColor: config.rgb.discordBlack,
-          cubicInterpolationMode: "monotone",
-          yAxisID: "y",
+          cubicInterpolationMode: 'monotone',
+          yAxisID: 'y',
         },
         {
           label: `Stars [${mongoWar.opponent_abbr.toUpperCase()}]`,
           data: cdpStars[1],
           fill: false,
-          pointStyle: "circle",
+          pointStyle: 'circle',
           pointRadius: pointRadius.circle,
           borderDash: [15, 20],
           borderColor: config.rgb.blue,
           backgroundColor: config.rgb.blue,
           pointBorderColor: config.rgb.discordBlack,
-          cubicInterpolationMode: "monotone",
-          yAxisID: "y",
+          cubicInterpolationMode: 'monotone',
+          yAxisID: 'y',
         },
         {
           label: `Average Destruction [${mongoWar.clan_abbr.toUpperCase()}]`,
           data: cdpAverageDestruction.clan,
           fill: false,
-          pointStyle: "rect",
+          pointStyle: 'rect',
           pointRadius: pointRadius.rect,
           borderDash: [15, 20],
           borderColor: config.rgb.darkOrange,
           backgroundColor: config.rgb.darkOrange,
           pointBorderColor: config.rgb.discordBlack,
-          cubicInterpolationMode: "monotone",
-          yAxisID: "y2",
+          cubicInterpolationMode: 'monotone',
+          yAxisID: 'y2',
         },
         {
           label: `Average Destruction [${mongoWar.opponent_abbr.toUpperCase()}]`,
           data: cdpAverageDestruction.opponent,
           fill: false,
-          pointStyle: "rect",
+          pointStyle: 'rect',
           pointRadius: pointRadius.rect,
           borderDash: [15, 20],
           borderColor: config.rgb.darkBlue,
           backgroundColor: config.rgb.darkBlue,
           pointBorderColor: config.rgb.discordBlack,
-          cubicInterpolationMode: "monotone",
-          yAxisID: "y2",
+          cubicInterpolationMode: 'monotone',
+          yAxisID: 'y2',
         },
       ],
     };
@@ -3823,13 +3823,13 @@ async function warProgress(mongoWar) {
           },
           title: {
             display: true,
-            text: "Attacks used",
+            text: 'Attacks used',
             font: fontChartString,
             color: config.rgb.silverWhite,
           },
         },
         y: {
-          position: "left",
+          position: 'left',
           beginAtZero: true,
           max: 3 * mongoWar.result.size + 3,
           ticks: {
@@ -3841,13 +3841,13 @@ async function warProgress(mongoWar) {
           },
           title: {
             display: true,
-            text: "Total Stars",
+            text: 'Total Stars',
             font: fontChartString,
             color: config.rgb.silverWhite,
           },
         },
         y2: {
-          position: "right",
+          position: 'right',
           beginAtZero: true,
           max: 110,
           ticks: {
@@ -3859,7 +3859,7 @@ async function warProgress(mongoWar) {
           },
           title: {
             display: true,
-            text: "Average Destruction",
+            text: 'Average Destruction',
             font: fontChartString,
             color: config.rgb.silverWhite,
           },
@@ -3889,53 +3889,53 @@ async function warProgress(mongoWar) {
           label: `Stars [${mongoWar.clan_abbr.toUpperCase()}]`,
           data: cdpStars[0],
           fill: false,
-          pointStyle: "circle",
+          pointStyle: 'circle',
           pointRadius: pointRadius.circle,
           borderDash: [10, 15],
           borderColor: config.rgb.orange.default,
           backgroundColor: config.rgb.orange.default,
           pointBorderColor: config.rgb.discordBlack,
-          cubicInterpolationMode: "monotone",
-          yAxisID: "y",
+          cubicInterpolationMode: 'monotone',
+          yAxisID: 'y',
         },
         {
           label: `Stars [${mongoWar.opponent_abbr.toUpperCase()}]`,
           data: cdpStars[1],
           fill: false,
-          pointStyle: "circle",
+          pointStyle: 'circle',
           pointRadius: pointRadius.circle,
           borderDash: [10, 15],
           borderColor: config.rgb.blue,
           backgroundColor: config.rgb.blue,
           pointBorderColor: config.rgb.discordBlack,
-          cubicInterpolationMode: "monotone",
-          yAxisID: "y",
+          cubicInterpolationMode: 'monotone',
+          yAxisID: 'y',
         },
         {
           label: `Hitrate [${mongoWar.clan_abbr.toUpperCase()}]`,
           data: cdpHitrate.clan,
           fill: false,
-          pointStyle: "rect",
+          pointStyle: 'rect',
           pointRadius: pointRadius.rect,
           borderDash: [10, 15],
           borderColor: config.rgb.darkOrange,
           backgroundColor: config.rgb.darkOrange,
           pointBorderColor: config.rgb.discordBlack,
-          cubicInterpolationMode: "monotone",
-          yAxisID: "y2",
+          cubicInterpolationMode: 'monotone',
+          yAxisID: 'y2',
         },
         {
           label: `Hitrate [${mongoWar.opponent_abbr.toUpperCase()}]`,
           data: cdpHitrate.opponent,
           fill: false,
-          pointStyle: "rect",
+          pointStyle: 'rect',
           pointRadius: pointRadius.rect,
           borderDash: [10, 15],
           borderColor: config.rgb.darkBlue,
           backgroundColor: config.rgb.darkBlue,
           pointBorderColor: config.rgb.discordBlack,
-          cubicInterpolationMode: "monotone",
-          yAxisID: "y2",
+          cubicInterpolationMode: 'monotone',
+          yAxisID: 'y2',
         },
       ],
     };
@@ -3952,13 +3952,13 @@ async function warProgress(mongoWar) {
           },
           title: {
             display: true,
-            text: "Attacks used",
+            text: 'Attacks used',
             font: fontChartString,
             color: config.rgb.silverWhite,
           },
         },
         y: {
-          position: "left",
+          position: 'left',
           beginAtZero: true,
           max: 3 * mongoWar.result.size + 3,
           ticks: {
@@ -3970,13 +3970,13 @@ async function warProgress(mongoWar) {
           },
           title: {
             display: true,
-            text: "Total Stars",
+            text: 'Total Stars',
             font: fontChartString,
             color: config.rgb.silverWhite,
           },
         },
         y2: {
-          position: "right",
+          position: 'right',
           beginAtZero: true,
           max: 110,
           ticks: {
@@ -3988,7 +3988,7 @@ async function warProgress(mongoWar) {
           },
           title: {
             display: true,
-            text: "Hitrate",
+            text: 'Hitrate',
             font: fontChartString,
             color: config.rgb.silverWhite,
           },
@@ -4012,7 +4012,7 @@ async function warProgress(mongoWar) {
   const widthCanvas = config.canvasSize.width;
   const heightCanvas = config.canvasSize.height;
   let myCanvas = Canvas.createCanvas(widthCanvas, heightCanvas);
-  let ctx = myCanvas.getContext("2d");
+  let ctx = myCanvas.getContext('2d');
 
   const widthCenter = widthCanvas / 2;
   const heightCenter = heightCanvas / 2;
@@ -4043,11 +4043,11 @@ async function warProgress(mongoWar) {
   const resultClan = mongoWar.result.clan;
   const resultOpponent = mongoWar.result.opponent;
 
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
 
   setFont(ctx, config.canvasFontSize.xxSmall);
-  let text = "Japan War Clans";
+  let text = 'Japan War Clans';
   ctx.fillText(text, widthCenter, pos.v191);
 
   //** タウンホール画像
@@ -4059,14 +4059,14 @@ async function warProgress(mongoWar) {
     th14: null,
     th13: null,
   };
-  imgTownHall.th18 = await Canvas.loadImage("./image/th18_cam3.png");
-  imgTownHall.th17 = await Canvas.loadImage("./image/th17_cam3.png");
-  imgTownHall.th16 = await Canvas.loadImage("./image/th16_cam3.png");
-  imgTownHall.th15 = await Canvas.loadImage("./image/th15_cam3.png");
-  imgTownHall.th14 = await Canvas.loadImage("./image/th14_cam3.png");
-  imgTownHall.th13 = await Canvas.loadImage("./image/th13_cam3.png");
-  ctx.textAlign = "center";
-  if (league == "mix") {
+  imgTownHall.th18 = await Canvas.loadImage('./image/th18_cam3.png');
+  imgTownHall.th17 = await Canvas.loadImage('./image/th17_cam3.png');
+  imgTownHall.th16 = await Canvas.loadImage('./image/th16_cam3.png');
+  imgTownHall.th15 = await Canvas.loadImage('./image/th15_cam3.png');
+  imgTownHall.th14 = await Canvas.loadImage('./image/th14_cam3.png');
+  imgTownHall.th13 = await Canvas.loadImage('./image/th13_cam3.png');
+  ctx.textAlign = 'center';
+  if (league == 'mix') {
     if (mongoWar.season == 17) {
       let lengthTownHall = {
         th17: 120,
@@ -4114,12 +4114,12 @@ async function warProgress(mongoWar) {
       const lengthTownHall = [120, 100, 80];
       let imgTownHall = [];
       if (mongoWar.week <= 12) {
-        imgTownHall[0] = await Canvas.loadImage("./image/th16_cam3.png");
+        imgTownHall[0] = await Canvas.loadImage('./image/th16_cam3.png');
       } else {
-        imgTownHall[0] = await Canvas.loadImage("./image/th17_cam3.png");
+        imgTownHall[0] = await Canvas.loadImage('./image/th17_cam3.png');
       }
-      imgTownHall[1] = await Canvas.loadImage("./image/th14_cam3.png");
-      imgTownHall[2] = await Canvas.loadImage("./image/th13_cam3.png");
+      imgTownHall[1] = await Canvas.loadImage('./image/th14_cam3.png');
+      imgTownHall[2] = await Canvas.loadImage('./image/th13_cam3.png');
       ctx.drawImage(
         imgTownHall[2],
         widthCenter - (lengthTownHall[0] / 2) * 5 + 20,
@@ -4171,7 +4171,7 @@ async function warProgress(mongoWar) {
   }
 
   setFont(ctx, config.canvasFontSize.xSmall, FONTS.NUMBER);
-  if (mongoWar.result != "") {
+  if (mongoWar.result != '') {
     text = `${mongoWar.clan_war.teamSize} v ${mongoWar.opponent_war.teamSize}`;
   } else {
     text = `${config.minSize[league]} v ${config.minSize[league]}`;
@@ -4179,7 +4179,7 @@ async function warProgress(mongoWar) {
   ctx.fillText(text, widthCenter, pos.v171 + 50);
 
   if (resultClan && resultOpponent) {
-    setFont(ctx, config.canvasFontSize.xxxxLarge, FONTS.NUMBER, "bold");
+    setFont(ctx, config.canvasFontSize.xxxxLarge, FONTS.NUMBER, 'bold');
     text = String(resultClan.stars);
     ctx.fillText(text, pos.h31, pos.v141);
     text = String(resultOpponent.stars);
@@ -4188,44 +4188,44 @@ async function warProgress(mongoWar) {
     if (mongoWar.clan_war.clan.penalty) {
       ctx.fillStyle = config.rgb.red;
       text = String(mongoWar.clan_war.clan.penalty.star);
-      setFont(ctx, config.canvasFontSize.medium, FONTS.NUMBER, "bold");
+      setFont(ctx, config.canvasFontSize.medium, FONTS.NUMBER, 'bold');
       ctx.fillText(text, pos.h31, pos.v151);
       ctx.fillStyle = config.rgb.snowWhite;
     }
     if (mongoWar.opponent_war.clan.penalty) {
       ctx.fillStyle = config.rgb.red;
       text = String(mongoWar.opponent_war.clan.penalty.star);
-      setFont(ctx, config.canvasFontSize.medium, FONTS.NUMBER, "bold");
+      setFont(ctx, config.canvasFontSize.medium, FONTS.NUMBER, 'bold');
       ctx.fillText(text, pos.h31, pos.v151);
       ctx.fillStyle = config.rgb.snowWhite;
     }
 
-    ctx.textAlign = "right";
+    ctx.textAlign = 'right';
     setFont(ctx, config.canvasFontSize.medium, FONTS.NUMBER);
     text = String(Math.round(resultClan.destruction * 10) / 10);
     ctx.fillText(text, pos.h31 + 40, pos.v131);
     text = String(Math.round(resultOpponent.destruction * 10) / 10);
     ctx.fillText(text, pos.h32 + 40, pos.v131);
-    ctx.textAlign = "left";
+    ctx.textAlign = 'left';
     setFont(ctx, config.canvasFontSize.small, FONTS.NUMBER);
-    text = "%";
+    text = '%';
     ctx.fillText(text, pos.h31 + 40, pos.v131 + 5);
     ctx.fillText(text, pos.h32 + 40, pos.v131 + 5);
   }
 
-  ctx.textAlign = "center";
+  ctx.textAlign = 'center';
 
   setFont(ctx, config.canvasFontSize.xSmall);
-  if (mongoWar.result != "") {
-    if (mongoWar.result.state == "warEnded") {
-      text = "WAR ENDED";
-    } else if (mongoWar.result.state == "inWar") {
-      text = "NOW IN WAR";
-    } else if (mongoWar.result.state == "preparation") {
-      text = "NOW IN PREPARATION";
+  if (mongoWar.result != '') {
+    if (mongoWar.result.state == 'warEnded') {
+      text = 'WAR ENDED';
+    } else if (mongoWar.result.state == 'inWar') {
+      text = 'NOW IN WAR';
+    } else if (mongoWar.result.state == 'preparation') {
+      text = 'NOW IN PREPARATION';
     }
   } else {
-    text = "NOT IN WAR";
+    text = 'NOT IN WAR';
   }
   ctx.fillText(text, widthCenter, pos.v121);
 
@@ -4233,29 +4233,29 @@ async function warProgress(mongoWar) {
   const heightStats = [pos.v101, pos.v91, pos.v81, pos.v71, pos.v61];
 
   setFont(ctx, config.canvasFontSize.small);
-  text = "Hitrate";
+  text = 'Hitrate';
   ctx.fillText(text, widthCenter, heightStats[0]);
 
   if (config.nHit[league] == 2) {
-    text = "Fresh Hitrate";
+    text = 'Fresh Hitrate';
     ctx.fillText(text, widthCenter, heightStats[1]);
-    text = "Cleanup Hitrate";
+    text = 'Cleanup Hitrate';
     ctx.fillText(text, widthCenter, heightStats[2]);
-    text = "Overkill Hitrate";
+    text = 'Overkill Hitrate';
     ctx.fillText(text, widthCenter, heightStats[3]);
   } else if (config.nHit[league] == 1) {
-    text = "Average Destruction";
+    text = 'Average Destruction';
     ctx.fillText(text, widthCenter, heightStats[1]);
-    text = "One-Star";
+    text = 'One-Star';
     ctx.fillText(text, widthCenter, heightStats[2]);
-    text = "Zero-Star";
+    text = 'Zero-Star';
     ctx.fillText(text, widthCenter, heightStats[3]);
   }
 
-  text = "Attacks Left";
+  text = 'Attacks Left';
   ctx.fillText(text, widthCenter, heightStats[4]);
 
-  ctx.textAlign = "left";
+  ctx.textAlign = 'left';
 
   if (resultClan && resultOpponent) {
     setFont(ctx, config.canvasFontSize.medium, FONTS.NUMBER);
@@ -4290,7 +4290,7 @@ async function warProgress(mongoWar) {
       ctx.fillText(text, pos.h141, heightStats[4]);
     }
 
-    ctx.textAlign = "right";
+    ctx.textAlign = 'right';
 
     text = `${resultOpponent.allAttackTypes.nTriple.total}/${resultOpponent.allAttackTypes.nAt.total} (${Math.round(resultOpponent.allAttackTypes.hitrate.total)}%)`;
     ctx.fillText(text, pos.h142, heightStats[0]);
@@ -4321,7 +4321,7 @@ async function warProgress(mongoWar) {
       ctx.fillText(text, pos.h142, heightStats[4]);
     }
 
-    const barBlack = await Canvas.loadImage("./image/bar/black.png");
+    const barBlack = await Canvas.loadImage('./image/bar/black.png');
     const lBarMax = widthCenter - pos.h141;
     const hBar = 8;
     const marginBarBottom = 35;
@@ -4396,10 +4396,10 @@ async function warProgress(mongoWar) {
       hBar,
     );
 
-    const barGreenLight = await Canvas.loadImage("./image/bar/green.png");
-    const barGreenDark = await Canvas.loadImage("./image/bar/darkGreen.png");
-    const barRedLight = await Canvas.loadImage("./image/bar/red.png");
-    const barRedDark = await Canvas.loadImage("./image/bar/darkRed.png");
+    const barGreenLight = await Canvas.loadImage('./image/bar/green.png');
+    const barGreenDark = await Canvas.loadImage('./image/bar/darkGreen.png');
+    const barRedLight = await Canvas.loadImage('./image/bar/red.png');
+    const barRedDark = await Canvas.loadImage('./image/bar/darkRed.png');
 
     let valueLeft = resultClan.allAttackTypes.hitrate.total * 0.01;
     let valueRight = resultOpponent.allAttackTypes.hitrate.total * 0.01;
@@ -4464,9 +4464,9 @@ async function warProgress(mongoWar) {
 
       valueLeft = resultClan.nLeft / (2 * mongoWar.result.size);
       valueRight = resultOpponent.nLeft / (2 * mongoWar.result.size);
-      let barLight = "";
-      let barDark = "";
-      if (mongoWar.result.state == "warEnded") {
+      let barLight = '';
+      let barDark = '';
+      if (mongoWar.result.state == 'warEnded') {
         barLight = barRedLight;
         barDark = barRedDark;
       } else {
@@ -4533,9 +4533,9 @@ async function warProgress(mongoWar) {
 
       valueLeft = resultClan.nLeft / mongoWar.result.size;
       valueRight = resultOpponent.nLeft / mongoWar.result.size;
-      let barLight = "";
-      let barDark = "";
-      if (mongoWar.result.state == "warEnded") {
+      let barLight = '';
+      let barDark = '';
+      if (mongoWar.result.state == 'warEnded') {
         barLight = barRedLight;
         barDark = barRedDark;
       } else {
@@ -4558,9 +4558,9 @@ async function warProgress(mongoWar) {
   }
 
   // ***** LINEUPS ***** //
-  if (mongoWar.result != "") {
+  if (mongoWar.result != '') {
     const posLineup = pos.v41;
-    ctx.textAlign = "center";
+    ctx.textAlign = 'center';
     ctx.fillStyle = config.rgb.snowWhite;
     const size = mongoWar.clan_war.teamSize;
     let fontSizeLineup = null;
@@ -4590,7 +4590,7 @@ async function warProgress(mongoWar) {
       mongoWar.clan_war.clan.members.map(async (member, index) => {
         setFontJP(ctx, fontSizeLineup);
         text = member.name;
-        ctx.textAlign = "center";
+        ctx.textAlign = 'center';
         ctx.fillText(
           text,
           pos.h101,
@@ -4614,7 +4614,7 @@ async function warProgress(mongoWar) {
               starFlag,
               lengthStar,
               pos.h21,
-              "left",
+              'left',
               posLineup,
               spacing,
               member.mapPosition,
@@ -4630,7 +4630,7 @@ async function warProgress(mongoWar) {
               starFlag,
               lengthStar,
               pos.h51,
-              "left",
+              'left',
               posLineup,
               spacing,
               member.mapPosition,
@@ -4646,7 +4646,7 @@ async function warProgress(mongoWar) {
                 starFlag2,
                 lengthStar,
                 pos.h21,
-                "left",
+                'left',
                 posLineup,
                 spacing,
                 member.mapPosition,
@@ -4665,7 +4665,7 @@ async function warProgress(mongoWar) {
       mongoWar.opponent_war.clan.members.map(async (member, index) => {
         setFontJP(ctx, fontSizeLineup);
         text = member.name;
-        ctx.textAlign = "center";
+        ctx.textAlign = 'center';
         ctx.fillText(
           text,
           pos.h102,
@@ -4680,7 +4680,7 @@ async function warProgress(mongoWar) {
               starFlag,
               lengthStar,
               pos.h22,
-              "right",
+              'right',
               posLineup,
               spacing,
               member.mapPosition,
@@ -4696,7 +4696,7 @@ async function warProgress(mongoWar) {
               starFlag,
               lengthStar,
               pos.h22,
-              "right",
+              'right',
               posLineup,
               spacing,
               member.mapPosition,
@@ -4712,7 +4712,7 @@ async function warProgress(mongoWar) {
                 starFlag2,
                 lengthStar,
                 pos.h52,
-                "right",
+                'right',
                 posLineup,
                 spacing,
                 member.mapPosition,
@@ -4730,7 +4730,7 @@ async function warProgress(mongoWar) {
 
   // Legend for Chart
   const posLegend = pos.v82;
-  ctx.textAlign = "center";
+  ctx.textAlign = 'center';
   setFont(ctx, config.canvasFontSize.xSmall);
   text = mongoWar.clan_abbr.toUpperCase();
   ctx.fillText(text, pos.h41, posLegend - 50);
@@ -4738,16 +4738,16 @@ async function warProgress(mongoWar) {
   ctx.fillText(text, pos.h42, posLegend - 50);
 
   setFont(ctx, config.canvasFontSize.xxSmall);
-  text = "Total Stars";
+  text = 'Total Stars';
   ctx.fillText(text, widthCenter, posLegend);
 
   if (config.nHit[league] == 2) {
     setFont(ctx, config.canvasFontSize.xxSmall);
-    text = "Hitrate";
+    text = 'Hitrate';
     ctx.fillText(text, widthCenter, posLegend + 50);
   } else if (config.nHit[league] == 1) {
     setFont(ctx, config.canvasFontSize.xxSmall);
-    text = "Average Destruction";
+    text = 'Average Destruction';
     ctx.fillText(text, widthCenter, posLegend + 50);
   }
 
@@ -4783,7 +4783,7 @@ async function warProgress(mongoWar) {
   ctx.fillStyle = config.rgb.snowWhite;
 
   // ***** Chart ***** //
-  if (mongoWar.result != "") {
+  if (mongoWar.result != '') {
     const widthChart = config.canvasSize.width * 0.7;
     const heightChart = config.canvasSize.height * 0.18;
     const width = widthChart;
@@ -4791,7 +4791,7 @@ async function warProgress(mongoWar) {
     const chartJSNodeCanvas = new ChartJSNodeCanvas({ width, height });
 
     const configuration = {
-      type: "line",
+      type: 'line',
       data: chartData,
       options: chartOptions,
     };
@@ -4863,7 +4863,7 @@ async function warProgress(mongoWar) {
   }
 
   // ***** 左下 ***** //
-  setFont(ctx, config.canvasFontSize.medium, FONTS.MAIN, "bold");
+  setFont(ctx, config.canvasFontSize.medium, FONTS.MAIN, 'bold');
   text = config.league[mongoWar.league];
   ctx.fillText(text, pos.h101, heightCanvas - 240 - 10);
 
@@ -4876,30 +4876,30 @@ async function warProgress(mongoWar) {
   ctx.fillText(text, pos.h101, heightCanvas - 120);
 
   // ***** 右下 ***** //
-  if (mongoWar.result != "") {
+  if (mongoWar.result != '') {
     const endTimeUtc = mongoWar.clan_war.endTime;
-    const endTimeJst = toZonedTime(endTimeUtc, "Asia/Tokyo");
+    const endTimeJst = toZonedTime(endTimeUtc, 'Asia/Tokyo');
 
-    setFont(ctx, config.canvasFontSize.xxSmall, FONTS.MAIN, "italic");
-    if (mongoWar.result.state == "warEnded") {
-      text = "The war ended at:";
+    setFont(ctx, config.canvasFontSize.xxSmall, FONTS.MAIN, 'italic');
+    if (mongoWar.result.state == 'warEnded') {
+      text = 'The war ended at:';
     } else {
-      text = "The war will end at:";
+      text = 'The war will end at:';
     }
     ctx.fillText(text, pos.h102, heightCanvas - 240 - 10);
 
-    setFont(ctx, config.canvasFontSize.xSmall, FONTS.MAIN, "italic");
-    text = format(endTimeJst, "pp, PPPP") + " [JST]";
+    setFont(ctx, config.canvasFontSize.xSmall, FONTS.MAIN, 'italic');
+    text = format(endTimeJst, 'pp, PPPP') + ' [JST]';
     ctx.fillText(text, pos.h102, heightCanvas - 180);
 
-    setFont(ctx, config.canvasFontSize.xxSmall, FONTS.MAIN, "italic");
-    text = format(endTimeUtc, "pp, PPPP") + " [UTC]";
+    setFont(ctx, config.canvasFontSize.xxSmall, FONTS.MAIN, 'italic');
+    text = format(endTimeUtc, 'pp, PPPP') + ' [UTC]';
     ctx.fillText(text, pos.h102, heightCanvas - 120);
   }
 
   // ***** 中央下 ***** //
   const lengthLogoJwc = 100;
-  const imgJwcLogo = await Canvas.loadImage("./image/JWC.png");
+  const imgJwcLogo = await Canvas.loadImage('./image/JWC.png');
   ctx.drawImage(
     imgJwcLogo,
     widthCenter - lengthLogoJwc / 2,
@@ -4912,10 +4912,10 @@ async function warProgress(mongoWar) {
   text = `SEASON ${mongoWar.season}`;
   ctx.fillText(text, widthCenter, heightCanvas - 70);
 
-  const pngData = await myCanvas.encode("png");
+  const pngData = await myCanvas.encode('png');
 
   const attachment = new AttachmentBuilder(pngData, {
-    name: "warProgress.png",
+    name: 'warProgress.png',
   });
 
   return attachment;
@@ -4933,9 +4933,9 @@ async function legendRankingChart(locationId, prefetched) {
   const dataTrophies = [];
   const dataAttacks = [];
   scPlayersLegend.slice(0, nDisplay).forEach((p) => {
-    labels.push(p.name ?? "ERROR");
+    labels.push(p.name ?? 'ERROR');
     ranks.push(String(p.rank));
-    teams.push(p.homeClanAbbr ?? "");
+    teams.push(p.homeClanAbbr ?? '');
     dataTrophies.push(p.trophies);
     dataAttacks.push(p.attackWins);
   });
@@ -4957,8 +4957,8 @@ async function legendRankingChart(locationId, prefetched) {
 
   const title =
     locationId == config_coc.locationId.japan
-      ? "TOP 200 JAPANESE LEGENDS"
-      : "TOP 200 GLOBAL LEGENDS";
+      ? 'TOP 200 JAPANESE LEGENDS'
+      : 'TOP 200 GLOBAL LEGENDS';
 
   // ***** Font ***** //
   const myFont = FONTS.MAIN;
@@ -4968,21 +4968,21 @@ async function legendRankingChart(locationId, prefetched) {
 
   // ***** Font for Chart ***** //
   const fontChartString = {
-    family: "Helvetica Neue",
+    family: 'Helvetica Neue',
     size: 24,
   };
   const fontChartNumber = {
-    family: "Helvetica Neue",
+    family: 'Helvetica Neue',
     size: 20,
   };
 
   const configuration = {
-    type: "bar",
+    type: 'bar',
     data: {
       labels: labels,
       datasets: [
         {
-          label: "TROPHIES",
+          label: 'TROPHIES',
           data: dataTrophies,
           borderWidth: 0,
           backgroundColor: (ctx) => {
@@ -5001,7 +5001,7 @@ async function legendRankingChart(locationId, prefetched) {
           barPercentage: 0.8,
         },
         {
-          label: "ATTACK WINS",
+          label: 'ATTACK WINS',
           data: dataAttacks,
           borderWidth: 0,
           backgroundColor: (ctx) => {
@@ -5018,12 +5018,12 @@ async function legendRankingChart(locationId, prefetched) {
           },
           barThickness: 8,
           barPercentage: 0.4,
-          xAxisID: "x1",
+          xAxisID: 'x1',
         },
       ],
     },
     options: {
-      indexAxis: "y",
+      indexAxis: 'y',
       responsive: false,
       maintainAspectRatio: false,
       plugins: {
@@ -5034,13 +5034,13 @@ async function legendRankingChart(locationId, prefetched) {
           display: true,
           labels: {
             color: config.rgb.silverWhite,
-            font: { family: "sans-serif", size: 12, weight: "normal" },
+            font: { family: 'sans-serif', size: 12, weight: 'normal' },
           },
         },
       },
       scales: {
         x: {
-          position: "top",
+          position: 'top',
           min: 5000,
           ticks: { color: config.rgb.silverWhite, font: fontChartNumber },
           grid: { color: config.rgba.darkBlue },
@@ -5075,20 +5075,20 @@ async function legendRankingChart(locationId, prefetched) {
 
   const pngBuffer = await chartJSNodeCanvas.renderToBuffer(
     configuration,
-    "image/png",
+    'image/png',
   );
 
   // 合成キャンバスを作り、上部にSCフォントのタイトルを別描画
   const totalCanvas = Canvas.createCanvas(width, height + headerHeight);
-  const ctx = totalCanvas.getContext("2d");
+  const ctx = totalCanvas.getContext('2d');
   // 背景
   ctx.fillStyle = config.rgb.discordBlack;
   ctx.fillRect(0, 0, totalCanvas.width, totalCanvas.height);
 
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   ctx.fillStyle = config.rgb.silverWhite;
-  setFont(ctx, fontSize.smallMedium, FONTS.MAIN, "bold");
+  setFont(ctx, fontSize.smallMedium, FONTS.MAIN, 'bold');
   ctx.fillText(title, Math.floor(width / 2), Math.floor(headerHeight / 2));
 
   // Chart画像を貼り付け
@@ -5097,14 +5097,14 @@ async function legendRankingChart(locationId, prefetched) {
 
   // アカウント名と順位をChart画像とは別にtotalCanvas上に直接描画
   // JWCロゴを事前に読み込み（チーム所属がある行にだけ描画）
-  const imgJwcLogo = await Canvas.loadImage("./image/JWC.png");
+  const imgJwcLogo = await Canvas.loadImage('./image/JWC.png');
   const logoSize = Math.max(12, Math.floor(perRowHeight * 0.8));
   const logoMargin = 8;
   const namePositionX = chartPaddingLeft - 110; // 名前の位置
   const teamPositionX = chartPaddingLeft - 80; // チーム名の位置
   const rankPositionX = chartPaddingLeft - 10; // 順位の位置
 
-  ctx.textBaseline = "middle";
+  ctx.textBaseline = 'middle';
   ctx.fillStyle = config.rgb.silverWhite;
 
   labels.forEach((label, idx) => {
@@ -5115,15 +5115,15 @@ async function legendRankingChart(locationId, prefetched) {
     const totalY = headerHeight + chartY;
 
     // 名前を描画（右寄せ）- 絵文字・特殊文字対応
-    ctx.textAlign = "right";
+    ctx.textAlign = 'right';
     setFontName(ctx, fontSize.xxxxSmall, FONTS.JP);
-    const name = label ?? "";
+    const name = label ?? '';
     ctx.fillText(name, namePositionX, totalY);
 
     // チーム名を描画（左寄せ）
-    ctx.textAlign = "left";
+    ctx.textAlign = 'left';
     setFont(ctx, fontSize.xxxxSmall);
-    const team = teams[idx] ?? "";
+    const team = teams[idx] ?? '';
     if (team) {
       // JWCロゴをチーム名の左側に描画
       const logoX = teamPositionX - logoMargin - logoSize + 5;
@@ -5136,17 +5136,17 @@ async function legendRankingChart(locationId, prefetched) {
     }
 
     // 順位を描画（左寄せ）
-    ctx.textAlign = "center";
+    ctx.textAlign = 'center';
     setFont(ctx, fontSize.xxxxxSmall);
-    const rankPadded = ranks[idx] ?? "";
+    const rankPadded = ranks[idx] ?? '';
     if (rankPadded) ctx.fillText(`${rankPadded}`, rankPositionX, totalY);
   });
 
-  const finalPng = await totalCanvas.encode("png");
+  const finalPng = await totalCanvas.encode('png');
   const name =
     locationId == config_coc.locationId.japan
-      ? "legend_japan.png"
-      : "legend_global.png";
+      ? 'legend_japan.png'
+      : 'legend_global.png';
   const attachment = new AttachmentBuilder(finalPng, { name });
   return attachment;
 }
@@ -5197,13 +5197,13 @@ async function drawStars(
   myFont,
 ) {
   let imgStar = [];
-  let text = "";
+  let text = '';
   for (let i = 0; i < 3; i++) {
     imgStar[i] = await Canvas.loadImage(`./image/star${starFlag[i]}.png`);
     let posLR = null;
-    if (LorR == "left") {
+    if (LorR == 'left') {
       posLR = -lengthStar * (3 - i);
-    } else if (LorR == "right") {
+    } else if (LorR == 'right') {
       posLR = lengthStar * i;
     }
     ctx.drawImage(
@@ -5217,13 +5217,13 @@ async function drawStars(
 
   if (attack.destruction != 100) {
     let posLR = null;
-    if (LorR == "left") {
+    if (LorR == 'left') {
       posLR = -lengthStar * 0.4;
-    } else if (LorR == "right") {
+    } else if (LorR == 'right') {
       posLR = lengthStar * 2.6;
     }
     text = `${attack.destruction}`;
-    ctx.textAlign = "right";
+    ctx.textAlign = 'right';
     setFont(ctx, fontSizeLineup);
     ctx.fillText(
       text,
@@ -5231,7 +5231,7 @@ async function drawStars(
       posLineup + spacing * (mapPosition - 1) + lengthStar * 0.2,
     );
     text = `%`;
-    ctx.textAlign = "left";
+    ctx.textAlign = 'left';
     setFont(ctx, fontSizeLineup2nd);
     ctx.fillText(
       text,
@@ -5241,12 +5241,12 @@ async function drawStars(
   }
 
   let posOrder = null;
-  if (LorR == "left") {
+  if (LorR == 'left') {
     posOrder = -lengthStar * 3.6;
-  } else if (LorR == "right") {
+  } else if (LorR == 'right') {
     posOrder = lengthStar * 3.6;
   }
-  ctx.textAlign = "center";
+  ctx.textAlign = 'center';
   setFont(ctx, fontSizeLineup2nd);
   ctx.fillText(
     String(attack.order),

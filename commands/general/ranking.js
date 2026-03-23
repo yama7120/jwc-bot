@@ -794,7 +794,7 @@ async function jwcAttack(interaction, client) {
     if (dbValueClan) {
       embed.setAuthor({ name: dbValueClan.team_name, iconURL: dbValueClan.logo_url });
     } else {
-      console.warn(`jwcAttack: clan not found for abbr="${teamAbbr}"`);
+      console.warn(`jwcAttack: clan not found for abbr='${teamAbbr}'`);
     }
   };
 
@@ -920,7 +920,7 @@ async function jwcDefense(interaction, client) {
     if (dbValueClan) {
       embed.setAuthor({ name: dbValueClan.team_name, iconURL: dbValueClan.logo_url });
     } else {
-      console.warn(`jwcDefense: clan not found for abbr="${teamAbbr}"`);
+      console.warn(`jwcDefense: clan not found for abbr='${teamAbbr}'`);
     }
   };
 

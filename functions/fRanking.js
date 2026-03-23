@@ -1,37 +1,37 @@
-import config from "../config/config.js";
+import config from '../config/config.js';
 
 
 async function rankingMain(clientMongo) {
   // legend previous day [current season]
-  await rankingLegend(clientMongo, "current", "legendPreviousDay", "legend.current.trophies");
+  await rankingLegend(clientMongo, 'current', 'legendPreviousDay', 'legend.current.trophies');
 
   // legend trophies
-  await rankingLegend(clientMongo, "legendTrophies", "legendTrophies", "legend.legendTrophies");
+  await rankingLegend(clientMongo, 'legendTrophies', 'legendTrophies', 'legend.legendTrophies');
 
   // ** Hero Equipment **
   // 14時バッチのMongo負荷を下げるため、一時的に更新を無効化。
   const updateEquipmentRankings = false;
   if (updateEquipmentRankings) {
-    await rankingEquipment(clientMongo, "Total");
-    await rankingEquipment(clientMongo, "giantGauntlet");
-    await rankingEquipment(clientMongo, "spikyBall");
-    await rankingEquipment(clientMongo, "snakeBracelet");
-    await rankingEquipment(clientMongo, "frozenArrow");
-    await rankingEquipment(clientMongo, "magicMirror");
-    await rankingEquipment(clientMongo, "actionFigure");
-    await rankingEquipment(clientMongo, "fireball");
-    await rankingEquipment(clientMongo, "lavaloonPuppet");
-    await rankingEquipment(clientMongo, "rocketSpear");
-    await rankingEquipment(clientMongo, "electroBoots");
-    await rankingEquipment(clientMongo, "darkCrown");
-    await rankingEquipment(clientMongo, "meteorStaff");
+    await rankingEquipment(clientMongo, 'Total');
+    await rankingEquipment(clientMongo, 'giantGauntlet');
+    await rankingEquipment(clientMongo, 'spikyBall');
+    await rankingEquipment(clientMongo, 'snakeBracelet');
+    await rankingEquipment(clientMongo, 'frozenArrow');
+    await rankingEquipment(clientMongo, 'magicMirror');
+    await rankingEquipment(clientMongo, 'actionFigure');
+    await rankingEquipment(clientMongo, 'fireball');
+    await rankingEquipment(clientMongo, 'lavaloonPuppet');
+    await rankingEquipment(clientMongo, 'rocketSpear');
+    await rankingEquipment(clientMongo, 'electroBoots');
+    await rankingEquipment(clientMongo, 'darkCrown');
+    await rankingEquipment(clientMongo, 'meteorStaff');
   }
 
   // ** Others **
-  await rankingGeneral(clientMongo, "trophies");
-  await rankingGeneral(clientMongo, "warStars");
-  await rankingGeneral(clientMongo, "attackWins");
-  await rankingGeneral(clientMongo, "lvHeroes");
+  await rankingGeneral(clientMongo, 'trophies');
+  await rankingGeneral(clientMongo, 'warStars');
+  await rankingGeneral(clientMongo, 'attackWins');
+  await rankingGeneral(clientMongo, 'lvHeroes');
 
   return;
 }
@@ -55,7 +55,7 @@ async function rankingLegend(clientMongo, nameItem, nameRanking, key) {
   listing.date = new Date();
   listing.unixTime = Math.round(Date.now() / 1000);
 
-  await clientMongo.db("jwc").collection("ranking").updateOne({ name: nameRanking }, { $set: listing });
+  await clientMongo.db('jwc').collection('ranking').updateOne({ name: nameRanking }, { $set: listing });
 
   console.log(`Mongo: ${nameRanking} has been updated.`);
 
@@ -67,8 +67,8 @@ export { rankingLegend };
 async function rankingEquipment(clientMongo, nameItem) {
   let arr = [];
   let nameRanking = `equip${nameItem.charAt(0).toUpperCase() + nameItem.slice(1)}`;
-  if (nameItem == "Total") {
-    nameItem = "total";
+  if (nameItem == 'Total') {
+    nameItem = 'total';
   }
   const key = `lvHeroEquipment.${nameItem}.level`;
   let query = { status: true, [key]: { $gt: 0 } };
@@ -86,7 +86,7 @@ async function rankingEquipment(clientMongo, nameItem) {
   listing.date = new Date();
   listing.unixTime = Math.round(Date.now() / 1000);
 
-  await clientMongo.db("jwc").collection("ranking").updateOne({ name: nameRanking }, { $set: listing });
+  await clientMongo.db('jwc').collection('ranking').updateOne({ name: nameRanking }, { $set: listing });
 
   console.log(`Mongo: ${nameRanking} has been updated.`);
 
@@ -112,7 +112,7 @@ async function rankingGeneral(clientMongo, nameRanking) {
   listing.date = new Date();
   listing.unixTime = Math.round(Date.now() / 1000);
 
-  await clientMongo.db("jwc").collection("ranking").updateOne({ name: nameRanking }, { $set: listing });
+  await clientMongo.db('jwc').collection('ranking').updateOne({ name: nameRanking }, { $set: listing });
 
   console.log(`Mongo: ${nameRanking} has been updated.`);
 
@@ -122,7 +122,7 @@ export { rankingGeneral };
 
 
 async function getAccsFromMongo(clientMongo, query, options, sort) {
-  const cursor = clientMongo.db("jwc").collection("accounts").find(query, options).sort(sort);
+  const cursor = clientMongo.db('jwc').collection('accounts').find(query, options).sort(sort);
   const accs = await cursor.toArray();
   await cursor.close();
   return accs;
@@ -132,7 +132,7 @@ async function getAccsFromMongo(clientMongo, query, options, sort) {
 async function getDescriptionRankingJwcAttack(clientMongo, league, query, sort, teamAbbr, lvTH, nDisplay, flagSummary, flagRegularSeason, attackType) {
   const projection = { _id: 0, name: 1, homeClanAbbr: 1, pilotName: 1, stats: 1 };
   const options = { projection: projection };
-  const cursor = clientMongo.db("jwc").collection("accounts").find(query, options).sort(sort);
+  const cursor = clientMongo.db('jwc').collection('accounts').find(query, options).sort(sort);
   let accs = await cursor.toArray();
   await cursor.close();
 
@@ -140,28 +140,28 @@ async function getDescriptionRankingJwcAttack(clientMongo, league, query, sort, 
   let totalTriples = 0;
   let totalAvrgDestruction = 0;
 
-  let description = ["", "", "", "", ""];
+  let description = ['', '', '', '', ''];
   if (accs.length == 0) {
-    description[0] = "*no attack*";
+    description[0] = '*no attack*';
   }
   else {
     let arrDescription = [];
     for (let [index, acc] of accs.entries()) {
-      arrDescription[index] = "";
+      arrDescription[index] = '';
       if (flagSummary == true && acc.stats[league].attacks[attackType].nTriples == 0) { // summaryでは0の人は非表示
         totalAttacks += acc.stats[league].attacks[attackType].nAttacks;
         totalAvrgDestruction += acc.stats[league].attacks[attackType].avrgDestruction * acc.stats[league].attacks[attackType].nAttacks;
       }
       else {
-        if (teamAbbr == "entire") {
-          arrDescription[index] += `${index + 1}. ${config.emote.thn[lvTH]} **${acc.name.replace(/\*/g, "\\*").replace(/_/g, "\\_")}**`;
+        if (teamAbbr == 'entire') {
+          arrDescription[index] += `${index + 1}. ${config.emote.thn[lvTH]} **${acc.name.replace(/\*/g, '\\*').replace(/_/g, '\\_')}**`;
           arrDescription[index] += ` | ${acc.homeClanAbbr[config.leagueM[league]].toUpperCase()}\n`;
         }
         else {
-          arrDescription[index] += `${index + 1}. ${config.emote.thn[lvTH]} **${acc.name.replace(/\*/g, "\\*").replace(/_/g, "\\_")}**`;
+          arrDescription[index] += `${index + 1}. ${config.emote.thn[lvTH]} **${acc.name.replace(/\*/g, '\\*').replace(/_/g, '\\_')}**`;
           arrDescription[index] += ` | ${acc.pilotName[config.leagueM[league]]}\n`;
         }
-        if (flagRegularSeason == "true") {
+        if (flagRegularSeason == 'true') {
           arrDescription[index] += `**${acc.stats[league].attacks2[attackType].nTriples}**/${acc.stats[league].attacks2[attackType].nAttacks}`;
           arrDescription[index] += `  ( **${acc.stats[league].attacks2[attackType].rate}**% )`;
           arrDescription[index] += `  ${acc.stats[league].attacks2[attackType].avrgDestruction}%`;

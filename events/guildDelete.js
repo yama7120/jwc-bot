@@ -1,11 +1,11 @@
-import { Events, EmbedBuilder } from "discord.js";
-import config from "../config/config.js";
+import { Events, EmbedBuilder } from 'discord.js';
+import config from '../config/config.js';
 
 export default {
   name: Events.GuildDelete,
   async execute(guild, client) {
     const delEmbed = new EmbedBuilder()
-      .setTitle("サーバー退出")
+      .setTitle('サーバー退出')
       .setDescription(`${guild.name}(${guild.id})からBotが退出しました。`)
       .setThumbnail(guild.iconURL({ dynamic: true }))
       .setColor(config.color.main)

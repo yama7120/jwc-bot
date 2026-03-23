@@ -1,25 +1,25 @@
-import { EmbedBuilder, SlashCommandBuilder } from "discord.js";
-import config from "../../config/config.js";
-import * as functions from "../../functions/functions.js";
+import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import config from '../../config/config.js';
+import * as functions from '../../functions/functions.js';
 
-const nameCommand = "link_account_to_discord";
+const nameCommand = 'link_account_to_discord';
 let data = new SlashCommandBuilder()
   .setName(nameCommand)
-  .setDescription("no description")
+  .setDescription('no description')
   .addSubcommand((subcommand) =>
     subcommand
-      .setName("new")
-      .setDescription(config.command[nameCommand].subCommand["new"])
+      .setName('new')
+      .setDescription(config.command[nameCommand].subCommand['new'])
       .addStringOption((option) =>
         option
-          .setName("account")
-          .setDescription("プレイヤータグ")
+          .setName('account')
+          .setDescription('プレイヤータグ')
           .setRequired(true),
       )
       .addUserOption((option) =>
         option
-          .setName("pilot_dc")
-          .setDescription("使用者の discord アカウント")
+          .setName('pilot_dc')
+          .setDescription('使用者の discord アカウント')
           .setRequired(true),
       ),
   );
@@ -30,16 +30,16 @@ export default {
   async autocomplete(interaction, client) {
     let focusedOption = interaction.options.getFocused(true);
     let focusedValue = interaction.options.getFocused();
-    if (focusedOption.name === "account") {
+    if (focusedOption.name === 'account') {
       const query = {
-        "pilotDC.id": interaction.user.id,
+        'pilotDC.id': interaction.user.id,
         status: { $ne: false },
       };
       const options = { projection: { stats: 0, attacks: 0, defenses: 0 } };
       const sort = { townHallLevel: -1 };
       const cursor = client.clientMongo
-        .db("jwc")
-        .collection("accounts")
+        .db('jwc')
+        .collection('accounts')
         .find(query, options)
         .sort(sort);
       let accs = await cursor.toArray();
@@ -64,39 +64,39 @@ export default {
   },
 
   async execute(interaction, client) {
-    let iPlayerTag = await interaction.options.getString("account");
-    if (iPlayerTag.includes("#") == false) {
-      iPlayerTag = "#" + iPlayerTag;
+    let iPlayerTag = await interaction.options.getString('account');
+    if (iPlayerTag.includes('#') == false) {
+      iPlayerTag = '#' + iPlayerTag;
     }
-    const iPilotDc = await interaction.options.getUser("pilot_dc");
+    const iPilotDc = await interaction.options.getUser('pilot_dc');
 
     const iSenderId = interaction.user.id;
 
-    let title = "";
-    let description = "";
+    let title = '';
+    let description = '';
     let embed = new EmbedBuilder();
     embed.setColor(config.color.main);
     embed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
     embed.setTimestamp();
 
     let mongoAcc = await client.clientMongo
-      .db("jwc")
-      .collection("accounts")
+      .db('jwc')
+      .collection('accounts')
       .findOne({ tag: iPlayerTag });
 
-    if (interaction.options.getSubcommand() == "new") {
+    if (interaction.options.getSubcommand() == 'new') {
       if (!mongoAcc) {
-        let content = "* You can link the registered account only.\n";
+        let content = '* You can link the registered account only.\n';
         content += `* Please run </register_acc new:${config.command.register_acc.id}> to register your account.\n`;
         await interaction.followUp({ content: content, ephemeral: true });
         return;
       } else {
         let resultScan = await functions.scanAcc(client.clientCoc, iPlayerTag);
 
-        title = await functions.getAccInfoTitle(resultScan.scPlayer, "long");
+        title = await functions.getAccInfoTitle(resultScan.scPlayer, 'long');
         embed.setTitle(title);
 
-        description += await functions.getAccInfoDescriptionMain(resultScan.scPlayer, "long");
+        description += await functions.getAccInfoDescriptionMain(resultScan.scPlayer, 'long');
 
         let pilotDC = mongoAcc.pilotDC || iPilotDc;
         if (iPilotDc.id == config.clientId) {
@@ -117,8 +117,8 @@ export default {
             // 新規登録
             pilotDC.avatarUrl = `https://cdn.discordapp.com/avatars/${pilotDC.id}/${pilotDC.avatar}.png`;
             await client.clientMongo
-              .db("jwc")
-              .collection("accounts")
+              .db('jwc')
+              .collection('accounts')
               .updateOne({ tag: iPlayerTag }, { $set: { pilotDC: pilotDC } });
           }
         }

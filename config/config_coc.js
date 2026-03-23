@@ -8,352 +8,352 @@ export default {
     leagueTiers: [
       {
         id: 105000000,
-        name: "Unranked",
+        name: 'Unranked',
         nBattles: 0,
-        emote: "<:ranked_battles_0:1424754213258264767>",
+        emote: '<:ranked_battles_0:1424754213258264767>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/yyYo5DUFeFBZvmMEQh0ZxvG-1sUOZ_S3kDMB7RllXX0.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/yyYo5DUFeFBZvmMEQh0ZxvG-1sUOZ_S3kDMB7RllXX0.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/yyYo5DUFeFBZvmMEQh0ZxvG-1sUOZ_S3kDMB7RllXX0.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/yyYo5DUFeFBZvmMEQh0ZxvG-1sUOZ_S3kDMB7RllXX0.png'
         }
       },
       {
         id: 105000001,
-        name: "Skeleton League 1",
+        name: 'Skeleton League 1',
         nBattles: 6,
-        emote: "<:ranked_battles_1:1424756401741234296>",
+        emote: '<:ranked_battles_1:1424756401741234296>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/CiSJYHyhMuloCpIIJ3n5-xCnRWrEd9vcq_zu6Ahkl3o.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/CiSJYHyhMuloCpIIJ3n5-xCnRWrEd9vcq_zu6Ahkl3o.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/CiSJYHyhMuloCpIIJ3n5-xCnRWrEd9vcq_zu6Ahkl3o.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/CiSJYHyhMuloCpIIJ3n5-xCnRWrEd9vcq_zu6Ahkl3o.png'
         }
       },
       {
         id: 105000002,
-        name: "Skeleton League 2",
+        name: 'Skeleton League 2',
         nBattles: 6,
-        emote: "<:ranked_battles_2:1424756415779700889>",
+        emote: '<:ranked_battles_2:1424756415779700889>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/CmM-Tihn6ojPGJstmTK_HC-QairrpYLyRhdKhQjkacQ.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/CmM-Tihn6ojPGJstmTK_HC-QairrpYLyRhdKhQjkacQ.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/CmM-Tihn6ojPGJstmTK_HC-QairrpYLyRhdKhQjkacQ.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/CmM-Tihn6ojPGJstmTK_HC-QairrpYLyRhdKhQjkacQ.png'
         }
       },
       {
         id: 105000003,
-        name: "Skeleton League 3",
+        name: 'Skeleton League 3',
         nBattles: 6,
-        emote: "<:ranked_battles_3:1424756429923029123>",
+        emote: '<:ranked_battles_3:1424756429923029123>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/YMnWU25Xs2SvtAkVS2WDDbcUQY-PTfCK9OSvCKJnwJU.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/YMnWU25Xs2SvtAkVS2WDDbcUQY-PTfCK9OSvCKJnwJU.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/YMnWU25Xs2SvtAkVS2WDDbcUQY-PTfCK9OSvCKJnwJU.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/YMnWU25Xs2SvtAkVS2WDDbcUQY-PTfCK9OSvCKJnwJU.png'
         }
       },
       {
         id: 105000004,
-        name: "Barbarian League 4",
+        name: 'Barbarian League 4',
         nBattles: 8,
-        emote: "<:ranked_battles_4:1424756449493520496>",
+        emote: '<:ranked_battles_4:1424756449493520496>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/CoTrW7nhyiNIDCI4WHUK-0BuhOxibwd_tfASdtmMWFE.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/CoTrW7nhyiNIDCI4WHUK-0BuhOxibwd_tfASdtmMWFE.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/CoTrW7nhyiNIDCI4WHUK-0BuhOxibwd_tfASdtmMWFE.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/CoTrW7nhyiNIDCI4WHUK-0BuhOxibwd_tfASdtmMWFE.png'
         }
       },
       {
         id: 105000005,
-        name: "Barbarian League 5",
+        name: 'Barbarian League 5',
         nBattles: 8,
-        emote: "<:ranked_battles_5:1424756463125004339>",
+        emote: '<:ranked_battles_5:1424756463125004339>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/7Alm6gwA1lYoRn5m8vrXAfbTKIK2fFU7OxfYhYwWJYM.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/7Alm6gwA1lYoRn5m8vrXAfbTKIK2fFU7OxfYhYwWJYM.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/7Alm6gwA1lYoRn5m8vrXAfbTKIK2fFU7OxfYhYwWJYM.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/7Alm6gwA1lYoRn5m8vrXAfbTKIK2fFU7OxfYhYwWJYM.png'
         }
       },
       {
         id: 105000006,
-        name: "Barbarian League 6",
+        name: 'Barbarian League 6',
         nBattles: 8,
-        emote: "<:ranked_battles_6:1424756480669646868>",
+        emote: '<:ranked_battles_6:1424756480669646868>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/pQHVG1p0IboE8Ggp0U1YR7U8dWhVn4YSS1zSPH61F0I.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/pQHVG1p0IboE8Ggp0U1YR7U8dWhVn4YSS1zSPH61F0I.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/pQHVG1p0IboE8Ggp0U1YR7U8dWhVn4YSS1zSPH61F0I.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/pQHVG1p0IboE8Ggp0U1YR7U8dWhVn4YSS1zSPH61F0I.png'
         }
       },
       {
         id: 105000007,
-        name: "Archer League 7",
+        name: 'Archer League 7',
         nBattles: 8,
-        emote: "<:ranked_battles_7:1424756493957201980>",
+        emote: '<:ranked_battles_7:1424756493957201980>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/x1c7byHQmOHQVKGxAn1sqOW2XOCzTYW-e6OKjq-FBco.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/x1c7byHQmOHQVKGxAn1sqOW2XOCzTYW-e6OKjq-FBco.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/x1c7byHQmOHQVKGxAn1sqOW2XOCzTYW-e6OKjq-FBco.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/x1c7byHQmOHQVKGxAn1sqOW2XOCzTYW-e6OKjq-FBco.png'
         }
       },
       {
         id: 105000008,
-        name: "Archer League 8",
+        name: 'Archer League 8',
         nBattles: 8,
-        emote: "<:ranked_battles_8:1424756507114864761>",
+        emote: '<:ranked_battles_8:1424756507114864761>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/lzneKpnJ_ADL1Xb1rceH7-svqRN1UaLnI7ldd8BbyxI.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/lzneKpnJ_ADL1Xb1rceH7-svqRN1UaLnI7ldd8BbyxI.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/lzneKpnJ_ADL1Xb1rceH7-svqRN1UaLnI7ldd8BbyxI.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/lzneKpnJ_ADL1Xb1rceH7-svqRN1UaLnI7ldd8BbyxI.png'
         }
       },
       {
         id: 105000009,
-        name: "Archer League 9",
+        name: 'Archer League 9',
         nBattles: 8,
-        emote: "<:ranked_battles_9:1424756520247099512>",
+        emote: '<:ranked_battles_9:1424756520247099512>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/ieEdz9Mqbo7g9iJfXwTnIh7Iwz-37aPEmWma1ENEwXE.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/ieEdz9Mqbo7g9iJfXwTnIh7Iwz-37aPEmWma1ENEwXE.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/ieEdz9Mqbo7g9iJfXwTnIh7Iwz-37aPEmWma1ENEwXE.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/ieEdz9Mqbo7g9iJfXwTnIh7Iwz-37aPEmWma1ENEwXE.png'
         }
       },
       {
         id: 105000010,
-        name: "Wizard League 10",
+        name: 'Wizard League 10',
         nBattles: 8,
-        emote: "<:ranked_battles_10:1424756534960980070>",
+        emote: '<:ranked_battles_10:1424756534960980070>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/3kJYaYpDwKF8AEkwRLkm-947_t2mAhpEQcZJYulPPIA.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/3kJYaYpDwKF8AEkwRLkm-947_t2mAhpEQcZJYulPPIA.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/3kJYaYpDwKF8AEkwRLkm-947_t2mAhpEQcZJYulPPIA.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/3kJYaYpDwKF8AEkwRLkm-947_t2mAhpEQcZJYulPPIA.png'
         }
       },
       {
         id: 105000011,
-        name: "Wizard League 11",
+        name: 'Wizard League 11',
         nBattles: 8,
-        emote: "<:ranked_battles_11:1424756548290478111>",
+        emote: '<:ranked_battles_11:1424756548290478111>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/XazuJHG2wjBq39KEA4g4hh1nKJQwVO0fRoVDPHvWwAY.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/XazuJHG2wjBq39KEA4g4hh1nKJQwVO0fRoVDPHvWwAY.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/XazuJHG2wjBq39KEA4g4hh1nKJQwVO0fRoVDPHvWwAY.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/XazuJHG2wjBq39KEA4g4hh1nKJQwVO0fRoVDPHvWwAY.png'
         }
       },
       {
         id: 105000012,
-        name: "Wizard League 12",
+        name: 'Wizard League 12',
         nBattles: 8,
-        emote: "<:ranked_battles_12:1424756563981111367>",
+        emote: '<:ranked_battles_12:1424756563981111367>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/A_ZoGbh1g8wYRWygsQ_wMgbVz8GXvvfavKwlSx8C8PQ.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/A_ZoGbh1g8wYRWygsQ_wMgbVz8GXvvfavKwlSx8C8PQ.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/A_ZoGbh1g8wYRWygsQ_wMgbVz8GXvvfavKwlSx8C8PQ.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/A_ZoGbh1g8wYRWygsQ_wMgbVz8GXvvfavKwlSx8C8PQ.png'
         }
       },
       {
         id: 105000013,
-        name: "Valkyrie League 13",
+        name: 'Valkyrie League 13',
         nBattles: 10,
-        emote: "<:ranked_battles_13:1424756576987779132>",
+        emote: '<:ranked_battles_13:1424756576987779132>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/6BwmbzkNm6p2unZonTauFQ_683uNl4NYtoOXJmEs78c.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/6BwmbzkNm6p2unZonTauFQ_683uNl4NYtoOXJmEs78c.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/6BwmbzkNm6p2unZonTauFQ_683uNl4NYtoOXJmEs78c.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/6BwmbzkNm6p2unZonTauFQ_683uNl4NYtoOXJmEs78c.png'
         }
       },
       {
         id: 105000014,
-        name: "Valkyrie League 14",
+        name: 'Valkyrie League 14',
         nBattles: 10,
-        emote: "<:ranked_battles_14:1424756588970905692>",
+        emote: '<:ranked_battles_14:1424756588970905692>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/7AbbZbiV6whmfa6CZtqt6Ml4NgFH1B-UqCxc59ziqfk.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/7AbbZbiV6whmfa6CZtqt6Ml4NgFH1B-UqCxc59ziqfk.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/7AbbZbiV6whmfa6CZtqt6Ml4NgFH1B-UqCxc59ziqfk.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/7AbbZbiV6whmfa6CZtqt6Ml4NgFH1B-UqCxc59ziqfk.png'
         }
       },
       {
         id: 105000015,
-        name: "Valkyrie League 15",
+        name: 'Valkyrie League 15',
         nBattles: 10,
-        emote: "<:ranked_battles_15:1424756602766098544>",
+        emote: '<:ranked_battles_15:1424756602766098544>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/vT-0ssHYx5zJbBbbjB5NHPXnlHk76MDxJmG7iKmghc4.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/vT-0ssHYx5zJbBbbjB5NHPXnlHk76MDxJmG7iKmghc4.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/vT-0ssHYx5zJbBbbjB5NHPXnlHk76MDxJmG7iKmghc4.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/vT-0ssHYx5zJbBbbjB5NHPXnlHk76MDxJmG7iKmghc4.png'
         }
       },
       {
         id: 105000016,
-        name: "Witch League 16",
+        name: 'Witch League 16',
         nBattles: 10,
-        emote: "<:ranked_battles_16:1424756617177727006>",
+        emote: '<:ranked_battles_16:1424756617177727006>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/a3zg3PSqri2WrWD8tGzKs0hJ5OrND1Rx1SJ45f5O0gE.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/a3zg3PSqri2WrWD8tGzKs0hJ5OrND1Rx1SJ45f5O0gE.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/a3zg3PSqri2WrWD8tGzKs0hJ5OrND1Rx1SJ45f5O0gE.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/a3zg3PSqri2WrWD8tGzKs0hJ5OrND1Rx1SJ45f5O0gE.png'
         }
       },
       {
         id: 105000017,
-        name: "Witch League 17",
+        name: 'Witch League 17',
         nBattles: 10,
-        emote: "<:ranked_battles_17:1424756629928149032>",
+        emote: '<:ranked_battles_17:1424756629928149032>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/3mEMvpajLceJ3EKu7u_JIh_cOEsT7wyh701zum9hqCY.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/3mEMvpajLceJ3EKu7u_JIh_cOEsT7wyh701zum9hqCY.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/3mEMvpajLceJ3EKu7u_JIh_cOEsT7wyh701zum9hqCY.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/3mEMvpajLceJ3EKu7u_JIh_cOEsT7wyh701zum9hqCY.png'
         }
       },
       {
         id: 105000018,
-        name: "Witch League 18",
+        name: 'Witch League 18',
         nBattles: 10,
-        emote: "<:ranked_battles_18:1424756643337338931>",
+        emote: '<:ranked_battles_18:1424756643337338931>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/GeLamlTvRYNnZp5lEW64pyaORN30rCdrxTjU7oJoTN8.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/GeLamlTvRYNnZp5lEW64pyaORN30rCdrxTjU7oJoTN8.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/GeLamlTvRYNnZp5lEW64pyaORN30rCdrxTjU7oJoTN8.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/GeLamlTvRYNnZp5lEW64pyaORN30rCdrxTjU7oJoTN8.png'
         }
       },
       {
         id: 105000019,
-        name: "Golem League 19",
+        name: 'Golem League 19',
         nBattles: 12,
-        emote: "<:ranked_battles_19:1424756655517863946>",
+        emote: '<:ranked_battles_19:1424756655517863946>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/yS8XBv_a_SNtCpcofsWMFaojRNwO504Py7HyDCBCjYU.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/yS8XBv_a_SNtCpcofsWMFaojRNwO504Py7HyDCBCjYU.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/yS8XBv_a_SNtCpcofsWMFaojRNwO504Py7HyDCBCjYU.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/yS8XBv_a_SNtCpcofsWMFaojRNwO504Py7HyDCBCjYU.png'
         }
       },
       {
         id: 105000020,
-        name: "Golem League 20",
+        name: 'Golem League 20',
         nBattles: 12,
-        emote: "<:ranked_battles_20:1424756678334873690>",
+        emote: '<:ranked_battles_20:1424756678334873690>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/uizNRh8glQZuAbLdCa-EQSf3oJnge3nqoXHjtQ6O8pw.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/uizNRh8glQZuAbLdCa-EQSf3oJnge3nqoXHjtQ6O8pw.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/uizNRh8glQZuAbLdCa-EQSf3oJnge3nqoXHjtQ6O8pw.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/uizNRh8glQZuAbLdCa-EQSf3oJnge3nqoXHjtQ6O8pw.png'
         }
       },
       {
         id: 105000021,
-        name: "Golem League 21",
+        name: 'Golem League 21',
         nBattles: 12,
-        emote: "<:ranked_battles_21:1424756695715942521>",
+        emote: '<:ranked_battles_21:1424756695715942521>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/WkqDvnK0CXI-Nc0TNTKG_fSuzRYoLRC54HFOdMCxVTI.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/WkqDvnK0CXI-Nc0TNTKG_fSuzRYoLRC54HFOdMCxVTI.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/WkqDvnK0CXI-Nc0TNTKG_fSuzRYoLRC54HFOdMCxVTI.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/WkqDvnK0CXI-Nc0TNTKG_fSuzRYoLRC54HFOdMCxVTI.png'
         }
       },
       {
         id: 105000022,
-        name: "P.E.K.K.A League 22",
+        name: 'P.E.K.K.A League 22',
         nBattles: 14,
-        emote: "<:ranked_battles_22:1424756706872655892>",
+        emote: '<:ranked_battles_22:1424756706872655892>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/iTWXPUUFQy0uEb7NDpMTyzGMFOJvlC4SLAqlHYgC8do.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/iTWXPUUFQy0uEb7NDpMTyzGMFOJvlC4SLAqlHYgC8do.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/iTWXPUUFQy0uEb7NDpMTyzGMFOJvlC4SLAqlHYgC8do.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/iTWXPUUFQy0uEb7NDpMTyzGMFOJvlC4SLAqlHYgC8do.png'
         }
       },
       {
         id: 105000023,
-        name: "P.E.K.K.A League 23",
+        name: 'P.E.K.K.A League 23',
         nBattles: 14,
-        emote: "<:ranked_battles_23:1424756718855786496>",
+        emote: '<:ranked_battles_23:1424756718855786496>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/0eDMQmsiZ0gs8xzViGfVETnYjwzgELTKwYhH3izevT4.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/0eDMQmsiZ0gs8xzViGfVETnYjwzgELTKwYhH3izevT4.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/0eDMQmsiZ0gs8xzViGfVETnYjwzgELTKwYhH3izevT4.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/0eDMQmsiZ0gs8xzViGfVETnYjwzgELTKwYhH3izevT4.png'
         }
       },
       {
         id: 105000024,
-        name: "P.E.K.K.A League 24",
+        name: 'P.E.K.K.A League 24',
         nBattles: 12,
-        emote: "<:ranked_battles_24:1424756730990034984>",
+        emote: '<:ranked_battles_24:1424756730990034984>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/vxV7LI0votsz0_n-8lW-Lag96D5HwKsEgEk_7247zC4.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/vxV7LI0votsz0_n-8lW-Lag96D5HwKsEgEk_7247zC4.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/vxV7LI0votsz0_n-8lW-Lag96D5HwKsEgEk_7247zC4.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/vxV7LI0votsz0_n-8lW-Lag96D5HwKsEgEk_7247zC4.png'
         }
       },
       {
         id: 105000025,
-        name: "Titan League 25",
+        name: 'Titan League 25',
         nBattles: 18,
-        emote: "<:ranked_battles_25:1424756742016995440>",
+        emote: '<:ranked_battles_25:1424756742016995440>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/JLqVXdNkAGjD_yqMRDgu9KK-hDrulNPjsKU4EugHqX8.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/JLqVXdNkAGjD_yqMRDgu9KK-hDrulNPjsKU4EugHqX8.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/JLqVXdNkAGjD_yqMRDgu9KK-hDrulNPjsKU4EugHqX8.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/JLqVXdNkAGjD_yqMRDgu9KK-hDrulNPjsKU4EugHqX8.png'
         }
       },
       {
         id: 105000026,
-        name: "Titan League 26",
+        name: 'Titan League 26',
         nBattles: 14,
-        emote: "<:ranked_battles_26:1424756754457300992>",
+        emote: '<:ranked_battles_26:1424756754457300992>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/yIfqSgrhiYRcuMbAPCoeCj1FTmfylCLxnrAljEZc8K0.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/yIfqSgrhiYRcuMbAPCoeCj1FTmfylCLxnrAljEZc8K0.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/yIfqSgrhiYRcuMbAPCoeCj1FTmfylCLxnrAljEZc8K0.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/yIfqSgrhiYRcuMbAPCoeCj1FTmfylCLxnrAljEZc8K0.png'
         }
       },
       {
         id: 105000027,
-        name: "Titan League 27",
+        name: 'Titan League 27',
         nBattles: 14,
-        emote: "<:ranked_battles_27:1424756767262248960>",
+        emote: '<:ranked_battles_27:1424756767262248960>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/1AhObOl55grQIWnGmn1J9qMWq5pmRA3aBObfYkQEjko.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/1AhObOl55grQIWnGmn1J9qMWq5pmRA3aBObfYkQEjko.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/1AhObOl55grQIWnGmn1J9qMWq5pmRA3aBObfYkQEjko.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/1AhObOl55grQIWnGmn1J9qMWq5pmRA3aBObfYkQEjko.png'
         }
       },
       {
         id: 105000028,
-        name: "Dragon League 28",
+        name: 'Dragon League 28',
         nBattles: 18,
-        emote: "<:ranked_battles_28:1424756780331700316>",
+        emote: '<:ranked_battles_28:1424756780331700316>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/YCZ7O_3_c8eCBYvX-92qiWeLc6Md6eNJ5A8O-2vUg7I.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/YCZ7O_3_c8eCBYvX-92qiWeLc6Md6eNJ5A8O-2vUg7I.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/YCZ7O_3_c8eCBYvX-92qiWeLc6Md6eNJ5A8O-2vUg7I.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/YCZ7O_3_c8eCBYvX-92qiWeLc6Md6eNJ5A8O-2vUg7I.png'
         }
       },
       {
         id: 105000029,
-        name: "Dragon League 29",
+        name: 'Dragon League 29',
         nBattles: 18,
-        emote: "<:ranked_battles_29:1424756793095229601>",
+        emote: '<:ranked_battles_29:1424756793095229601>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/DIMeRH3N4lrNObA3zAmk_eUin8nvNeLR89qYznnA--s.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/DIMeRH3N4lrNObA3zAmk_eUin8nvNeLR89qYznnA--s.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/DIMeRH3N4lrNObA3zAmk_eUin8nvNeLR89qYznnA--s.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/DIMeRH3N4lrNObA3zAmk_eUin8nvNeLR89qYznnA--s.png'
         }
       },
       {
         id: 105000030,
-        name: "Dragon League 30",
+        name: 'Dragon League 30',
         nBattles: 18,
-        emote: "<:ranked_battles_30:1424756805992714240>",
+        emote: '<:ranked_battles_30:1424756805992714240>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/g7m9aF8YoYj9b0olPsyT4eUIxyYEmkqr53wYxWmzpE4.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/g7m9aF8YoYj9b0olPsyT4eUIxyYEmkqr53wYxWmzpE4.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/g7m9aF8YoYj9b0olPsyT4eUIxyYEmkqr53wYxWmzpE4.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/g7m9aF8YoYj9b0olPsyT4eUIxyYEmkqr53wYxWmzpE4.png'
         }
       },
       {
         id: 105000031,
-        name: "Electro League 31",
+        name: 'Electro League 31',
         nBattles: 24,
-        emote: "<:ranked_battles_31:1424756818206527529>",
+        emote: '<:ranked_battles_31:1424756818206527529>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/qVORiRguZ-xMq8L0g7rE1-rZuiA-lKlI8VKuMndRy4w.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/qVORiRguZ-xMq8L0g7rE1-rZuiA-lKlI8VKuMndRy4w.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/qVORiRguZ-xMq8L0g7rE1-rZuiA-lKlI8VKuMndRy4w.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/qVORiRguZ-xMq8L0g7rE1-rZuiA-lKlI8VKuMndRy4w.png'
         }
       },
       {
         id: 105000032,
-        name: "Electro League 32",
+        name: 'Electro League 32',
         nBattles: 24,
-        emote: "<:ranked_battles_32:1424756831565123645>",
+        emote: '<:ranked_battles_32:1424756831565123645>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/iX8uNhG6jBcQATWFS8a0gtidGy9O1PRYtXZZMTtUK3U.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/iX8uNhG6jBcQATWFS8a0gtidGy9O1PRYtXZZMTtUK3U.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/iX8uNhG6jBcQATWFS8a0gtidGy9O1PRYtXZZMTtUK3U.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/iX8uNhG6jBcQATWFS8a0gtidGy9O1PRYtXZZMTtUK3U.png'
         }
       },
       {
         id: 105000033,
-        name: "Electro League 33",
+        name: 'Electro League 33',
         nBattles: 24,
-        emote: "<:ranked_battles_33:1424756844865523864>",
+        emote: '<:ranked_battles_33:1424756844865523864>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/VFqkaQimExWtSmIf9PC8WEpj4Vd58oLjPWyZqfVb5VE.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/VFqkaQimExWtSmIf9PC8WEpj4Vd58oLjPWyZqfVb5VE.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/VFqkaQimExWtSmIf9PC8WEpj4Vd58oLjPWyZqfVb5VE.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/VFqkaQimExWtSmIf9PC8WEpj4Vd58oLjPWyZqfVb5VE.png'
         }
       },
       {
         id: 105000034,
-        name: "Legend League",
+        name: 'Legend League',
         nBattles: 8,
-        emote: "<:ranked_battles_34:1424756857762746541>",
+        emote: '<:ranked_battles_34:1424756857762746541>',
         iconUrls: {
-          small: "https://api-assets.clashofclans.com/leaguetiers/125/BvEu_UE53UzADvTRiU9AdyOrlvb1RqvBmMau_uX6xm0.png",
-          large: "https://api-assets.clashofclans.com/leaguetiers/326/BvEu_UE53UzADvTRiU9AdyOrlvb1RqvBmMau_uX6xm0.png"
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/BvEu_UE53UzADvTRiU9AdyOrlvb1RqvBmMau_uX6xm0.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/BvEu_UE53UzADvTRiU9AdyOrlvb1RqvBmMau_uX6xm0.png'
         }
       }
     ],

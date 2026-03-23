@@ -1,16 +1,16 @@
-import { EmbedBuilder } from "discord.js";
+import { EmbedBuilder } from 'discord.js';
 
-import config from "../config/config.js";
-import schedule from "../config/schedule.js";
-import * as fScore from "./fScore.js";
-import * as functions from "./functions.js";
-import * as fMongo from "./fMongo.js";
-import * as fCanvas from "./fCanvas.js";
+import config from '../config/config.js';
+import schedule from '../config/schedule.js';
+import * as fScore from './fScore.js';
+import * as functions from './functions.js';
+import * as fMongo from './fMongo.js';
+import * as fCanvas from './fCanvas.js';
 
 /*
 async function autoUpdate(client, league, week) {
-  const cursor = client.clientMongo.db("jwc").collection("wars")
-    .find({ season: config.season[league], league: league, week: week, "result.state": { $ne: "warEnded" } });
+  const cursor = client.clientMongo.db('jwc').collection('wars')
+    .find({ season: config.season[league], league: league, week: week, 'result.state': { $ne: 'warEnded' } });
   let mongoWars = await cursor.toArray();
   await cursor.close();
   let sumFlagUpdate = 0;
@@ -30,8 +30,8 @@ export { autoUpdate };
 */
 
 async function getClanWarUpdateDB(client, mongoWar) {
-  let clanWar = "";
-  let clanWarOpp = "";
+  let clanWar = '';
+  let clanWarOpp = '';
   let flagError = 0;
 
   const league = mongoWar.league;
@@ -41,8 +41,8 @@ async function getClanWarUpdateDB(client, mongoWar) {
   const clanAbbrOpp = mongoWar.opponent_abbr;
 
   const mongoClan = await client.clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne(
       { clan_abbr: mongoWar.clan_abbr },
       {
@@ -58,8 +58,8 @@ async function getClanWarUpdateDB(client, mongoWar) {
       },
     );
   const mongoClanOpp = await client.clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne(
       { clan_abbr: mongoWar.opponent_abbr },
       {
@@ -82,7 +82,7 @@ async function getClanWarUpdateDB(client, mongoWar) {
 
   // db確認 - 終わった対戦は更新しない
   if (mongoWar.clan_war && 
-      (mongoWar.clan_war?.state === "warEnded" || mongoWar.result?.state === "warEnded")) {
+      (mongoWar.clan_war?.state === 'warEnded' || mongoWar.result?.state === 'warEnded')) {
     //console.dir(`[${league}-w${week}] warEnded: ${teamName} vs ${teamNameOpp}`);
     return 0;
   }
@@ -92,17 +92,17 @@ async function getClanWarUpdateDB(client, mongoWar) {
     //clanWar = await client.clientCoc.getCurrentWar(clanTag);
   } catch (error) {
     //console.error(error);
-    if (error.reason == "inMaintenance") {
+    if (error.reason == 'inMaintenance') {
       console.dir(
         `[${league}-w${week}] inMaintenance: ${teamName} vs ${teamNameOpp}`,
       );
       return 0;
-    } else if (error.reason == "notFound") {
+    } else if (error.reason == 'notFound') {
       console.dir(
         `[${league}-w${week}] notFound: ${teamName} vs ${teamNameOpp}`,
       );
       return 0;
-    } else if (error.reason == "requestThrottled") {
+    } else if (error.reason == 'requestThrottled') {
       console.dir(
         `[${league}-w${week}] requestThrottled: ${teamName} vs ${teamNameOpp}`,
       );
@@ -120,17 +120,17 @@ async function getClanWarUpdateDB(client, mongoWar) {
     //clanWarOpp = await client.clientCoc.getCurrentWar(clanTagOpp);
   } catch (error) {
     //console.error(error);
-    if (error.reason == "inMaintenance") {
+    if (error.reason == 'inMaintenance') {
       console.dir(
         `[${league}-w${week}] inMaintenance: ${teamName} vs ${teamNameOpp}`,
       );
       return 0;
-    } else if (error.reason == "notFound") {
+    } else if (error.reason == 'notFound') {
       console.dir(
         `[${league}-w${week}] notFound: ${teamName} vs ${teamNameOpp}`,
       );
       return 0;
-    } else if (error.reason == "requestThrottled") {
+    } else if (error.reason == 'requestThrottled') {
       console.dir(
         `[${league}-w${week}] requestThrottled: ${teamName} vs ${teamNameOpp}`,
       );
@@ -149,7 +149,7 @@ async function getClanWarUpdateDB(client, mongoWar) {
   if (clanWar == null || clanWarOpp == null) {
     console.error(`[${league}-w${week}] erorr2: ${teamName} vs ${teamNameOpp}`);
     return 0;
-  } else if (clanWar.state == "notInWar" || clanWarOpp.state == "notInWar") {
+  } else if (clanWar.state == 'notInWar' || clanWarOpp.state == 'notInWar') {
     //console.dir(`[${league}-w${week}] notInWar: ${teamName} vs ${teamNameOpp}`);
     return 0;
   } else {
@@ -158,17 +158,17 @@ async function getClanWarUpdateDB(client, mongoWar) {
       clanWarOpp.opponent.tag == clanWar.clan.tag
     ) {
       if (mongoWar.war_type == null) {
-        if (league == "j1" || league == "j2") {
+        if (league == 'j1' || league == 'j2') {
           //if (clanWar.clan.members.length < config.minSize[league]) {
           if (clanWar.clan.members.length < 15) {
             return flagUpdate;
           }
-        } else if (league == "swiss" || league == "mix" || league == "five") {
+        } else if (league == 'swiss' || league == 'mix' || league == 'five') {
           if (clanWar.clan.members.length != config.minSize[league]) {
             return flagUpdate;
           }
         }
-      } else if (mongoWar.war_type == "tieBreak") {
+      } else if (mongoWar.war_type == 'tieBreak') {
         if (clanWar.clan.members.length != 5) {
           return flagUpdate;
         }
@@ -177,7 +177,7 @@ async function getClanWarUpdateDB(client, mongoWar) {
 
       // 更新前攻撃回数取得
       const nAtBefore = { clan: 0, opponent: 0 };
-      const isWarActive = ["inWar", "warEnded"].includes(clanWar.state);
+      const isWarActive = ['inWar', 'warEnded'].includes(clanWar.state);
       const hasValidResult =
         mongoWar.result?.clan?.allAttackTypes?.nAt?.total != null &&
         mongoWar.result?.opponent?.allAttackTypes?.nAt?.total != null;
@@ -189,7 +189,7 @@ async function getClanWarUpdateDB(client, mongoWar) {
       // state 判定 -> return
       // ********** マッチング完了（初回） -> データベース更新、通知 **********
       if (!mongoWar.result) {
-        if (client != "noClient") {
+        if (client != 'noClient') {
           [mongoWarUpdated, flagUpdate] = await dbUpdate(
             client,
             mongoWar,
@@ -211,16 +211,16 @@ async function getClanWarUpdateDB(client, mongoWar) {
         }
       } else {
         // ********** 準備中 **********
-        if (clanWar.state == "preparation" && clanWarOpp.state == "preparation") {
-          if (client != "noClient") {
+        if (clanWar.state == 'preparation' && clanWarOpp.state == 'preparation') {
+          if (client != 'noClient') {
             //dbUpdate(clientMongo, client, mongoWar, clanWar, clanWarOpp, league, week, match, nAtBefore, logChIdLocal, teamName, teamNameOpp);
             //await fCreateJSON.currentWeek();
             //console.dir(`end: fCreateJSON.currentWeek`);
           }
         }
         // ********** 対戦中 -> データベース更新 **********
-        else if (clanWar.state == "inWar") {
-          if (client != "noClient") {
+        else if (clanWar.state == 'inWar') {
+          if (client != 'noClient') {
             [mongoWarUpdated, flagUpdate] = await dbUpdate(
               client,
               mongoWar,
@@ -238,10 +238,10 @@ async function getClanWarUpdateDB(client, mongoWar) {
           }
         }
         // ********** 終戦 -> データベース更新、通知 **********
-        else if (clanWar.state == "warEnded" && clanWarOpp.state == "warEnded") {
+        else if (clanWar.state == 'warEnded' && clanWarOpp.state == 'warEnded') {
           if (clanWar.clan.attackCount == 0 && clanWar.opponent.attackCount == 0) {
           }
-          else if (client != "noClient") {
+          else if (client != 'noClient') {
             console.dir(`warEnded: [${league}-w${week}-m${match}] ${teamName} vs ${teamNameOpp}`);
             
             [mongoWarUpdated, flagUpdate] = await dbUpdate(
@@ -317,23 +317,23 @@ async function getClanWarUpdateDB(client, mongoWar) {
             await sendEnd(client, mongoWarUpdated);
             await fMongo.standings(client.clientMongo, league);
             
-            if (league == "five") {
+            if (league == 'five') {
               await fMongo.standingsGroupStage(
                 client.clientMongo,
                 league,
-                "a",
-                "b",
+                'a',
+                'b',
               );
-            } else if (league == "j1") {
+            } else if (league == 'j1') {
               await fMongo.standingsGroupStage(
                 client.clientMongo,
                 league,
-                "fist",
-                "cloak",
+                'fist',
+                'cloak',
               );
             }
 
-            if (league == "mix") {
+            if (league == 'mix') {
               for (const lvTH of config.lvTHmix) {
                 await functions.updateRankingJwcAttack(client, league, lvTH);
               }
@@ -360,24 +360,24 @@ export { getClanWarUpdateDB };
 async function sendStart(client, mongoWar, clanWar) {
   const league = mongoWar.league;
   const week = mongoWar.week;
-  const weekStr = "w" + week;
+  const weekStr = 'w' + week;
   const match = mongoWar.match;
-  const matchStr = "m" + match;
+  const matchStr = 'm' + match;
 
   const mongoClan = await client.clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne({ clan_abbr: mongoWar.clan_abbr });
   const mongoClanOpp = await client.clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne({ clan_abbr: mongoWar.opponent_abbr });
 
   // ********** 時間計算 **********
   let prepTimeMinute = Math.round(
     (clanWar.startTime - clanWar.preparationStartTime) / (60 * 1000),
   );
-  let prepTimeStr = "";
+  let prepTimeStr = '';
   if (prepTimeMinute >= 60) {
     prepTimeStr = `${Math.round(prepTimeMinute / 60)}h`;
   } else {
@@ -386,7 +386,7 @@ async function sendStart(client, mongoWar, clanWar) {
   let warTimeMinute = Math.round(
     (clanWar.endTime - clanWar.startTime) / (60 * 1000),
   );
-  let warTimeStr = "";
+  let warTimeStr = '';
   if (warTimeMinute >= 60) {
     warTimeStr = `${Math.round(warTimeMinute / 60)}h`;
   } else {
@@ -395,9 +395,9 @@ async function sendStart(client, mongoWar, clanWar) {
 
   let embed = new EmbedBuilder();
   embed.setColor(config.color[league]);
-  embed.setTitle(":arrow_forward: **WAR DECLARED**");
+  embed.setTitle(':arrow_forward: **WAR DECLARED**');
   embed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
-  let description = "";
+  let description = '';
   description += `${config.leaguePlusEmote[league]}  |  ${schedule.week[weekStr]}\n`;
   description += `${mongoClan.team_name} :vs: ${mongoClanOpp.team_name}\n`;
   description += `\n`;
@@ -407,30 +407,30 @@ async function sendStart(client, mongoWar, clanWar) {
   let description1 =
     description + `* Attack Log: <#${config.attacklogch[league][matchStr]}>\n`;
   embed.setDescription(description1);
-  await functions.safeSend(client, config.warlogch[league], { embeds: [embed] }, "sendStart:warlog");
+  await functions.safeSend(client, config.warlogch[league], { embeds: [embed] }, 'sendStart:warlog');
 
   let descriptionCommands = ``;
-  descriptionCommands += `${config.emote.discord} </war live:${config.command["war"].id}>\n`;
-  descriptionCommands += `${config.emote.discord} </war lineup:${config.command["war"].id}>\n`;
-  descriptionCommands += `${config.emote.discord} </war attacks:${config.command["war"].id}>\n`;
-  descriptionCommands += `${config.emote.discord} </info league_standings:${config.command["info"].id}>\n`;
-  descriptionCommands += `${config.emote.discord} </help commands:${config.command["help"].id}>\n`;
+  descriptionCommands += `${config.emote.discord} </war live:${config.command['war'].id}>\n`;
+  descriptionCommands += `${config.emote.discord} </war lineup:${config.command['war'].id}>\n`;
+  descriptionCommands += `${config.emote.discord} </war attacks:${config.command['war'].id}>\n`;
+  descriptionCommands += `${config.emote.discord} </info league_standings:${config.command['info'].id}>\n`;
+  descriptionCommands += `${config.emote.discord} </help commands:${config.command['help'].id}>\n`;
 
-  if (mongoClan.log?.start?.switch == "on") {
+  if (mongoClan.log?.start?.switch == 'on') {
     let description2 = description + `_Try running the following commands_`;
-    if (mongoClan.log?.main?.switch == "on") {
+    if (mongoClan.log?.main?.switch == 'on') {
       description2 += ` _in_ <#${mongoClan.log.main.channel_id}>\n`;
-      description2 += `${config.emote.discord} </war own:${config.command["war"].id}>\n`;
+      description2 += `${config.emote.discord} </war own:${config.command['war'].id}>\n`;
     }
     description2 += `\n` + descriptionCommands;
     embed.setDescription(description2);
     await functions.safeSend(client, mongoClan.log.start.channel_id, { embeds: [embed] }, `sendStart:${mongoClan.clan_abbr}`);
   }
-  if (mongoClanOpp.log?.start?.switch == "on") {
+  if (mongoClanOpp.log?.start?.switch == 'on') {
     let description2 = description + `_Try running the following commands_`;
-    if (mongoClanOpp.log?.main?.switch == "on") {
+    if (mongoClanOpp.log?.main?.switch == 'on') {
       description2 += ` _in_ <#${mongoClanOpp.log.main.channel_id}>\n`;
-      description2 += `${config.emote.discord} </war own:${config.command["war"].id}>\n`;
+      description2 += `${config.emote.discord} </war own:${config.command['war'].id}>\n`;
     }
     description2 += `\n` + descriptionCommands;
     embed.setDescription(description2);
@@ -442,29 +442,29 @@ export { sendStart };
 async function sendEnd(client, mongoWar) {
   const league = mongoWar.league;
   const week = mongoWar.week;
-  const weekStr = "w" + week;
+  const weekStr = 'w' + week;
   const match = mongoWar.match;
-  const matchStr = "m" + match;
+  const matchStr = 'm' + match;
 
   const mongoClan = await client.clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne({ clan_abbr: mongoWar.clan_abbr });
   const mongoClanOpp = await client.clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne({ clan_abbr: mongoWar.opponent_abbr });
 
   let myContent = ``;
   myContent += `<@!${mongoClan.rep_1st.id}> <@!${mongoClan.rep_2nd.id}>`;
-  if (mongoClan.rep_3rd != null && mongoClan.rep_3rd != "non-registered") {
+  if (mongoClan.rep_3rd != null && mongoClan.rep_3rd != 'non-registered') {
     myContent += ` <@!${mongoClan.rep_3rd.id}>`;
   }
   myContent += `\n`;
   myContent += `<@!${mongoClanOpp.rep_1st.id}> <@!${mongoClanOpp.rep_2nd.id}>`;
   if (
     mongoClanOpp.rep_3rd != null &&
-    mongoClanOpp.rep_3rd != "non-registered"
+    mongoClanOpp.rep_3rd != 'non-registered'
   ) {
     myContent += ` <@!${mongoClanOpp.rep_3rd.id}>`;
   }
@@ -472,7 +472,7 @@ async function sendEnd(client, mongoWar) {
   myContent += `対戦お疲れ様でした！\n`;
   myContent += `両チーム、JWC 本部サーバーの結果報告チャンネルに対戦結果のスクリーンショットの投稿をお願いいたします。\n`;
   myContent += `<#${config.resultCh[league]}>\n`;
-  if (league == "swiss") {
+  if (league == 'swiss') {
     myContent += `* **SWISS**\n`;
     myContent += `勝敗および__全壊数__のわかる画面\n`;
     myContent += `※ プレイヤーの攻撃結果がわかる画面は必要ありません\n`;
@@ -489,9 +489,9 @@ async function sendEnd(client, mongoWar) {
 
   let embed = new EmbedBuilder();
   embed.setColor(config.color[league]);
-  embed.setTitle(":checkered_flag: **WAR HAS ENDED**");
+  embed.setTitle(':checkered_flag: **WAR HAS ENDED**');
   embed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
-  let description = "";
+  let description = '';
   description += `${config.leaguePlusEmote[league]}  |  ${schedule.week[weekStr]}\n`;
   description += `${mongoClan.team_name} :vs: ${mongoClanOpp.team_name}\n`;
   description += `\n`;
@@ -499,9 +499,9 @@ async function sendEnd(client, mongoWar) {
   let description1 =
     description + `* Attack Log: <#${config.attacklogch[league][matchStr]}>\n`;
   embed.setDescription(description1);
-  await functions.safeSend(client, config.warlogch[league], { embeds: [embed] }, "sendEnd:warlog");
+  await functions.safeSend(client, config.warlogch[league], { embeds: [embed] }, 'sendEnd:warlog');
 
-  mongoWar.result.state = "warEnded";
+  mongoWar.result.state = 'warEnded';
   const embed2 = await createEmbedWarStats(
     client.clientMongo,
     league,
@@ -511,29 +511,29 @@ async function sendEnd(client, mongoWar) {
   );
   let attachment = await fCanvas.warProgress(mongoWar);
 
-  //var nameCommand = "war own";
-  //let description2 = description + `* </${nameCommand}:${config.command["war"].id}> to see stats of the war\n`;
+  //var nameCommand = 'war own';
+  //let description2 = description + `* </${nameCommand}:${config.command['war'].id}> to see stats of the war\n`;
   //embed.setDescription(description2);
 
-  await functions.safeSend(client, mongoWar.nego_channel, { content: myContent, embeds: [embed] }, "sendEnd:nego");
-  await functions.safeSend(client, mongoWar.nego_channel, { embeds: [embed2] }, "sendEnd:nego");
-  await functions.safeSend(client, mongoWar.nego_channel, { files: [attachment] }, "sendEnd:nego");
+  await functions.safeSend(client, mongoWar.nego_channel, { content: myContent, embeds: [embed] }, 'sendEnd:nego');
+  await functions.safeSend(client, mongoWar.nego_channel, { embeds: [embed2] }, 'sendEnd:nego');
+  await functions.safeSend(client, mongoWar.nego_channel, { files: [attachment] }, 'sendEnd:nego');
 
-  if (mongoClan.log?.end?.switch == "on") {
+  if (mongoClan.log?.end?.switch == 'on') {
     await functions.safeSend(client, mongoClan.log.end.channel_id, { embeds: [embed] }, `sendEnd:${mongoClan.clan_abbr}`);
     await functions.safeSend(client, mongoClan.log.end.channel_id, { embeds: [embed2] }, `sendEnd:${mongoClan.clan_abbr}`);
     await functions.safeSend(client, mongoClan.log.end.channel_id, { files: [attachment] }, `sendEnd:${mongoClan.clan_abbr}`);
   }
-  if (mongoClanOpp.log?.end?.switch == "on") {
+  if (mongoClanOpp.log?.end?.switch == 'on') {
     await functions.safeSend(client, mongoClanOpp.log.end.channel_id, { embeds: [embed] }, `sendEnd:${mongoClanOpp.clan_abbr}`);
     await functions.safeSend(client, mongoClanOpp.log.end.channel_id, { embeds: [embed2] }, `sendEnd:${mongoClanOpp.clan_abbr}`);
     await functions.safeSend(client, mongoClanOpp.log.end.channel_id, { files: [attachment] }, `sendEnd:${mongoClanOpp.clan_abbr}`);
   }
 
   const negoChannel = await client.channels.fetch(mongoWar.nego_channel);
-  let newChName = negoChannel.name.replace("✅", "🏁");
+  let newChName = negoChannel.name.replace('✅', '🏁');
   let guild = null;
-  if (league == "five") {
+  if (league == 'five') {
     guild = await client.guilds.fetch(config.guildId.jwc5v);
   } else {
     guild = await client.guilds.fetch(config.guildId.jwcReps);
@@ -563,23 +563,23 @@ async function dbUpdate(
   let arrPlayers = [];
   let flagUpdate = 0;
 
-  if (clanWar.state == "notInWar") {
+  if (clanWar.state == 'notInWar') {
     flagUpdate = 0;
     return [mongoWar, flagUpdate];
-  } else if (clanWar.state == "preparation") {
+  } else if (clanWar.state == 'preparation') {
     result.state = clanWar.state;
     flagUpdate = 1;
-  } else if (clanWar.state == "inWar" || clanWar.state == "warEnded") {
+  } else if (clanWar.state == 'inWar' || clanWar.state == 'warEnded') {
     if (
       clanWar.clan.attackCount == nAtBefore.clan &&
       clanWar.opponent.attackCount == nAtBefore.opponent &&
-      clanWar.state == "inWar"
+      clanWar.state == 'inWar'
     ) {
       flagUpdate = 0;
       return [mongoWar, flagUpdate];
     }
 
-    if (clanWar.state == "warEnded") {
+    if (clanWar.state == 'warEnded') {
       if (clanWar.clan.attackCount == 0 && clanWar.opponent.attackCount == 0) {
         flagUpdate = 0;
         return [mongoWar, flagUpdate];
@@ -587,7 +587,7 @@ async function dbUpdate(
       flagUpdate = 1;
     }
 
-    if (mongoWar.result.state == "preparation") {
+    if (mongoWar.result.state == 'preparation') {
       flagUpdate = 1;
     }
 
@@ -601,7 +601,7 @@ async function dbUpdate(
       await Promise.all(
         clanWar.clan.members.map(async (member) => {
           arrPlayers.push({
-            clanType: "offense",
+            clanType: 'offense',
             tag: member.tag,
             name: member.name,
             townHallLevel: member.townHallLevel ?? member.townhallLevel,
@@ -614,7 +614,7 @@ async function dbUpdate(
               member,
               0,
               0,
-              "attack",
+              'attack',
             );
             if (apm == 2) {
               arrAttacks = await writeClanWarAttack(
@@ -624,7 +624,7 @@ async function dbUpdate(
                 member,
                 1,
                 0,
-                "attack",
+                'attack',
               );
             }
           } else {
@@ -636,7 +636,7 @@ async function dbUpdate(
                 member,
                 0,
                 1,
-                "attack",
+                'attack',
               );
             } else {
               arrAttacks = await writeClanWarAttack(
@@ -646,7 +646,7 @@ async function dbUpdate(
                 member,
                 0,
                 0,
-                "attack",
+                'attack',
               );
             }
             if (member.attacks.length > 1) {
@@ -657,7 +657,7 @@ async function dbUpdate(
                 member,
                 1,
                 1,
-                "attack",
+                'attack',
               );
             } else if (apm == 2) {
               arrAttacks = await writeClanWarAttack(
@@ -667,7 +667,7 @@ async function dbUpdate(
                 member,
                 1,
                 0,
-                "attack",
+                'attack',
               );
             }
           }
@@ -681,7 +681,7 @@ async function dbUpdate(
       await Promise.all(
         clanWarOpp.clan.members.map(async (member) => {
           arrPlayers.push({
-            clanType: "defense",
+            clanType: 'defense',
             tag: member.tag,
             name: member.name,
             townHallLevel: member.townHallLevel ?? member.townhallLevel,
@@ -694,7 +694,7 @@ async function dbUpdate(
               member,
               0,
               0,
-              "defense",
+              'defense',
             );
             if (apm == 2) {
               arrAttacks = await writeClanWarAttack(
@@ -704,7 +704,7 @@ async function dbUpdate(
                 member,
                 1,
                 0,
-                "defense",
+                'defense',
               );
             }
           } else {
@@ -716,7 +716,7 @@ async function dbUpdate(
                 member,
                 0,
                 1,
-                "defense",
+                'defense',
               );
             } else {
               arrAttacks = await writeClanWarAttack(
@@ -726,7 +726,7 @@ async function dbUpdate(
                 member,
                 0,
                 0,
-                "defense",
+                'defense',
               );
             }
             if (member.attacks.length > 1) {
@@ -737,7 +737,7 @@ async function dbUpdate(
                 member,
                 1,
                 1,
-                "defense",
+                'defense',
               );
             } else if (apm == 2) {
               arrAttacks = await writeClanWarAttack(
@@ -747,7 +747,7 @@ async function dbUpdate(
                 member,
                 1,
                 0,
-                "defense",
+                'defense',
               );
             }
           }
@@ -781,8 +781,8 @@ async function dbUpdate(
     resultOpponent.nOneDefense = nOneDefense.clan;
 
     // 追加防衛ポイント（2回目攻められず）
-    if (mongoWar.war_type != "tieBreak") {
-      if (clanWar.state == "warEnded" && clanWarOpp.state == "warEnded") {
+    if (mongoWar.war_type != 'tieBreak') {
+      if (clanWar.state == 'warEnded' && clanWarOpp.state == 'warEnded') {
         resultClan.ptDefSum += 2 * resultClan.nOneDefense;
         resultOpponent.ptDefSum += 2 * resultOpponent.nOneDefense;
         if (resultClan.nOneDefense > 0) {
@@ -797,7 +797,7 @@ async function dbUpdate(
     }
 
     // ペナルティ
-    let note = "";
+    let note = '';
     if (clanWar.clan.penalty != null) {
       if (
         clanWar.clan.penalty.star != null &&
@@ -830,7 +830,7 @@ async function dbUpdate(
         } else {
           note = `${-clanWar.clan.penalty.star} stars deducted`;
         }
-        note += " / ";
+        note += ' / ';
         if (clanWar.clan.penalty.defPoint == 1) {
           note += `1 defense point added`;
         } else {
@@ -875,7 +875,7 @@ async function dbUpdate(
         } else {
           note = `${-clanWarOpp.clan.penalty.star} stars deducted`;
         }
-        note += " / ";
+        note += ' / ';
         if (clanWarOpp.clan.penalty.defPoint == 1) {
           note = `1 defense point added`;
         } else {
@@ -903,20 +903,20 @@ async function dbUpdate(
     // 攻撃・防衛通知
     let nAtt = [0, 0];
     for (const elem of arrAttacksPlus) {
-      if (elem.attackType != "remaining") {
-        if (elem.action == "attack") {
+      if (elem.attackType != 'remaining') {
+        if (elem.action == 'attack') {
           nAtt[0] += 1;
-        } else if (elem.action == "defense") {
+        } else if (elem.action == 'defense') {
           nAtt[1] += 1;
         }
       }
       // 更新ありの場合
       if (
         elem.order > nAtBefore.clan + nAtBefore.opponent &&
-        elem.attackType != "remaining"
+        elem.attackType != 'remaining'
       ) {
         flagUpdate += 1;
-        if (mongoClan.log?.att_def?.switch == "on") {
+        if (mongoClan.log?.att_def?.switch == 'on') {
           sendAttackInfo(
             client,
             clanWar.clan.name,
@@ -929,7 +929,7 @@ async function dbUpdate(
             teamNameOpp,
           );
         }
-        if (mongoClanOpp.log?.att_def?.switch == "on") {
+        if (mongoClanOpp.log?.att_def?.switch == 'on') {
           sendAttackInfo(
             client,
             clanWar.clan.name,
@@ -942,7 +942,7 @@ async function dbUpdate(
             teamNameOpp,
           );
         }
-        const matchStr = "m" + match;
+        const matchStr = 'm' + match;
         let logChId = config.attacklogch[league][matchStr];
         sendAttackInfo(
           client,
@@ -955,11 +955,11 @@ async function dbUpdate(
           teamName,
           teamNameOpp,
         );
-        if (elem.action == "attack") {
+        if (elem.action == 'attack') {
           console.dir(
             `[${league.toUpperCase()}] TH${elem.townHallLevel} ★ ${elem.stars} ${elem.destruction}% - ${teamName} | ${elem.name}`,
           );
-        } else if (elem.action == "defense") {
+        } else if (elem.action == 'defense') {
           console.dir(
             `[${league.toUpperCase()}] TH${elem.townHallLevel} ★ ${elem.stars} ${elem.destruction}% - ${teamNameOpp} | ${elem.name}`,
           );
@@ -970,7 +970,7 @@ async function dbUpdate(
 
   //flagUpdate = 1; // on遅れて対戦中にonした場合
 
-  if (flagUpdate > 0 && client != "noClient") {
+  if (flagUpdate > 0 && client != 'noClient') {
     let query = {
       league: league,
       week: week,
@@ -985,14 +985,14 @@ async function dbUpdate(
       unixTimeRequest: unixTime,
     };
     await client.clientMongo
-      .db("jwc")
-      .collection("wars")
+      .db('jwc')
+      .collection('wars')
       .updateOne(query, { $set: updatedListing });
     //console.dir(`end: dbupdate`);
 
     let mongoWarUpdated = await client.clientMongo
-      .db("jwc")
-      .collection("wars")
+      .db('jwc')
+      .collection('wars')
       .findOne(query);
 
     return [mongoWarUpdated, flagUpdate];
@@ -1015,30 +1015,30 @@ async function writeClanWarAttack(
   if (flagAttacked == 1) {
     clanWarAttack = member.attacks[attackNo];
   }
-  clanWarAttack["action"] = action;
-  clanWarAttack["name"] = member.name;
-  clanWarAttack["attackerTag"] = member.tag;
-  clanWarAttack["townHallLevel"] = member.townHallLevel ?? member.townhallLevel;
+  clanWarAttack['action'] = action;
+  clanWarAttack['name'] = member.name;
+  clanWarAttack['attackerTag'] = member.tag;
+  clanWarAttack['townHallLevel'] = member.townHallLevel ?? member.townhallLevel;
   if (flagAttacked == 0) {
-    clanWarAttack["order"] = 200 + member.mapPosition;
-    clanWarAttack["attackType"] = "remaining";
+    clanWarAttack['order'] = 200 + member.mapPosition;
+    clanWarAttack['attackType'] = 'remaining';
   }
 
   // pilot name
-  let pilotName = "";
+  let pilotName = '';
   const mongoAcc = await client.clientMongo
-    .db("jwc")
-    .collection("accounts")
+    .db('jwc')
+    .collection('accounts')
     .findOne({ tag: member.tag });
   if (mongoAcc) {
     pilotName = mongoAcc.pilotName[config.leagueM[league]];
-    if (pilotName == "") {
-      pilotName = ":question";
+    if (pilotName == '') {
+      pilotName = ':question';
     }
   } else {
-    pilotName = ":question";
+    pilotName = ':question';
   }
-  clanWarAttack["pilotName"] = pilotName;
+  clanWarAttack['pilotName'] = pilotName;
 
   // equipment
   /*
@@ -1047,7 +1047,7 @@ async function writeClanWarAttack(
 
   if (resultScan.scPlayer) {
     resultScan.scPlayer.heroes.map((hero) => {
-      if (hero.village == "home") {
+      if (hero.village == 'home') {
         let objHero = {};
         objHero.name = hero.name;
         if (hero.equipment) {
@@ -1063,9 +1063,9 @@ async function writeClanWarAttack(
   }
   else {
     console.error(`[${league.toUpperCase()}] ${member.name} (${member.tag}) not found`);
-    arrEquipmentAll.push({ name: ":question" });
+    arrEquipmentAll.push({ name: ':question' });
   }
-  clanWarAttack["equipment"] = arrEquipmentAll;
+  clanWarAttack['equipment'] = arrEquipmentAll;
   */
 
   arrAttacks.push(clanWarAttack);
@@ -1100,25 +1100,25 @@ async function sendAttackInfo(
   let nDef = dataAttack.nDef;
   let ptDef = dataAttack.ptDef;
 
-  let description = "";
+  let description = '';
   if (destruction == 100) {
-    description += ":boom: ";
+    description += ':boom: ';
   }
-  if (dataAttack.action == "attack") {
+  if (dataAttack.action == 'attack') {
     description += `${config.emote.thn[dataAttack.townHallLevel]} ${config.emote.sword} ${config.emote.thn[dataAttack.townHallLevelDef]} `;
-  } else if (dataAttack.action == "defense") {
+  } else if (dataAttack.action == 'defense') {
     description += `${config.emote.thn[dataAttack.townHallLevelDef]} ${config.emote.sword2} ${config.emote.thn[dataAttack.townHallLevel]} `;
   }
   description += `_${left}″ left_\n`;
   let namePlayerAtt = dataAttack.name
-    .replace(/\*/g, "\\*")
-    .replace(/_/g, "\\_");
+    .replace(/\*/g, '\\*')
+    .replace(/_/g, '\\_');
   let namePlayerDef = dataAttack.namePlayerDef
-    .replace(/\*/g, "\\*")
-    .replace(/_/g, "\\_");
-  if (dataAttack.action == "attack") {
+    .replace(/\*/g, '\\*')
+    .replace(/_/g, '\\_');
+  if (dataAttack.action == 'attack') {
     description += `${namePlayerAtt} ${config.emote.arrowAtt} ${namePlayerDef}\n`;
-  } else if (dataAttack.action == "defense") {
+  } else if (dataAttack.action == 'defense') {
     description += `${namePlayerDef} ${config.emote.arrowDef} ${namePlayerAtt}\n`;
   }
   description += `\n`;
@@ -1143,11 +1143,11 @@ async function sendAttackInfo(
       existsNote = true;
     }
   }
-  if (league == "mix" && ptDef > 0) {
+  if (league == 'mix' && ptDef > 0) {
     description += `${config.emote.star} _+${ptDef} def pt._\n`;
     existsNote = true;
   }
-  if (destruction != 100 && dataAttack.attackType == "overkill") {
+  if (destruction != 100 && dataAttack.attackType == 'overkill') {
     description += `(overkill def!)\n`;
     existsNote = true;
   }
@@ -1157,16 +1157,16 @@ async function sendAttackInfo(
 
   // equipment
   //let resultScan = await functions.scanAcc(client.clientCoc, dataAttack.attackerTag);
-  //description += await functions.getAccInfoDescriptionHeroes(resultScan.scPlayer, showAllEquipment = false, "long");
+  //description += await functions.getAccInfoDescriptionHeroes(resultScan.scPlayer, showAllEquipment = false, 'long');
 
-  let footerText = "";
+  let footerText = '';
   footerText += `${nAtt[0]}|${nAtt[1]} - ${teamName} vs ${teamNameOpp}`;
 
   let iPlayerTag = dataAttack.attackerTag;
 
   const dbValuePlayers = await client.clientMongo
-    .db("jwc")
-    .collection("accounts")
+    .db('jwc')
+    .collection('accounts')
     .findOne({ tag: iPlayerTag });
 
   let embed = new EmbedBuilder()
@@ -1176,7 +1176,7 @@ async function sendAttackInfo(
     .setFooter({ text: footerText, iconURL: config.urlImage.jwc });
   if (dbValuePlayers != null) {
     if (
-      dbValuePlayers.pilotDC != "no discord acc" &&
+      dbValuePlayers.pilotDC != 'no discord acc' &&
       dbValuePlayers.pilotDC != null
     ) {
       if (
@@ -1191,13 +1191,13 @@ async function sendAttackInfo(
     }
   }
 
-  await functions.safeSend(client, logChId, { embeds: [embed] }, "sendAttackInfo");
+  await functions.safeSend(client, logChId, { embeds: [embed] }, 'sendAttackInfo');
 }
 export { sendAttackInfo };
 
 async function createResult(arrAttacks, arrPlayers, state, resultOld) {
   let arrAttacksPlusOld = [];
-  if (resultOld.state == "inWar") {
+  if (resultOld.state == 'inWar') {
     arrAttacksPlusOld = resultOld.arrAttacksPlus;
   }
 
@@ -1210,8 +1210,8 @@ async function createResult(arrAttacks, arrPlayers, state, resultOld) {
 
   let arrAttacksPlus = [];
 
-  let attackType = "";
-  let namePlayerDef = "";
+  let attackType = '';
+  let namePlayerDef = '';
   let townHallLevelDef = 0;
   let ptDefSum = [0, 0];
   let nDefC = [0, 0]; // 初見以外の防衛回数
@@ -1263,26 +1263,26 @@ async function createResult(arrAttacks, arrPlayers, state, resultOld) {
     let ptDef = 0;
     let clanWarAttack = arrAttack;
     let levelKey = `th${arrAttack.townHallLevel}`;
-    if (arrAttack.attackType != "remaining") {
+    if (arrAttack.attackType != 'remaining') {
       let nDef = 0;
       let flagCleanUp = 0;
       let bestStars = 0;
       // 1回目は初見
       if (i == 0) {
         nDefThisBase[i] = 1;
-        attackType = "fresh";
-        if (arrAttack.action == "attack") {
+        attackType = 'fresh';
+        if (arrAttack.action == 'attack') {
           nFresh[0] += 1;
           obj_nFresh[levelKey] += 1;
-        } else if (arrAttack.action == "defense") {
+        } else if (arrAttack.action == 'defense') {
           nFresh[1] += 1;
           obj_nFreshOpp[levelKey] += 1;
         }
         if (arrAttack.stars == 3) {
-          if (arrAttack.action == "attack") {
+          if (arrAttack.action == 'attack') {
             tripleFresh[0] += 1;
             obj_tripleFresh[levelKey] += 1;
-          } else if (arrAttack.action == "defense") {
+          } else if (arrAttack.action == 'defense') {
             tripleFresh[1] += 1;
             obj_tripleFreshOpp[levelKey] += 1;
           }
@@ -1307,21 +1307,21 @@ async function createResult(arrAttacks, arrPlayers, state, resultOld) {
         }
         if (bestStars == 3) {
           // オーバーキル
-          attackType = "overkill";
-          if (arrAttack.action == "attack") {
+          attackType = 'overkill';
+          if (arrAttack.action == 'attack') {
             nOverKill[0] += 1;
             nDefC[1] += 1;
             obj_nOverKill[levelKey] += 1;
-          } else if (arrAttack.action == "defense") {
+          } else if (arrAttack.action == 'defense') {
             nOverKill[1] += 1;
             nDefC[0] += 1;
             obj_nOverKillOpp[levelKey] += 1;
           }
           if (arrAttack.stars == 3) {
-            if (arrAttack.action == "attack") {
+            if (arrAttack.action == 'attack') {
               tripleOverKill[0] += 1;
               obj_tripleOverKill[levelKey] += 1;
-            } else if (arrAttack.action == "defense") {
+            } else if (arrAttack.action == 'defense') {
               tripleOverKill[1] += 1;
               obj_tripleOverKillOpp[levelKey] += 1;
             }
@@ -1331,19 +1331,19 @@ async function createResult(arrAttacks, arrPlayers, state, resultOld) {
           }
         } else if (flagCleanUp == 0) {
           // 初見
-          attackType = "fresh";
-          if (arrAttack.action == "attack") {
+          attackType = 'fresh';
+          if (arrAttack.action == 'attack') {
             nFresh[0] += 1;
             obj_nFresh[levelKey] += 1;
-          } else if (arrAttack.action == "defense") {
+          } else if (arrAttack.action == 'defense') {
             nFresh[1] += 1;
             obj_nFreshOpp[levelKey] += 1;
           }
           if (arrAttack.stars == 3) {
-            if (arrAttack.action == "attack") {
+            if (arrAttack.action == 'attack') {
               tripleFresh[0] += 1;
               obj_tripleFresh[levelKey] += 1;
-            } else if (arrAttack.action == "defense") {
+            } else if (arrAttack.action == 'defense') {
               tripleFresh[1] += 1;
               obj_tripleFreshOpp[levelKey] += 1;
             }
@@ -1352,21 +1352,21 @@ async function createResult(arrAttacks, arrPlayers, state, resultOld) {
           }
         } else if (flagCleanUp == 1) {
           // 非初見
-          attackType = "cleanup";
-          if (arrAttack.action == "attack") {
+          attackType = 'cleanup';
+          if (arrAttack.action == 'attack') {
             nCleanUp[0] += 1;
             nDefC[1] += 1;
             obj_nCleanUp[levelKey] += 1;
-          } else if (arrAttack.action == "defense") {
+          } else if (arrAttack.action == 'defense') {
             nCleanUp[1] += 1;
             nDefC[0] += 1;
             obj_nCleanUpOpp[levelKey] += 1;
           }
           if (arrAttack.stars == 3) {
-            if (arrAttack.action == "attack") {
+            if (arrAttack.action == 'attack') {
               tripleCleanUp[0] += 1;
               obj_tripleCleanUp[levelKey] += 1;
-            } else if (arrAttack.action == "defense") {
+            } else if (arrAttack.action == 'defense') {
               tripleCleanUp[1] += 1;
               obj_tripleCleanUpOpp[levelKey] += 1;
             }
@@ -1377,9 +1377,9 @@ async function createResult(arrAttacks, arrPlayers, state, resultOld) {
         }
       }
 
-      if (arrAttack.action == "attack") {
+      if (arrAttack.action == 'attack') {
         ptDefSum[1] += ptDef;
-      } else if (arrAttack.action == "defense") {
+      } else if (arrAttack.action == 'defense') {
         ptDefSum[0] += ptDef;
       }
 
@@ -1393,7 +1393,7 @@ async function createResult(arrAttacks, arrPlayers, state, resultOld) {
         // 新星分以外を1に書き換え
         for (let k = 0; k < bestStars; k++) {
           arrStarsFlag[k] = 1;
-          if (attackType == "overkill") {
+          if (attackType == 'overkill') {
             arrStarsFlag[k] = 3;
           }
         }
@@ -1401,7 +1401,7 @@ async function createResult(arrAttacks, arrPlayers, state, resultOld) {
         // 全部1に書き換え
         for (let k = 0; k < arrAttack.stars; k++) {
           arrStarsFlag[k] = 1;
-          if (attackType == "overkill") {
+          if (attackType == 'overkill') {
             arrStarsFlag[k] = 3;
           }
         }
@@ -1416,10 +1416,10 @@ async function createResult(arrAttacks, arrPlayers, state, resultOld) {
         }
       }
 
-      if (arrAttack.action == "attack") {
-        clanWarAttack.action = "attack";
-      } else if (arrAttack.action == "defense") {
-        clanWarAttack.action = "defense";
+      if (arrAttack.action == 'attack') {
+        clanWarAttack.action = 'attack';
+      } else if (arrAttack.action == 'defense') {
+        clanWarAttack.action = 'defense';
       }
       clanWarAttack.namePlayerDef = namePlayerDef;
       clanWarAttack.townHallLevelDef = townHallLevelDef;
@@ -1430,7 +1430,7 @@ async function createResult(arrAttacks, arrPlayers, state, resultOld) {
       clanWarAttack.unixTime = Math.round(Date.now() / 1000);
     }
     if (arrAttacksPlusOld[i] != undefined) {
-      if (arrAttacksPlusOld[i].attackType != "remaining") {
+      if (arrAttacksPlusOld[i].attackType != 'remaining') {
         clanWarAttack = arrAttacksPlusOld[i];
       }
     }
@@ -1741,31 +1741,31 @@ async function createDescription(clientMongo, mongoWar, league, type) {
   let clanAbbr = mongoWar.clan_abbr;
   let clanAbbrOpp = mongoWar.opponent_abbr;
   let mongoClanA = await clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne({ clan_abbr: clanAbbr });
   let mongoClanB = await clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne({ clan_abbr: clanAbbrOpp });
 
-  let stateStr = "";
+  let stateStr = '';
   if (mongoWar.result != null) {
-    if (mongoWar.result.state == "warEnded") {
+    if (mongoWar.result.state == 'warEnded') {
       stateStr = `:checkered_flag: `;
-    } else if (mongoWar.result.state == "preparation") {
+    } else if (mongoWar.result.state == 'preparation') {
       stateStr = `:arrow_forward: `;
-    } else if (mongoWar.result.state == "inWar") {
+    } else if (mongoWar.result.state == 'inWar') {
       stateStr = `:arrow_forward: `;
     }
   }
 
-  let description = "";
+  let description = '';
   if (mongoWar.name_match) {
     description += `* ${stateStr}${mongoWar.name_match}`;
   } else {
-    if (type == "multi") {
-      description += `* ${stateStr}${schedule.match["m" + mongoWar.match]}`;
+    if (type == 'multi') {
+      description += `* ${stateStr}${schedule.match['m' + mongoWar.match]}`;
     }
   }
   if (mongoWar.stream) {
@@ -1773,7 +1773,7 @@ async function createDescription(clientMongo, mongoWar, league, type) {
   }
   description += `\n`;
 
-  if (type == "multi") {
+  if (type == 'multi') {
     description += `**${mongoClanA.team_name} :vs: ${mongoClanB.team_name}**\n`;
   }
 
@@ -1786,17 +1786,17 @@ async function createDescription(clientMongo, mongoWar, league, type) {
       description += `:hourglass_flowing_sand:  ${mongoWar.deal.prep_time}`;
       description += `  /  :crossed_swords:  ${mongoWar.deal.battle_time}\n`;
     } else {
-      description += "_not yet scheduled_\n";
+      description += '_not yet scheduled_\n';
     }
   } else if (mongoWar.result.note) {
     description += `_${mongoWar.result.note}_\n`;
   } else {
     // マッチング後
-    if (mongoWar.result.state == "preparation") {
+    if (mongoWar.result.state == 'preparation') {
       description += ``;
     } else {
       // inWar, warEnded
-      if (type == "single") {
+      if (type == 'single') {
         description += `\n`;
       }
       description += await createDescriptionSingle(
@@ -1807,27 +1807,27 @@ async function createDescription(clientMongo, mongoWar, league, type) {
     }
 
     //const dateNow = new Date();
-    //const startTimeJstDate = utcToZonedTime(mongoWar.clan_war.startTime, "Asia/Tokyo");
-    //const startTimeJstStr = format(startTimeJstDate, "M/d HH:mm:ss");
+    //const startTimeJstDate = utcToZonedTime(mongoWar.clan_war.startTime, 'Asia/Tokyo');
+    //const startTimeJstStr = format(startTimeJstDate, 'M/d HH:mm:ss');
     const startTimeUnix =
       new Date(mongoWar.clan_war.startTime).getTime() / 1000;
-    //const endTimeJstDate = utcToZonedTime(mongoWar.clan_war.endTime, "Asia/Tokyo");
-    //const endTimeJstStr = format(endTimeJstDate, "M/d HH:mm:ss");
+    //const endTimeJstDate = utcToZonedTime(mongoWar.clan_war.endTime, 'Asia/Tokyo');
+    //const endTimeJstStr = format(endTimeJstDate, 'M/d HH:mm:ss');
     const endTimeUnix = new Date(mongoWar.clan_war.endTime).getTime() / 1000;
 
-    if (mongoWar.result.state == "preparation") {
+    if (mongoWar.result.state == 'preparation') {
       description += `_starts at_ <t:${startTimeUnix}:t> (<t:${startTimeUnix}:R>)\n`;
-    } else if (mongoWar.result.state == "inWar") {
+    } else if (mongoWar.result.state == 'inWar') {
       description += `_ends at_ <t:${endTimeUnix}:t> (<t:${endTimeUnix}:R>)\n`;
     }
-    if (type == "single") {
-      if (mongoWar.result.state == "warEnded") {
+    if (type == 'single') {
+      if (mongoWar.result.state == 'warEnded') {
         description += `:checkered_flag: _war has ended_\n`;
       }
     }
 
     // note
-    if (mongoWar.result.state == "warEnded") {
+    if (mongoWar.result.state == 'warEnded') {
       if (mongoWar.result.clan.note != null) {
         description += `_${mongoWar.clan_abbr.toUpperCase()}: ${mongoWar.result.clan.note}_\n`;
       }
@@ -1835,14 +1835,14 @@ async function createDescription(clientMongo, mongoWar, league, type) {
         description += `_${mongoWar.opponent_abbr.toUpperCase()}: ${mongoWar.result.opponent.note}_\n`;
       }
       if (
-        league == "mix" &&
+        league == 'mix' &&
         config.nHit[league] == 2 &&
         mongoWar.result.clan.note2 != null
       ) {
         description += `_${mongoWar.clan_abbr.toUpperCase()}: ${mongoWar.result.clan.note2}_\n`;
       }
       if (
-        league == "mix" &&
+        league == 'mix' &&
         config.nHit[league] == 2 &&
         mongoWar.result.opponent.note2 != null
       ) {
@@ -1857,7 +1857,7 @@ async function createDescription(clientMongo, mongoWar, league, type) {
 export { createDescription };
 
 async function createDescriptionSingle(league, result, type) {
-  let description = "";
+  let description = '';
   description += `${config.emote.star} **${result.clan.stars}** - **${result.opponent.stars}**`;
   description += `  ( *${result.clan.destruction}%* - *${result.opponent.destruction}%* )\n`;
   description += `:boom: **${result.clan.allAttackTypes.nTriple.total}**/${result.clan.allAttackTypes.nAt.total}`;
@@ -1865,7 +1865,7 @@ async function createDescriptionSingle(league, result, type) {
   description += `  ( **${Math.round(result.clan.allAttackTypes.hitrate.total * 10) / 10}**%`;
   description += ` - **${Math.round(result.opponent.allAttackTypes.hitrate.total * 10) / 10}**% )\n`;
 
-  if (type == "single") {
+  if (type == 'single') {
     if (config.nHit[league] == 2) {
       description += `:small_blue_diamond: **${result.clan.fresh.nTriple.total}**/${result.clan.fresh.nAt.total}`;
       description += ` - **${result.opponent.fresh.nTriple.total}**/${result.opponent.fresh.nAt.total}`;
@@ -1885,7 +1885,7 @@ async function createDescriptionSingle(league, result, type) {
         description += ` - **${Math.round(result.opponent.overkill.hitrate.total * 10) / 10}**% )\n`;
       }
     }
-    if (league == "mix") {
+    if (league == 'mix') {
       description += `\n`;
       for (const lvTH of config.lvTHmix) {
         description += await createDescriptionMix(lvTH, result);
@@ -1898,7 +1898,7 @@ async function createDescriptionSingle(league, result, type) {
   }
 
   // 防衛ポイント
-  if (league == "mix" && config.nHit[league] == 2) {
+  if (league == 'mix' && config.nHit[league] == 2) {
     description += `${config.emote.shield} `;
     if (result.clan.ptDef2 > 0) {
       description += `**${result.clan.ptDefSum - result.clan.ptDef2}**/${result.clan.nDefC}`;
@@ -1910,12 +1910,12 @@ async function createDescriptionSingle(league, result, type) {
     } else {
       description += ` - **${result.opponent.ptDefSum}**/${result.opponent.nDefC}\n`;
     }
-    if (type == "single") {
+    if (type == 'single') {
       description += `\n`;
     }
     description += `${config.emote.star}${config.emote.shield} **${result.clan.stars + result.clan.ptDefSum}**`;
     description += ` - **${result.opponent.stars + result.opponent.ptDefSum}**\n`;
-    if (type == "single") {
+    if (type == 'single') {
       description += `\n`;
     }
   }
@@ -1929,7 +1929,7 @@ async function createDescriptionMix(lvTH, result) {
     lvTH = 16;
   }
   let keyLvTH = `th${lvTH}`;
-  let description = "";
+  let description = '';
   description += `${config.emote.thn[lvTH]} **${result.clan.allAttackTypes.nTriple[keyLvTH]}**/${result.clan.allAttackTypes.nAt[keyLvTH]}`;
   description += ` - **${result.opponent.allAttackTypes.nTriple[keyLvTH]}**/${result.opponent.allAttackTypes.nAt[keyLvTH]}`;
   description += `  ( **${Math.round(result.clan.allAttackTypes.hitrate[keyLvTH] * 10) / 10}**%`;
@@ -1942,15 +1942,15 @@ async function createDescriptionLive(clientMongo, mongoWar) {
   let clanAbbr = mongoWar.clan_abbr;
   let clanAbbrOpp = mongoWar.opponent_abbr;
   let mongoClanA = await clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne({ clan_abbr: clanAbbr });
   let mongoClanB = await clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne({ clan_abbr: clanAbbrOpp });
 
-  let description = "";
+  let description = '';
   description = `**${mongoClanA.team_name} :vs: ${mongoClanB.team_name}**\n`;
   description += `${config.emote.star} **${result.clan.stars}** - **${result.opponent.stars}**`;
   description += `  ( *${result.clan.destruction}%* - *${result.opponent.destruction}%* )\n`;
@@ -1960,19 +1960,19 @@ async function createDescriptionLive(clientMongo, mongoWar) {
   description += ` - **${Math.round(result.opponent.allAttackTypes.hitrate.total * 10) / 10}**% )\n`;
 
   // 防衛ポイント
-  //if (league == "mix") {
+  //if (league == 'mix') {
   //description += `${config.emote.shield} **${result.clan.ptDefSum}**/${result.clan.nDefC}`;
   //description += ` - **${result.opponent.ptDefSum}**/${result.opponent.nDefC}\n`;
   //};
 
   /*
-  const endTimeJstDate = utcToZonedTime(mongoWar.clan_war.endTime, "Asia/Tokyo");
-  const endTimeJstStr = format(endTimeJstDate, "M/d HH:mm:ss");
+  const endTimeJstDate = utcToZonedTime(mongoWar.clan_war.endTime, 'Asia/Tokyo');
+  const endTimeJstStr = format(endTimeJstDate, 'M/d HH:mm:ss');
   description += `_war ends at ${endTimeJstStr}_\n`;
   */
 
   let nameMatch = mongoWar.name_match;
-  if (nameMatch != "") {
+  if (nameMatch != '') {
     description += `*${mongoWar.league.toUpperCase()} - ${nameMatch}*\n`;
   } else {
     description += `*${mongoWar.league.toUpperCase()} - MATCH ${mongoWar.match}*\n`;
@@ -1985,12 +1985,12 @@ export { createDescriptionLive };
 
 async function sendWarStats(interaction, clientMongo, league, mongoWar) {
   const mongoClanA = await clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne({ clan_abbr: mongoWar.clan_abbr });
   const mongoClanB = await clientMongo
-    .db("jwc")
-    .collection("clans")
+    .db('jwc')
+    .collection('clans')
     .findOne({ clan_abbr: mongoWar.opponent_abbr });
 
   const embed = await createEmbedWarStats(
@@ -2002,7 +2002,7 @@ async function sendWarStats(interaction, clientMongo, league, mongoWar) {
   );
   await interaction.followUp({ embeds: [embed] });
 
-  if (mongoWar.result != "") {
+  if (mongoWar.result != '') {
     let attachment = await fCanvas.warProgress(mongoWar);
     await interaction.followUp({ files: [attachment] });
   }
@@ -2020,16 +2020,16 @@ async function createEmbedWarStats(
 ) {
   let title = `**${mongoClanA.team_name} :vs: ${mongoClanB.team_name}**`;
 
-  let footerText = "";
+  let footerText = '';
   footerText += `${config.footer} ${config.league[league]} `;
   footerText += `W${mongoWar.week} M${mongoWar.match}`;
 
-  let description = "";
+  let description = '';
   description += await createDescription(
     clientMongo,
     mongoWar,
     league,
-    "single",
+    'single',
   );
 
   let embed = new EmbedBuilder();

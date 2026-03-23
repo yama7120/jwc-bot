@@ -1,8 +1,8 @@
-import { Events, EmbedBuilder, ActivityType } from "discord.js";
-import config from "../config/config.js";
-import * as fMongo from "../functions/fMongo.js";
-import * as fCron from "../functions/fCron.js";
-import cron from "node-cron";
+import { Events, EmbedBuilder, ActivityType } from 'discord.js';
+import config from '../config/config.js';
+import * as fMongo from '../functions/fMongo.js';
+import * as fCron from '../functions/fCron.js';
+import cron from 'node-cron';
 
 export default {
   name: Events.ClientReady,
@@ -34,45 +34,45 @@ export default {
       if (chReady?.isTextBased()) {
         await chReady.send({ embeds: [readyEmbed] });
       } else {
-        console.warn("ready channel not found or not text-based:", config.logch.ready);
+        console.warn('ready channel not found or not text-based:', config.logch.ready);
       }
     } catch (e) {
-      console.error("Failed to send ready embed:", e);
+      console.error('Failed to send ready embed:', e);
     }
     console.log(`✅ Logged in as ${client.user.tag}! ✅`);
 
-    // JWC wars (config.cronWarStatus が "on" のリーグのみ実行)
+    // JWC wars (config.cronWarStatus が 'on' のリーグのみ実行)
     const cronWarSchedules = {
-      j1: "*/2 * * * *",
-      j2: "*/3 * * * *",
-      swiss: "*/7 * * * *",
-      mix: "*/5 * * * *",
-      five: "*/1 * * * *",
+      j1: '*/2 * * * *',
+      j2: '*/3 * * * *',
+      swiss: '*/7 * * * *',
+      mix: '*/5 * * * *',
+      five: '*/1 * * * *',
     };
     for (const [league, schedule] of Object.entries(cronWarSchedules)) {
-      if (config.cronWarStatus?.[league] === "on") {
+      if (config.cronWarStatus?.[league] === 'on') {
         await cronWar(client, league, schedule);
       } else {
-        console.log(`⏭️ cronWar skipped: ${league} (status: ${config.cronWarStatus?.[league] ?? "undefined"})`);
+        console.log(`⏭️ cronWar skipped: ${league} (status: ${config.cronWarStatus?.[league] ?? 'undefined'})`);
       }
     }
 
     // 13:58pm
-    cron.schedule("00 58 04 * * *", async () => {
+    cron.schedule('00 58 04 * * *', async () => {
       await fMongo.legends200(client);
-      console.log("END: fMongo.legends200");
+      console.log('END: fMongo.legends200');
     });
 
     // 2pm
-    cron.schedule("00 00 05 * * *", async () => {
+    cron.schedule('00 00 05 * * *', async () => {
       await fCron.cronUpdate2pm(client);
-      console.log("END: fCron.cronUpdate2pm");
+      console.log('END: fCron.cronUpdate2pm');
     });
 
     // 毎週火曜 8:00（月曜 32:00：23:00 UTC）
-    cron.schedule("00 00 23 * * 1", async () => {
+    cron.schedule('00 00 23 * * 1', async () => {
       await fCron.rankedBattles(client);
-      console.log("END: fCron.rankedBattles");
+      console.log('END: fCron.rankedBattles');
     });
 
     // legend reset day
@@ -134,7 +134,7 @@ async function cronWar(client, league, option) {
     try {
       await fCron.cronWarAutoUpdate(client, league);
     } catch (error) {
-      console.error("ERROR: ", error);
+      console.error('ERROR: ', error);
     } finally {
       isRunning[league] = false;
     }
