@@ -620,7 +620,7 @@ async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo 
     const vsGlobal = endTrophies - borderGlobal;
     const vsGlobalFormatted =
       vsGlobal >= 0 ? `**+${vsGlobal}**` : `**${vsGlobal}**`;
-    const vsGlobalArrow = vsGlobal >= 0 ? config.emote.up : config.emote.down;
+    const vsGlobalArrow = vsGlobal >= 0 ? ':green_circle:' : ':red_circle:';
     description += `\n:earth_asia: vs Global 200th (**${borderGlobal}**): ${vsGlobalArrow}${vsGlobalFormatted}`;
   }
   if (Number.isFinite(japanRank)) {
@@ -631,7 +631,7 @@ async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo 
     const vsJapan = endTrophies - borderJapan;
     const vsJapanFormatted =
       vsJapan >= 0 ? `**+${vsJapan}**` : `**${vsJapan}**`;
-    const vsJapanArrow = vsJapan >= 0 ? config.emote.up : config.emote.down;
+    const vsJapanArrow = vsJapan >= 0 ? ':green_circle:' : ':red_circle:';
     description += `\n:flag_jp: vs Japan 200th (**${borderJapan}**): ${vsJapanArrow}${vsJapanFormatted}`;
   }
   embed.setDescription(description);
