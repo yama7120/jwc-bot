@@ -4185,18 +4185,18 @@ async function warProgress(mongoWar) {
     text = String(resultOpponent.stars);
     ctx.fillText(text, pos.h32, pos.v141);
     // penalty
-    if (mongoWar.clan_war.clan.penalty) {
+    if (mongoWar.clan_war?.clan?.penalty) {
       ctx.fillStyle = config.rgb.red;
       text = String(mongoWar.clan_war.clan.penalty.star);
       setFont(ctx, config.canvasFontSize.medium, FONTS.NUMBER, 'bold');
       ctx.fillText(text, pos.h31, pos.v151);
       ctx.fillStyle = config.rgb.snowWhite;
     }
-    if (mongoWar.opponent_war.clan.penalty) {
+    if (mongoWar.opponent_war?.clan?.penalty) {
       ctx.fillStyle = config.rgb.red;
       text = String(mongoWar.opponent_war.clan.penalty.star);
       setFont(ctx, config.canvasFontSize.medium, FONTS.NUMBER, 'bold');
-      ctx.fillText(text, pos.h31, pos.v151);
+      ctx.fillText(text, pos.h32, pos.v151);
       ctx.fillStyle = config.rgb.snowWhite;
     }
 
@@ -4585,9 +4585,11 @@ async function warProgress(mongoWar) {
     }
     const spacing = (heightCanvas * 0.27) / size;
     const apm = mongoWar.clan_war.attacksPerMember;
+    const homeMembers = mongoWar.clan_war?.clan?.members ?? [];
+    const awayMembers = mongoWar.opponent_war?.clan?.members ?? [];
     // Home team
     await Promise.all(
-      mongoWar.clan_war.clan.members.map(async (member, index) => {
+      homeMembers.map(async (member, index) => {
         setFontJP(ctx, fontSizeLineup);
         text = member.name;
         ctx.textAlign = 'center';
@@ -4662,7 +4664,7 @@ async function warProgress(mongoWar) {
     );
     // Away team
     await Promise.all(
-      mongoWar.opponent_war.clan.members.map(async (member, index) => {
+      awayMembers.map(async (member, index) => {
         setFontJP(ctx, fontSizeLineup);
         text = member.name;
         ctx.textAlign = 'center';
