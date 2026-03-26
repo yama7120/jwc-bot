@@ -1113,7 +1113,7 @@ export default {
           })),
         );
       } else if (focusedOption.name === 'destruction') {
-        choices = [
+        const choices = [
           100, 99, 98, 97, 96, 95, 94, 93, 92, 91, 90, 89, 88, 87, 86, 85, 84,
           83, 82, 81, 80, 79, 78, 77, 76,
         ];
@@ -3158,7 +3158,8 @@ async function addAttack(interaction, client) {
 async function calcDestruction(membersAtt, membersDef) {
   let sumDestruction = 0;
   membersDef.map((memberDef, index) => {
-    bestOpponentAttackerTag = memberDef._bestOpponentAttackerTag;
+    const bestOpponentAttackerTag = memberDef?._bestOpponentAttackerTag;
+    if (!bestOpponentAttackerTag) return;
     membersAtt.map((memberAtt, index) => {
       if (memberAtt.tag == bestOpponentAttackerTag) {
         if (memberAtt.attacks[0] != null) {
@@ -3173,6 +3174,9 @@ async function calcDestruction(membersAtt, membersDef) {
       }
     });
   });
+  if (!Array.isArray(membersDef) || membersDef.length === 0) {
+    return 0;
+  }
   let destruction = sumDestruction / membersDef.length;
   destruction = Math.round(destruction * 100) / 100;
   return destruction;
