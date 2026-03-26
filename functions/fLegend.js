@@ -856,6 +856,8 @@ function getWeeklySummaryFromEvents(events, seasonData) {
 
 async function sendLogEmbed(client, mongoAcc, myEmbed) {
   try {
+    const disableLegendLogs = process.env.DISABLE_LEGEND_LOGS === 'true';
+
     // ユーザー設定に基づく送信
     if (!mongoAcc.legend.logSettings) {
       return;
@@ -879,13 +881,15 @@ async function sendLogEmbed(client, mongoAcc, myEmbed) {
     }
 
     // ログチャンネルへの送信
-    const channelLog = client.channels.cache.get(config.logch.legend);
-    if (channelLog?.isTextBased()) {
-      await channelLog.send({ embeds: [myEmbed] });
-    } else {
-      console.error(
-        'ログチャンネルが見つからないか、テキストチャンネルではありません。',
-      );
+    if (!disableLegendLogs) {
+      const channelLog = client.channels.cache.get(config.logch.legend);
+      if (channelLog?.isTextBased()) {
+        await channelLog.send({ embeds: [myEmbed] });
+      } else {
+        console.error(
+          'ログチャンネルが見つからないか、テキストチャンネルではありません。',
+        );
+      }
     }
   } catch (error) {
     console.error('ログ送信中にエラーが発生しました:', error, mongoAcc.name);

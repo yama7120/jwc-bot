@@ -664,14 +664,17 @@ async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo 
     console.error(`メッセージの送信中にエラーが発生しました: ${mongoAcc.name}`, error);
   }
   // 14時のresult系バックアップ通知先
-  let backupChannel = client.channels.cache.get(config.logch.legend_result);
-  if (!backupChannel) {
-    backupChannel = await client.channels.fetch(config.logch.legend_result).catch(() => null);
-  }
-  if (backupChannel) {
-    await backupChannel.send({ embeds: [embed] });
-    await backupChannel.send({ files: [result.attachment] });
-    await backupChannel.send({ files: [attachmentHistory] });
+  const disableLegendLogs = process.env.DISABLE_LEGEND_LOGS === 'true';
+  if (!disableLegendLogs && config.logch.legend_result) {
+    let backupChannel = client.channels.cache.get(config.logch.legend_result);
+    if (!backupChannel) {
+      backupChannel = await client.channels.fetch(config.logch.legend_result).catch(() => null);
+    }
+    if (backupChannel) {
+      await backupChannel.send({ embeds: [embed] });
+      await backupChannel.send({ files: [result.attachment] });
+      await backupChannel.send({ files: [attachmentHistory] });
+    }
   }
 }
 
