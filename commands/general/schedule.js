@@ -40,14 +40,24 @@ export default {
 
   async autocomplete(interaction, client) {
     const focusedValue = interaction.options.getFocused();
-    const iLeague = await interaction.options.getString('league');
-    let teamList = await client.clientMongo
+    const iLeague = interaction.options.getString('league');
+    const teamListDoc = await client.clientMongo
       .db('jwc')
       .collection('config')
       .findOne({ _id: 'teamList' });
 
-    let teams = teamList[iLeague].filter(function (team) {
-      return team.team_abbr.includes(focusedValue);
+    const leagueTeams = Array.isArray(teamListDoc?.[iLeague])
+      ? teamListDoc[iLeague]
+      : [];
+    if (!iLeague || leagueTeams.length === 0) {
+      await interaction.respond([]);
+      return;
+    }
+
+    let teams = leagueTeams.filter(function (team) {
+      return (
+        team.team_abbr && team.team_abbr.includes(focusedValue ?? '')
+      );
     });
     if (teams.length >= 25) {
       teams = teams.filter(function (clan, index) {
