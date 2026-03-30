@@ -665,7 +665,8 @@ export default {
     error: '1097836704204857364',
     legend_old: '1328623037939056691',
     legend: '1346765250648739905',
-    legend_result: '1482344990624714925',
+    // バックアップ用 legend_result 通知は使用しない
+    legend_result: '',
     command: '1097842361150746728',
     guildCreate: '1097836725709050007',
     guildDelete: '1097836725709050007',
