@@ -129,11 +129,16 @@ async function sendReminder(client, channelId, mongoWar, mongoClanA, mongoClanB)
     if (!channel || !channel.isTextBased()) {
       throw new Error('Channel not found or not text-based');
     }
-    const botMember = channel.guild?.members?.me ?? null;
+    let botMember = channel.guild?.members?.me ?? null;
+    if (!botMember && channel.guild) {
+      botMember = await channel.guild.members.fetchMe().catch(() => null);
+    }
     const permissions = botMember ? channel.permissionsFor(botMember) : null;
     if (
       permissions &&
-      (!permissions.has('ViewChannel') || !permissions.has('SendMessages'))
+      (!permissions.has('ViewChannel') ||
+        !permissions.has('SendMessages') ||
+        (channel.isThread?.() && !permissions.has('SendMessagesInThreads')))
     ) {
       console.warn(
         `[sendReminder] missing permission for channel ${channelId} (${channelName})`,
