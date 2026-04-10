@@ -1094,6 +1094,10 @@ export default {
         id: 963, name: 'Stun Blaster', hero: 'Dragon Duke', type: 'common',
         emote: '<:eqStunBlast:1481908726972809357>'
       },
+      {
+        id: 964, name: 'Rocket Backpack', hero: 'Dragon Duke', type: 'epic',
+        emote: '<:eqRocketBackpack:1491967601390256288>'
+      },
     ],
     /*
     新装備実装時

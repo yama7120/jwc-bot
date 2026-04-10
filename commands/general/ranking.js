@@ -77,6 +77,7 @@ let data = new SlashCommandBuilder()
             { name: 'Electro Boots Lv.', value: 'equipElectroBoots' },
             { name: 'Dark Crown Lv.', value: 'equipDarkCrown' },
             { name: 'Meteor Staff Lv.', value: 'equipMeteorStaff' },
+            { name: 'Rocket Backpack Lv.', value: 'equipRocketBackpack' },
           )
       )
       .addStringOption(option =>

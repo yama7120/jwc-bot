@@ -25,6 +25,7 @@ async function rankingMain(clientMongo) {
     await rankingEquipment(clientMongo, 'electroBoots');
     await rankingEquipment(clientMongo, 'darkCrown');
     await rankingEquipment(clientMongo, 'meteorStaff');
+    await rankingEquipment(clientMongo, 'rocketBackpack');
   }
 
   // ** Others **
