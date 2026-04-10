@@ -3141,7 +3141,7 @@ async function legendHistory(mongoAcc) {
   // 最後の40件（過去→現在順のうち最新40日）を取得
   let legendDaysLast40 = legendDaysSorted.slice(-40);
 
-  legendDaysLast40.forEach((object, index) => {
+  legendDaysLast40.forEach((object) => {
     cdpAttacks.push(object.attacks);
     cdpDefenses.push(object.defenses);
     cdpTriples.push(object.triples);
@@ -3150,11 +3150,28 @@ async function legendHistory(mongoAcc) {
     cdpAtkTrophies.push(object.attackTrophies || 0);
     cdpDefTrophies.push(object.defenseTrophies || 0); // 既に負の値
     cdpDiffTrophies.push(object.diffTrophies || 0);
-    if (object.trophies > maxTrophies) {
-      maxTrophies = object.trophies;
+  });
+
+  // トロフィー折れ線の Y 軸はレジェンド帯（5000+）の日だけで min/max を決める。
+  // 欠損などで 0 が混ざると下限が 0 になりグラフが潰れるため、スケール計算からは除外する。
+  const TROPHY_SCALE_FLOOR = 5000;
+  const trophyValsLegendBand = legendDaysLast40
+    .map((o) => o.trophies)
+    .filter(
+      (t) => typeof t === 'number' && Number.isFinite(t) && t >= TROPHY_SCALE_FLOOR,
+    );
+  const trophyValsAll = legendDaysLast40
+    .map((o) => o.trophies)
+    .filter((t) => typeof t === 'number' && Number.isFinite(t));
+  const trophyValsForScale =
+    trophyValsLegendBand.length > 0 ? trophyValsLegendBand : trophyValsAll;
+
+  trophyValsForScale.forEach((t) => {
+    if (t > maxTrophies) {
+      maxTrophies = t;
     }
-    if (object.trophies < minTrophies) {
-      minTrophies = object.trophies;
+    if (t < minTrophies) {
+      minTrophies = t;
     }
   });
 
