@@ -10,6 +10,8 @@ import * as fGetWars from './fGetWars.js';
 import * as fRanking from './fRanking.js';
 import * as fCanvas from './fCanvas.js';
 
+const WAR_UPDATE_CONCURRENCY = 4;
+
 
 async function cronWarAutoUpdate(client, league) {
   const unixTime = Math.floor(Date.now() / 1000);
@@ -26,6 +28,7 @@ export { cronWarAutoUpdate };
 
 
 async function autoUpdateWar(client, league, week) {
+  const startedAt = Date.now();
   const cursor = client.clientMongo.db('jwc').collection('wars')
     .find({ season: config.season[league], league: league, week: week, 'result.state': { $ne: 'warEnded' } });
   const mongoWars = await cursor.toArray();
@@ -33,10 +36,14 @@ async function autoUpdateWar(client, league, week) {
 
   let sumFlagUpdate = 0;
 
-  await Promise.all(mongoWars.map(async (mongoWar) => {
-    const result = await fGetWars.getClanWarUpdateDB(client, mongoWar);
-    sumFlagUpdate += result || 0;
-  }));
+  await runWithConcurrency(
+    mongoWars,
+    WAR_UPDATE_CONCURRENCY,
+    async (mongoWar) => {
+      const result = await fGetWars.getClanWarUpdateDB(client, mongoWar);
+      sumFlagUpdate += result || 0;
+    },
+  );
 
   if (sumFlagUpdate > 0) {
     functions.updateWarInfo(client, league, week);
@@ -47,17 +54,24 @@ async function autoUpdateWar(client, league, week) {
   const mongoWars2 = await cursor2.toArray();
   await cursor2.close();
 
-  await Promise.all(mongoWars2.map(async (mongoWar) => {
-    if (mongoWar.deal?.unixTime) {
-      const date = new Date(mongoWar.deal.unixTime * 1000);
-      const now = new Date();
-      const timeDifference = date - now;
-      const hoursDifference = timeDifference / (1000 * 60 * 60);
-      if (hoursDifference >= 12 && hoursDifference <= 24) {
-        await sendReminderMain(client, mongoWar);
+  await runWithConcurrency(
+    mongoWars2,
+    WAR_UPDATE_CONCURRENCY,
+    async (mongoWar) => {
+      if (mongoWar.deal?.unixTime) {
+        const date = new Date(mongoWar.deal.unixTime * 1000);
+        const now = new Date();
+        const timeDifference = date - now;
+        const hoursDifference = timeDifference / (1000 * 60 * 60);
+        if (hoursDifference >= 12 && hoursDifference <= 24) {
+          await sendReminderMain(client, mongoWar);
+        }
       }
-    }
-  }));
+    },
+  );
+  console.log(
+    `[cronWarAutoUpdate] league=${league} wars=${mongoWars.length}/${mongoWars2.length} elapsed=${Date.now() - startedAt}ms`,
+  );
 }
 
 async function sendReminderMain(client, mongoWar) {
@@ -259,6 +273,7 @@ export { rankedBattles };
 
 
 async function cronUpdate2pm(client) {
+  const startedAt = Date.now();
   const currentDate = new Date();
   const seasonData = functions.calculateSeasonValues(client, currentDate, true);
   const nAccs = await autoUpdateAcc(client);
@@ -269,13 +284,12 @@ async function cronUpdate2pm(client) {
 
   await sendLogLegendDay(client, seasonData);
 
-  await functions.sleep(60 * 1000);
-
   await sendLegendResult(client, seasonData);
 
-  functions.updateStatusInfoLegend(client, seasonData);
+  await functions.updateStatusInfoLegend(client, seasonData);
 
   await addNewDayToLegendAccounts(client, seasonData);
+  console.log(`[cronUpdate2pm] elapsed=${Date.now() - startedAt}ms accounts=${nAccs}`);
 }
 export { cronUpdate2pm };
 
@@ -812,4 +826,28 @@ function createLegendSummaryEmbed(items, seasonData) {
 
   embed.setDescription(lines.join('\n\n'));
   return embed;
+}
+
+async function runWithConcurrency(items, concurrency, worker) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return;
+  }
+  const queue = [...items];
+  const workers = Array.from(
+    { length: Math.max(1, Math.min(concurrency, queue.length)) },
+    async () => {
+      while (queue.length > 0) {
+        const item = queue.shift();
+        if (!item) {
+          continue;
+        }
+        try {
+          await worker(item);
+        } catch (error) {
+          console.error('[runWithConcurrency] worker failed:', error);
+        }
+      }
+    },
+  );
+  await Promise.all(workers);
 }

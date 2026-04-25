@@ -238,6 +238,8 @@ class PollingSystem {
     this.lastMaintenanceStart = 0;
     this.lastMaintenanceEnd = 0;
     this.accountsLegend = [];
+    this.playerUpdateLocks = new Set();
+    this.lastLegendStatusUpdateMs = 0;
   }
 
   // メンテナンスの処理の初期化
@@ -415,7 +417,7 @@ class PollingSystem {
   }
 
   // プレイヤーのステータスが変化したときの処理
-  handlePlayerStatsChange(beforePlayerStats, afterPlayerStats) {
+  async handlePlayerStatsChange(beforePlayerStats, afterPlayerStats) {
     if (!this.accountsLegend || this.accountsLegend.length === 0) {
       console.log(
         `⚠️ accountsLegend not initialized; skip player stats change for tag: ${afterPlayerStats.tag}`,
@@ -428,6 +430,9 @@ class PollingSystem {
       currentDate,
     );
     const tagPlayer = afterPlayerStats.tag;
+    if (this.playerUpdateLocks.has(tagPlayer)) {
+      return;
+    }
     const mongoAcc = this.accountsLegend.find((a) => a.tag === tagPlayer);
     if (!mongoAcc) {
       console.warn(
@@ -454,8 +459,9 @@ class PollingSystem {
     });
     const beforeSlim = pick(beforePlayerStats);
     const afterSlim = pick(afterPlayerStats);
+    this.playerUpdateLocks.add(tagPlayer);
     try {
-      this.fLegend.autoUpdateLegend(
+      await this.fLegend.autoUpdateLegend(
         this.client,
         mongoAcc,
         beforeSlim,
@@ -464,8 +470,14 @@ class PollingSystem {
       );
     } catch (e) {
       console.error(`❌ autoUpdateLegend failed for ${tagPlayer}:`, e);
+    } finally {
+      this.playerUpdateLocks.delete(tagPlayer);
     }
-    this.functions.updateStatusInfoLegend(this.client, seasonData);
+    const now = Date.now();
+    if (now - this.lastLegendStatusUpdateMs >= 15 * 1000) {
+      this.lastLegendStatusUpdateMs = now;
+      await this.functions.updateStatusInfoLegend(this.client, seasonData);
+    }
   }
 
   // 5分ごとにアカウントを更新
@@ -490,8 +502,8 @@ class PollingSystem {
   setupPlayerStatsChangeListener() {
     if (this.pollingClientTrophies) {
       console.log('🔧 Attaching playerStatsChange listener');
-      this.pollingClientTrophies.on('playerStatsChange', (before, after) => {
-        this.handlePlayerStatsChange(before, after);
+      this.pollingClientTrophies.on('playerStatsChange', async (before, after) => {
+        await this.handlePlayerStatsChange(before, after);
       });
       console.log('🔧 Player stats change listener setup completed');
     } else {

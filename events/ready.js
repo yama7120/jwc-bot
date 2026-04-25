@@ -4,6 +4,8 @@ import * as fMongo from '../functions/fMongo.js';
 import * as fCron from '../functions/fCron.js';
 import cron from 'node-cron';
 
+const cronLocks = new Map();
+
 export default {
   name: Events.ClientReady,
   once: true, // true -> 一度だけ
@@ -58,19 +60,19 @@ export default {
     }
 
     // 13:58pm
-    cron.schedule('00 58 04 * * *', async () => {
+    scheduleCronWithGuard('legends200', '00 58 04 * * *', async () => {
       await fMongo.legends200(client);
       console.log('END: fMongo.legends200');
     });
 
     // 2pm
-    cron.schedule('00 00 05 * * *', async () => {
+    scheduleCronWithGuard('cronUpdate2pm', '00 00 05 * * *', async () => {
       await fCron.cronUpdate2pm(client);
       console.log('END: fCron.cronUpdate2pm');
     });
 
     // 毎週火曜 8:00（月曜 32:00：23:00 UTC）
-    cron.schedule('00 00 23 * * 1', async () => {
+    scheduleCronWithGuard('rankedBattles', '00 00 23 * * 1', async () => {
       await fCron.rankedBattles(client);
       console.log('END: fCron.rankedBattles');
     });
@@ -121,22 +123,50 @@ export default {
 };
 
 async function cronWar(client, league, option) {
-  const isRunning = {};
-  isRunning[league] = false;
+  scheduleCronWithGuard(`cronWar:${league}`, option, async () => {
+    await fCron.cronWarAutoUpdate(client, league);
+  });
+}
 
-  cron.schedule(option, async () => {
-    if (isRunning[league]) {
-      console.error(`Skipping cronWar: ${league}`);
+function scheduleCronWithGuard(jobName, expression, task, options = {}) {
+  const timeoutMs = options.timeoutMs ?? 15 * 60 * 1000;
+  cron.schedule(expression, async () => {
+    if (cronLocks.get(jobName)) {
+      console.warn(`[CRON][SKIP] ${jobName} is still running`);
       return;
     }
-
-    isRunning[league] = true;
+    cronLocks.set(jobName, true);
+    const startedAt = Date.now();
     try {
-      await fCron.cronWarAutoUpdate(client, league);
+      console.log(`[CRON][START] ${jobName}`);
+      await withTimeout(task(), timeoutMs, jobName);
+      const elapsed = Date.now() - startedAt;
+      console.log(`[CRON][DONE] ${jobName} (${elapsed} ms)`);
     } catch (error) {
-      console.error('ERROR: ', error);
+      const elapsed = Date.now() - startedAt;
+      console.error(`[CRON][ERROR] ${jobName} (${elapsed} ms):`, error);
     } finally {
-      isRunning[league] = false;
+      cronLocks.set(jobName, false);
     }
   });
+}
+
+async function withTimeout(promise, timeoutMs, jobName) {
+  let timer;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          reject(
+            new Error(
+              `[CRON][TIMEOUT] ${jobName} exceeded ${timeoutMs} ms`,
+            ),
+          );
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
