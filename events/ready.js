@@ -65,10 +65,10 @@ export default {
       console.log('END: fMongo.legends200');
     });
 
-    // 2pm
-    scheduleCronWithGuard('cronUpdate2pm', '00 00 05 * * *', async () => {
-      await fCron.cronUpdate2pm(client);
-      console.log('END: fCron.cronUpdate2pm');
+    // 2am (JST)
+    scheduleCronWithGuard('cronUpdate2am', '00 00 17 * * *', async () => {
+      await fCron.cronUpdate2am(client);
+      console.log('END: fCron.cronUpdate2am');
     });
 
     // 毎週火曜 8:00（月曜 32:00：23:00 UTC）

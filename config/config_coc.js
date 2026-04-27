@@ -1,6 +1,6 @@
 export default {
     leagueId: {
-      legend: 105000034,
+      legend: 105000036,
       electro33: 105000033,
       electro32: 105000032,
       electro31: 105000031,
@@ -259,7 +259,7 @@ export default {
       {
         id: 105000025,
         name: 'Titan League 25',
-        nBattles: 18,
+        nBattles: 12,
         emote: '<:ranked_battles_25:1424756742016995440>',
         iconUrls: {
           small: 'https://api-assets.clashofclans.com/leaguetiers/125/JLqVXdNkAGjD_yqMRDgu9KK-hDrulNPjsKU4EugHqX8.png',
@@ -269,7 +269,7 @@ export default {
       {
         id: 105000026,
         name: 'Titan League 26',
-        nBattles: 14,
+        nBattles: 12,
         emote: '<:ranked_battles_26:1424756754457300992>',
         iconUrls: {
           small: 'https://api-assets.clashofclans.com/leaguetiers/125/yIfqSgrhiYRcuMbAPCoeCj1FTmfylCLxnrAljEZc8K0.png',
@@ -279,7 +279,7 @@ export default {
       {
         id: 105000027,
         name: 'Titan League 27',
-        nBattles: 14,
+        nBattles: 12,
         emote: '<:ranked_battles_27:1424756767262248960>',
         iconUrls: {
           small: 'https://api-assets.clashofclans.com/leaguetiers/125/1AhObOl55grQIWnGmn1J9qMWq5pmRA3aBObfYkQEjko.png',
@@ -289,7 +289,7 @@ export default {
       {
         id: 105000028,
         name: 'Dragon League 28',
-        nBattles: 18,
+        nBattles: 14,
         emote: '<:ranked_battles_28:1424756780331700316>',
         iconUrls: {
           small: 'https://api-assets.clashofclans.com/leaguetiers/125/YCZ7O_3_c8eCBYvX-92qiWeLc6Md6eNJ5A8O-2vUg7I.png',
@@ -299,7 +299,7 @@ export default {
       {
         id: 105000029,
         name: 'Dragon League 29',
-        nBattles: 18,
+        nBattles: 14,
         emote: '<:ranked_battles_29:1424756793095229601>',
         iconUrls: {
           small: 'https://api-assets.clashofclans.com/leaguetiers/125/DIMeRH3N4lrNObA3zAmk_eUin8nvNeLR89qYznnA--s.png',
@@ -309,7 +309,7 @@ export default {
       {
         id: 105000030,
         name: 'Dragon League 30',
-        nBattles: 18,
+        nBattles: 14,
         emote: '<:ranked_battles_30:1424756805992714240>',
         iconUrls: {
           small: 'https://api-assets.clashofclans.com/leaguetiers/125/g7m9aF8YoYj9b0olPsyT4eUIxyYEmkqr53wYxWmzpE4.png',
@@ -319,7 +319,7 @@ export default {
       {
         id: 105000031,
         name: 'Electro League 31',
-        nBattles: 24,
+        nBattles: 18,
         emote: '<:ranked_battles_31:1424756818206527529>',
         iconUrls: {
           small: 'https://api-assets.clashofclans.com/leaguetiers/125/qVORiRguZ-xMq8L0g7rE1-rZuiA-lKlI8VKuMndRy4w.png',
@@ -329,7 +329,7 @@ export default {
       {
         id: 105000032,
         name: 'Electro League 32',
-        nBattles: 24,
+        nBattles: 18,
         emote: '<:ranked_battles_32:1424756831565123645>',
         iconUrls: {
           small: 'https://api-assets.clashofclans.com/leaguetiers/125/iX8uNhG6jBcQATWFS8a0gtidGy9O1PRYtXZZMTtUK3U.png',
@@ -339,7 +339,7 @@ export default {
       {
         id: 105000033,
         name: 'Electro League 33',
-        nBattles: 24,
+        nBattles: 18,
         emote: '<:ranked_battles_33:1424756844865523864>',
         iconUrls: {
           small: 'https://api-assets.clashofclans.com/leaguetiers/125/VFqkaQimExWtSmIf9PC8WEpj4Vd58oLjPWyZqfVb5VE.png',
@@ -348,6 +348,26 @@ export default {
       },
       {
         id: 105000034,
+        name: 'Legend League 3',
+        nBattles: 24,
+        emote: '<:ranked_battles_34:1424756857762746541>',
+        iconUrls: {
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/BvEu_UE53UzADvTRiU9AdyOrlvb1RqvBmMau_uX6xm0.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/BvEu_UE53UzADvTRiU9AdyOrlvb1RqvBmMau_uX6xm0.png'
+        }
+      },
+      {
+        id: 105000035,
+        name: 'Legend League 2',
+        nBattles: 30,
+        emote: '<:ranked_battles_34:1424756857762746541>',
+        iconUrls: {
+          small: 'https://api-assets.clashofclans.com/leaguetiers/125/BvEu_UE53UzADvTRiU9AdyOrlvb1RqvBmMau_uX6xm0.png',
+          large: 'https://api-assets.clashofclans.com/leaguetiers/326/BvEu_UE53UzADvTRiU9AdyOrlvb1RqvBmMau_uX6xm0.png'
+        }
+      },
+      {
+        id: 105000036,
         name: 'Legend League',
         nBattles: 8,
         emote: '<:ranked_battles_34:1424756857762746541>',

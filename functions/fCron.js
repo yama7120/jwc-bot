@@ -272,7 +272,7 @@ async function rankedBattles(client) {
 export { rankedBattles };
 
 
-async function cronUpdate2pm(client) {
+async function cronUpdate2am(client) {
   const startedAt = Date.now();
   const currentDate = new Date();
   const seasonData = functions.calculateSeasonValues(client, currentDate, true);
@@ -289,9 +289,9 @@ async function cronUpdate2pm(client) {
   await functions.updateStatusInfoLegend(client, seasonData);
 
   await addNewDayToLegendAccounts(client, seasonData);
-  console.log(`[cronUpdate2pm] elapsed=${Date.now() - startedAt}ms accounts=${nAccs}`);
+  console.log(`[cronUpdate2am] elapsed=${Date.now() - startedAt}ms accounts=${nAccs}`);
 }
-export { cronUpdate2pm };
+export { cronUpdate2am };
 
 async function addNewDayToLegendAccounts(client, seasonData) {
   try {
