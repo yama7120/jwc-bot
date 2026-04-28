@@ -87,6 +87,39 @@ let data = new SlashCommandBuilder()
               .setRequired(true)
           )
       )
+      .addSubcommand(subcommand =>
+        subcommand
+          .setName('battlelog')
+          .setDescription('BATTLE LOG SUMMARY')
+          .addStringOption(option =>
+            option
+              .setName('account_own')
+              .setDescription('ACCOUNT')
+              .setRequired(true)
+              .setAutocomplete(true)
+          )
+          .addStringOption(option =>
+            option
+              .setName('type')
+              .setDescription('TYPE')
+              .addChoices(
+                { name: 'ALL', value: 'all' },
+                { name: 'RANKED', value: 'ranked' },
+                { name: 'HOME VILLAGE', value: 'homeVillage' },
+                { name: 'LEGEND', value: 'legend' },
+              )
+          )
+          .addIntegerOption(option =>
+            option
+              .setName('limit')
+              .setDescription('NUMBER OF LOGS')
+              .addChoices(
+                { name: '10', value: 10 },
+                { name: '25', value: 25 },
+                { name: '50', value: 50 },
+              )
+          )
+      )
   )
   // options[1]
   .addSubcommandGroup(subcommandgroup =>
@@ -453,6 +486,9 @@ export default {
       if (subcommand == 'list') {
         accountList(interaction, client);
       }
+      else if (subcommand == 'battlelog') {
+        accountBattlelog(interaction, client);
+      }
       else if (subcommand == 'own' || subcommand == 'single' || subcommand == 'any') {
         accountSingle(interaction, client, subcommand);
       };
@@ -784,6 +820,117 @@ async function accountSingle(interaction, client, subcommand) {
 
   await interaction.followUp({ embeds: [embed] });
 };
+
+function sumResource(entries, resourceName) {
+  return entries.reduce((total, entry) => {
+    const list = Array.isArray(entry?.lootedResources) ? entry.lootedResources : [];
+    const hit = list.find((item) => item?.name === resourceName);
+    return total + (hit?.amount ?? 0);
+  }, 0);
+}
+
+function formatNumber(num) {
+  return Number(num || 0).toLocaleString('en-US');
+}
+
+async function fetchBattleLogItems(clientCoc, playerTag) {
+  if (typeof clientCoc?.getBattleLog === 'function') {
+    const items = await clientCoc.getBattleLog(playerTag);
+    return Array.isArray(items) ? items : [];
+  }
+
+  if (typeof clientCoc?.rest?.getBattleLog === 'function') {
+    const response = await clientCoc.rest.getBattleLog(playerTag);
+    return Array.isArray(response?.body?.items) ? response.body.items : [];
+  }
+
+  if (typeof clientCoc?.rest?.requestHandler?.request === 'function') {
+    const response = await clientCoc.rest.requestHandler.request(
+      `/players/${encodeURIComponent(playerTag)}/battlelog`,
+    );
+    return Array.isArray(response?.body?.items) ? response.body.items : [];
+  }
+
+  throw new Error('battlelog endpoint is not available in current clashofclans.js client');
+}
+
+function buildRecentLines(entries, maxLines = 10) {
+  return entries.slice(0, maxLines).map((entry, idx) => {
+    const side = entry?.attack ? 'A' : 'D';
+    const battleType = entry?.battleType ?? 'unknown';
+    const stars = Number(entry?.stars ?? 0);
+    const destruction = Number(entry?.destructionPercentage ?? 0);
+    const opponent = entry?.opponentPlayerTag ?? 'N/A';
+    const starsLabel = stars > 0 ? '⭐'.repeat(stars) : '☆0';
+    return `${idx + 1}. [${side}] ${battleType} ${starsLabel} ${destruction}% vs ${opponent}`;
+  });
+}
+
+async function accountBattlelog(interaction, client) {
+  const iPlayerTag = await interaction.options.getString('account_own');
+  const playerTag = functions.tagReplacer(iPlayerTag);
+  const filterType = await interaction.options.getString('type') ?? 'all';
+  const limit = await interaction.options.getInteger('limit') ?? 25;
+
+  const resultScan = await functions.scanAcc(client.clientCoc, playerTag);
+  if (resultScan.status !== 'ok') {
+    const embed = new EmbedBuilder()
+      .setTitle(':x: **ERROR**')
+      .setDescription(`*Failed to fetch player info.*\nstatus: **${resultScan.status}**`)
+      .setColor(config.color.main)
+      .setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
+    await interaction.followUp({ embeds: [embed] });
+    return;
+  }
+  const scPlayer = resultScan.scPlayer;
+
+  const allItems = await fetchBattleLogItems(client.clientCoc, playerTag);
+  const filteredItems = (filterType === 'all')
+    ? allItems
+    : allItems.filter((item) => item?.battleType === filterType);
+  const targetItems = filteredItems.slice(0, Math.max(1, limit));
+
+  const attacks = targetItems.filter((item) => item?.attack === true);
+  const defenses = targetItems.filter((item) => item?.attack === false);
+  const rankedCount = targetItems.filter((item) => item?.battleType === 'ranked').length;
+  const homeCount = targetItems.filter((item) => item?.battleType === 'homeVillage').length;
+  const legendCount = targetItems.filter((item) => item?.battleType === 'legend').length;
+  const attack3Star = attacks.filter((item) => Number(item?.stars ?? 0) === 3).length;
+  const defenseHold = defenses.filter((item) => Number(item?.stars ?? 0) <= 1).length;
+  const totalGold = sumResource(targetItems, 'Gold');
+  const totalElixir = sumResource(targetItems, 'Elixir');
+  const totalDark = sumResource(targetItems, 'DarkElixir');
+  const totalSour = sumResource(targetItems, 'SourElixir');
+  const recentLines = buildRecentLines(targetItems, 10);
+
+  const description = [
+    `${config.emote.thn[scPlayer.townHallLevel] ?? ''} **${functions.nameReplacer(scPlayer.name)}** | ${scPlayer.tag}`,
+    '',
+    `target: **${targetItems.length}** / all: ${allItems.length} (filter: ${filterType})`,
+    `A/D: **${attacks.length} / ${defenses.length}**`,
+    `Attack 3★: **${attack3Star}** | Defense hold(<=1★): **${defenseHold}**`,
+    '',
+    `types -> ranked: **${rankedCount}** / homeVillage: **${homeCount}** / legend: **${legendCount}**`,
+    '',
+    `loot total`,
+    `- Gold: **${formatNumber(totalGold)}**`,
+    `- Elixir: **${formatNumber(totalElixir)}**`,
+    `- Dark: **${formatNumber(totalDark)}**`,
+    `- Sour: **${formatNumber(totalSour)}**`,
+    '',
+    'recent',
+    ...(recentLines.length > 0 ? recentLines : ['- no logs']),
+  ].join('\n');
+
+  const embed = new EmbedBuilder()
+    .setTitle('**BATTLE LOG SUMMARY**')
+    .setDescription(description)
+    .setColor(config.color.main)
+    .setFooter({ text: config.footer, iconURL: config.urlImage.jwc })
+    .setTimestamp();
+
+  await interaction.followUp({ embeds: [embed] });
+}
 
 
 async function teamList(interaction, client) {
