@@ -367,6 +367,8 @@ class PollingSystem {
         $or: [
           { 'legend.logSettings.post': { $in: ['channel', 'dm'] } },
           { 'leagueTier.id': config_coc.leagueId.legend },
+          { 'leagueTier.id': config_coc.leagueId.legend2 },
+          { 'leagueTier.id': config_coc.leagueId.legend3 },
           { 'leagueTier.id': config_coc.leagueId.electro33 },
           { 'leagueTier.id': config_coc.leagueId.electro32 },
           { 'leagueTier.id': config_coc.leagueId.electro31 },

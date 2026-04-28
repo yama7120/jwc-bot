@@ -1,6 +1,8 @@
 export default {
     leagueId: {
       legend: 105000036,
+      legend2: 105000035,
+      legend3: 105000034,
       electro33: 105000033,
       electro32: 105000032,
       electro31: 105000031,
@@ -348,7 +350,7 @@ export default {
       },
       {
         id: 105000034,
-        name: 'Legend League 3',
+        name: 'LEGEND III',
         nBattles: 24,
         emote: '<:ranked_battles_34:1424756857762746541>',
         iconUrls: {
@@ -358,7 +360,7 @@ export default {
       },
       {
         id: 105000035,
-        name: 'Legend League 2',
+        name: 'LEGEND II',
         nBattles: 30,
         emote: '<:ranked_battles_34:1424756857762746541>',
         iconUrls: {
@@ -368,7 +370,7 @@ export default {
       },
       {
         id: 105000036,
-        name: 'Legend League',
+        name: 'LEGEND I',
         nBattles: 8,
         emote: '<:ranked_battles_34:1424756857762746541>',
         iconUrls: {

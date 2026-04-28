@@ -16,6 +16,15 @@ function isLegendLeagueSeasonTrophyReset(beforePlayerStats, afterPlayerStats) {
   return diffTrophies <= -100;
 }
 
+function getLeagueTierDisplayName(scPlayer) {
+  const leagueTierId = scPlayer?.leagueTier?.id;
+  const leagueTierConfig = config_coc.leagueTiers.find(
+    (tier) => tier.id === leagueTierId,
+  );
+  const leagueName = leagueTierConfig?.name ?? scPlayer?.leagueTier?.name ?? 'Unknown League';
+  return leagueName.toUpperCase();
+}
+
 async function createLogLegendNewSeason(
   scPlayer,
   mongoAcc,
@@ -28,7 +37,7 @@ async function createLogLegendNewSeason(
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     footer = `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
   } else {
-    footer = `${scPlayer.leagueTier.name.toUpperCase()}`;
+    footer = `${getLeagueTierDisplayName(scPlayer)}`;
   }
   myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
   myEmbed.setColor(config.color.green);
@@ -927,13 +936,13 @@ async function createLogLegendAttack(
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     footer =
       `#${nToday.attacks - nEvents + i + 1} | ` +
-      `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | ${scPlayer.leagueTier.name.toUpperCase()}`;
+      `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | ${getLeagueTierDisplayName(scPlayer)}`;
   } else {
     const attackOrder = Math.max(0, nWeek.attacks - nEvents + i + 1);
     if (maxBattles > 0) {
-      footer = `ATTACK ${attackOrder}/${maxBattles} | ${scPlayer.leagueTier.name.toUpperCase()}`;
+      footer = `ATTACK ${attackOrder}/${maxBattles} | ${getLeagueTierDisplayName(scPlayer)}`;
     } else {
-      footer = `ATTACK ${attackOrder} | ${scPlayer.leagueTier.name.toUpperCase()}`;
+      footer = `ATTACK ${attackOrder} | ${getLeagueTierDisplayName(scPlayer)}`;
     }
   }
   myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
@@ -992,13 +1001,13 @@ async function createLogLegendDefense(
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     footer =
       `#${nToday.defenses - nEvents + i + 1} | ` +
-      `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | ${scPlayer.leagueTier.name.toUpperCase()}`;
+      `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | ${getLeagueTierDisplayName(scPlayer)}`;
   } else {
     const defenseOrder = Math.max(0, nWeek.defenses - nEvents + i + 1);
     if (maxBattles > 0) {
-      footer = `DEFENSE ${defenseOrder}/${maxBattles} | ${scPlayer.leagueTier.name.toUpperCase()}`;
+      footer = `DEFENSE ${defenseOrder}/${maxBattles} | ${getLeagueTierDisplayName(scPlayer)}`;
     } else {
-      footer = `DEFENSE ${defenseOrder} | ${scPlayer.leagueTier.name.toUpperCase()}`;
+      footer = `DEFENSE ${defenseOrder} | ${getLeagueTierDisplayName(scPlayer)}`;
     }
   }
   myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
@@ -1079,7 +1088,7 @@ async function createLogLegendBoth(scPlayer, diffTrophies, seasonData) {
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     footer = `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
   } else {
-    footer = `${scPlayer.leagueTier.name.toUpperCase()}`;
+    footer = `${getLeagueTierDisplayName(scPlayer)}`;
   }
   myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
   myEmbed.setColor(config.color.legend);
@@ -1104,7 +1113,7 @@ async function createLogLegendWarning(scPlayer, diffTrophies, seasonData) {
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     footer = `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
   } else {
-    footer = `${scPlayer.leagueTier.name.toUpperCase()}`;
+    footer = `${getLeagueTierDisplayName(scPlayer)}`;
   }
   myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
   myEmbed.setColor(config.color.legend);
@@ -1126,7 +1135,7 @@ async function createLogReset(scPlayer, mongoAcc, eventData, seasonData) {
   const myEmbed = new EmbedBuilder();
   const title = `**⚔️ LEAGUE RESET!**`;
   myEmbed.setTitle(title);
-  const footer = `${scPlayer.leagueTier.name.toUpperCase()}`;
+  const footer = `${getLeagueTierDisplayName(scPlayer)}`;
   myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
   myEmbed.setColor(config.color.main);
   myEmbed.setTimestamp();
