@@ -29,6 +29,37 @@ function getLeagueTierDisplayName(scPlayer) {
   return leagueName.toUpperCase();
 }
 
+function getRankedBattlesCapForTier(leagueTierId) {
+  const tier = config_coc.leagueTiers?.find((t) => t.id === leagueTierId);
+  const n = tier?.nBattles;
+  return typeof n === 'number' && n > 0 ? n : 0;
+}
+
+/** LEGEND I 以外の本文用: トーナメント枠に対する残り攻撃／防衛（weeklySummary = 期間内のログ件数） */
+function nonLegendRankedRemainingDescriptionLine(
+  scPlayer,
+  weeklySummary,
+  kind,
+) {
+  if (scPlayer.leagueTier.id === config_coc.leagueId.legend) {
+    return '';
+  }
+  const cap = getRankedBattlesCapForTier(scPlayer?.leagueTier?.id);
+  if (cap <= 0) {
+    return '';
+  }
+  const used = kind === 'attack'
+    ? Math.max(0, Number(weeklySummary?.attacks ?? 0))
+    : Math.max(0, Number(weeklySummary?.defenses ?? 0));
+  const remaining = Math.max(0, cap - used);
+  const label = kind === 'attack' ? 'attacks' : 'defenses';
+  const em = kind === 'attack' ? config.emote.sword : config.emote.shield;
+  if (remaining <= 0) {
+    return `${em} **0/${cap}** — all ${label} used ✅\n`;
+  }
+  return `${em} **${remaining}/${cap}** ${label} remaining\n`;
+}
+
 function isLegendLeagueTierId(id) {
   return (
     id === config_coc.leagueId.legend
@@ -60,7 +91,9 @@ async function createLogLegendNewSeason(
   myEmbed.setTitle('**RANKED BATTLES LOG**');
   let footer = '';
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
-    footer = `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
+    footer =
+      `${getLeagueTierDisplayName(scPlayer)} | ` +
+      `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
   } else {
     footer = `${getLeagueTierDisplayName(scPlayer)}`;
   }
@@ -1285,28 +1318,20 @@ async function createLogLegendAttack(
       eventData.destructionPercentage,
     )}`,
   );
-  const leagueTierConfig = config_coc.leagueTiers.find(
-    (tier) => tier.id === scPlayer.leagueTier.id,
-  );
-  const maxBattles = leagueTierConfig?.nBattles ?? 0;
   let footer = '';
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     footer =
-      `#${nToday.attacks - nEvents + i + 1} | ` +
-      `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | ${getLeagueTierDisplayName(scPlayer)}`;
+      `${getLeagueTierDisplayName(scPlayer)} | ` +
+      `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO`;
   } else {
-    const attackOrder = Math.max(0, nWeek.attacks - nEvents + i + 1);
-    if (maxBattles > 0) {
-      footer = `ATTACK ${attackOrder}/${maxBattles} | ${getLeagueTierDisplayName(scPlayer)}`;
-    } else {
-      footer = `ATTACK ${attackOrder} | ${getLeagueTierDisplayName(scPlayer)}`;
-    }
+    footer = `${getLeagueTierDisplayName(scPlayer)}`;
   }
   myEmbed.setFooter({ text: footer, iconURL: getRankedBattleLogFooterIconUrl(scPlayer) });
   myEmbed.setColor(config.color.attack);
   myEmbed.setTimestamp();
 
   let description = `<t:${eventData.unixTimeSeconds}:t> :trophy: **${eventData.trophiesCurrent}** ${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}**\n`;
+  description += nonLegendRankedRemainingDescriptionLine(scPlayer, nWeek, 'attack');
 
   // 今日の攻撃合計と平均を表示
   if (nToday.attacks >= 2) {
@@ -1347,10 +1372,6 @@ async function createLogLegendDefense(
   seasonData,
 ) {
   const myEmbed = new EmbedBuilder();
-  const leagueTierConfig = config_coc.leagueTiers.find(
-    (tier) => tier.id === scPlayer.leagueTier.id,
-  );
-  const maxBattles = leagueTierConfig?.nBattles ?? 0;
   let title = '';
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     title = `${config.emote.shield} ${createDescriptionLegend(
@@ -1367,20 +1388,16 @@ async function createLogLegendDefense(
   let footer = '';
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     footer =
-      `#${nToday.defenses - nEvents + i + 1} | ` +
-      `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | ${getLeagueTierDisplayName(scPlayer)}`;
+      `${getLeagueTierDisplayName(scPlayer)} | ` +
+      `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO`;
   } else {
-    const defenseOrder = Math.max(0, nWeek.defenses - nEvents + i + 1);
-    if (maxBattles > 0) {
-      footer = `DEFENSE ${defenseOrder}/${maxBattles} | ${getLeagueTierDisplayName(scPlayer)}`;
-    } else {
-      footer = `DEFENSE ${defenseOrder} | ${getLeagueTierDisplayName(scPlayer)}`;
-    }
+    footer = `${getLeagueTierDisplayName(scPlayer)}`;
   }
   myEmbed.setFooter({ text: footer, iconURL: getRankedBattleLogFooterIconUrl(scPlayer) });
   myEmbed.setColor(config.color.defense);
   myEmbed.setTimestamp();
   let description = `<t:${eventData.unixTimeSeconds}:t> :trophy: **${eventData.trophiesCurrent}** ${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}**\n`;
+  description += nonLegendRankedRemainingDescriptionLine(scPlayer, nWeek, 'defense');
 
   // 今日の防衛合計と平均を表示
   if (nToday.defenses >= 2) {
@@ -1456,7 +1473,9 @@ async function createLogLegendBoth(scPlayer, diffTrophies, seasonData) {
   myEmbed.setTitle(`**RANKED BATTLES LOG**`);
   let footer = '';
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
-    footer = `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
+    footer =
+      `${getLeagueTierDisplayName(scPlayer)} | ` +
+      `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
   } else {
     footer = `${getLeagueTierDisplayName(scPlayer)}`;
   }
@@ -1481,7 +1500,9 @@ async function createLogLegendWarning(scPlayer, diffTrophies, seasonData) {
   myEmbed.setTitle(`**RANKED BATTLES LOG**`);
   let footer = '';
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
-    footer = `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
+    footer =
+      `${getLeagueTierDisplayName(scPlayer)} | ` +
+      `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
   } else {
     footer = `${getLeagueTierDisplayName(scPlayer)}`;
   }
