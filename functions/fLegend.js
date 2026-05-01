@@ -5,6 +5,10 @@ import config_coc from '../config/config_coc.js';
 
 import * as functions from './functions.js';
 import * as fRanking from './fRanking.js';
+import {
+  filterRankedBattleItems,
+  fingerprintRankedBattleItem,
+} from './fBattleLog.js';
 
 /** レジェンドのシーズン開始トロフィーリセット（5000・一括減少）かどうか */
 function isLegendLeagueSeasonTrophyReset(beforePlayerStats, afterPlayerStats) {
@@ -25,6 +29,27 @@ function getLeagueTierDisplayName(scPlayer) {
   return leagueName.toUpperCase();
 }
 
+function isLegendLeagueTierId(id) {
+  return (
+    id === config_coc.leagueId.legend
+    || id === config_coc.leagueId.legend2
+    || id === config_coc.leagueId.legend3
+  );
+}
+
+/** ランク戦ログ Embed フッター。レジェンド帯は config、他は config_coc、無ければ API */
+function getRankedBattleLogFooterIconUrl(scPlayer) {
+  const id = scPlayer?.leagueTier?.id;
+  if (isLegendLeagueTierId(id)) {
+    return config.urlImage.legend;
+  }
+  const tier = config_coc.leagueTiers?.find((t) => t.id === id);
+  if (tier?.iconUrls?.small) {
+    return tier.iconUrls.small;
+  }
+  return scPlayer?.leagueTier?.icon?.url;
+}
+
 async function createLogLegendNewSeason(
   scPlayer,
   mongoAcc,
@@ -39,7 +64,7 @@ async function createLogLegendNewSeason(
   } else {
     footer = `${getLeagueTierDisplayName(scPlayer)}`;
   }
-  myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
+  myEmbed.setFooter({ text: footer, iconURL: getRankedBattleLogFooterIconUrl(scPlayer) });
   myEmbed.setColor(config.color.green);
   myEmbed.setTimestamp();
   let description = `${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}** | ${scPlayer.tag}\n\n`;
@@ -55,6 +80,7 @@ async function autoUpdateLegend(
   beforePlayerStats,
   afterPlayerStats,
   seasonData,
+  battleLogItems = null,
 ) {
   if (!mongoAcc) {
     console.log(`something wrong`, beforePlayerStats.tag, afterPlayerStats.tag);
@@ -96,20 +122,20 @@ async function autoUpdateLegend(
       await sendLogEmbed(client, mongoAcc, embed);
       return;
     }
-    const legendEventType = isAttackOrDefenseLegend(
-      diffAttackWins,
-      diffDefenseWins,
-      afterPlayerStats.trophies - beforePlayerStats.trophies,
+    if (Array.isArray(battleLogItems)) {
+      await processLegendRankedBattleLog(
+        client,
+        mongoAcc,
+        battleLogItems,
+        afterPlayerStats,
+        seasonData,
+      );
+      return;
+    }
+    console.warn(
+      `⚠️ legend ranked log: battle log unavailable for ${afterPlayerStats.tag}; skip (no stats fallback)`,
     );
-    await handleEvent(
-      client,
-      afterPlayerStats,
-      mongoAcc,
-      legendEventType,
-      baseEventData,
-      diffAttackWins,
-      seasonData,
-    );
+    return;
   } else {
     if (baseEventData.diffTrophies < 0 && baseEventData.trophiesCurrent == 0) {
       await removeNonLegendEventsOnReset(client, mongoAcc.tag);
@@ -156,48 +182,6 @@ async function removeNonLegendEventsOnReset(client, tag) {
         },
       ],
     );
-}
-
-function isAttackOrDefenseLegend(
-  diffAttackWins,
-  diffDefenseWins,
-  diffTrophies,
-) {
-  if (diffAttackWins == 0) {
-    if (diffDefenseWins == 1) {
-      return 'defense';
-    } else {
-      if (diffTrophies > 0) {
-        // 攻撃通知（攻撃 + 防衛 > 0 かもしれないが判定不可能）：星ゼロ確定
-        if (diffDefenseWins == 0) {
-          return 'attack'; // バグ対応
-        }
-      } else if (diffTrophies < 0) {
-        if (diffTrophies <= -41) {
-          // 2回同時防衛通知
-          return '2defenses';
-        } else {
-          // 2防衛通知（攻撃 + 防衛 < 0 かもしれないが判定不可能）
-          return 'defense';
-        }
-      }
-    }
-  } else if (diffAttackWins == 1) {
-    if (diffTrophies > 0) {
-      // 攻撃通知（攻撃 + 防衛 > 0 かもしれないが判定不可能）
-      return 'attack';
-    } else if (diffTrophies == 0) {
-      // 注意通知（攻撃 + 防衛 = 0）
-      return 'both';
-    } else if (diffTrophies < 0) {
-      // 注意通知（攻撃 + 防衛 < 0）
-      return 'both';
-    }
-  } else if (diffAttackWins >= 2 && diffAttackWins <= 8) {
-    return 'multipleAttacks';
-  } else if (diffAttackWins >= 9) {
-    return 'warning';
-  }
 }
 
 function isAttackOrDefense(diffAttackWins) {
@@ -491,16 +475,25 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
   // 単一イベントの場合は配列に変換
   const events = Array.isArray(eventData) ? eventData : [eventData];
 
-  const newEvents = events.map((event) => ({
-    unixTime: event.unixTimeSeconds,
-    season: event.season,
-    day: event.day,
-    action: legendEventType,
-    diffTrophies: event.diffTrophies,
-    trophies: event.trophiesCurrent,
-    leagueId: event.leagueId,
-    leagueName: event.leagueName,
-  }));
+  const newEvents = events.map((event) => {
+    const row = {
+      unixTime: event.unixTimeSeconds,
+      season: event.season,
+      day: event.day,
+      action: legendEventType,
+      diffTrophies: event.diffTrophies,
+      trophies: event.trophiesCurrent,
+      leagueId: event.leagueId,
+      leagueName: event.leagueName,
+    };
+    if (Number.isFinite(event.stars)) {
+      row.stars = Math.min(3, Math.max(0, Number(event.stars)));
+    }
+    if (Number.isFinite(event.destructionPercentage)) {
+      row.destructionPercentage = Number(event.destructionPercentage);
+    }
+    return row;
+  });
 
   // 1. 新しいイベントの最後のdayを取得
   const lastEvent = newEvents[newEvents.length - 1];
@@ -761,6 +754,10 @@ async function handleBattleLog(
     result?.value?.legend?.events,
     seasonData,
   );
+  const weekRatedAvg = getWeekRatedBattleAvgStats(
+    result?.value?.legend?.events,
+    seasonData,
+  );
   switch (legendEventType) {
     case 'attack':
       if (logSettings.attacks === 'all')
@@ -770,6 +767,7 @@ async function handleBattleLog(
           eventData,
           result.nToday,
           weeklySummary,
+          weekRatedAvg,
           nEvents,
           i,
           seasonData,
@@ -784,6 +782,7 @@ async function handleBattleLog(
           eventData,
           result.nToday,
           weeklySummary,
+          weekRatedAvg,
           nEvents,
           i,
           seasonData,
@@ -798,6 +797,7 @@ async function handleBattleLog(
           eventData,
           result.nToday,
           weeklySummary,
+          weekRatedAvg,
           nEvents,
           i,
           seasonData,
@@ -821,8 +821,239 @@ async function handleBattleLog(
   return null;
 }
 
-function getWeeklySummaryFromEvents(events, seasonData) {
-  const safeEvents = Array.isArray(events) ? events : [];
+function calcAttackTrophies(stars, destruction) {
+  if (stars >= 3) return 40;
+
+  if (stars === 2) {
+    return Math.min(32, 16 + Math.floor((destruction - 50) / 3));
+  }
+
+  if (stars === 1) {
+    return Math.min(15, 5 + Math.floor((destruction - 1) / 9));
+  }
+
+  return Math.min(4, Math.floor(destruction / 10));
+}
+
+function calcDefenseTrophies(stars, destruction) {
+  const attacker = calcAttackTrophies(stars, destruction);
+
+  if (stars === 0) return 40;
+
+  return 40 - attacker;
+}
+
+/** battle log 1行から、プレイヤー視点のトロフィー増減（Ranked Battles ルール） */
+function rankedBattleTrophyDeltaFromBattleLog(
+  isOurAttack,
+  starsRaw,
+  destructionRaw,
+  leagueId,
+) {
+  const stars = Math.min(3, Math.max(0, Number(starsRaw) || 0));
+  const destruction = Number(destructionRaw ?? 0);
+  if (isOurAttack === true) {
+    return calcAttackTrophies(stars, destruction);
+  }
+
+  if (leagueId === config_coc.leagueId.legend) {
+    return -calcAttackTrophies(stars, destruction);
+  }
+
+  return calcDefenseTrophies(stars, destruction);
+}
+
+function rankedBattleLogStoredRow(item, fingerprint, meta = {}) {
+  return {
+    fingerprint,
+    battleType: 'ranked',
+    attack: item?.attack === true,
+    action: item?.attack === true ? 'attack' : 'defense',
+    opponentPlayerTag: item?.opponentPlayerTag ?? '',
+    stars: Number(item?.stars ?? 0),
+    destructionPercentage: Number(item?.destructionPercentage ?? 0),
+    armyShareCode: item?.armyShareCode ?? '',
+    diffTrophies: meta.diffTrophies ?? null,
+    trophiesCurrent: meta.trophiesCurrent ?? null,
+    leagueId: meta.leagueId ?? null,
+    leagueName: meta.leagueName ?? null,
+    battleUnixTime: meta.battleUnixTime ?? null,
+    storedAt: Math.floor(Date.now() / 1000),
+    detectedAt: meta.detectedAt ?? Math.floor(Date.now() / 1000),
+  };
+}
+
+async function reloadMongoAccLegendProjection(client, mongoAcc) {
+  const doc = await client.clientMongo
+    .db('jwc')
+    .collection('accounts')
+    .findOne({ tag: mongoAcc.tag }, { projection: { legend: 1, _id: 0 } });
+  if (doc?.legend) {
+    mongoAcc.legend = doc.legend;
+  }
+}
+
+async function setLegendRankedBattleLogBootstrap(
+  client,
+  tag,
+  rankedItems,
+  afterPlayerStats,
+) {
+  const capped =
+    rankedItems.length > 120
+      ? rankedItems.slice(-120)
+      : rankedItems;
+  const rows = [];
+  const seen = new Set();
+  for (const item of capped) {
+    const fp = fingerprintRankedBattleItem(item);
+    if (seen.has(fp)) {
+      continue;
+    }
+    seen.add(fp);
+    const isAttack = item?.attack === true;
+    const diffT = rankedBattleTrophyDeltaFromBattleLog(
+      isAttack,
+      item?.stars,
+      item?.destructionPercentage,
+      afterPlayerStats.leagueTier.id,
+    );
+    rows.push(
+      rankedBattleLogStoredRow(item, fp, {
+        diffTrophies: diffT,
+        trophiesCurrent: afterPlayerStats.trophies,
+        leagueId: afterPlayerStats.leagueTier.id,
+        leagueName: afterPlayerStats.leagueTier.name,
+        battleUnixTime: null,
+      }),
+    );
+  }
+  await client.clientMongo
+    .db('jwc')
+    .collection('accounts')
+    .updateOne({ tag }, { $set: { 'legend.rankedBattleLog': rows } });
+}
+
+/**
+ * battleType ranked のみを Mongo に保持し、新規行だけ通知する。
+ * CoC API の battle log は古い戦闘ほど先頭・新しいほど末尾（下）の並び想定。
+ */
+async function processLegendRankedBattleLog(
+  client,
+  mongoAcc,
+  battleLogItems,
+  afterPlayerStats,
+  seasonData,
+) {
+  const ranked = filterRankedBattleItems(battleLogItems);
+  const lb = mongoAcc.legend?.rankedBattleLog;
+  const notBootstrapped = lb === undefined || lb === null;
+
+  if (notBootstrapped) {
+    await setLegendRankedBattleLogBootstrap(
+      client,
+      mongoAcc.tag,
+      ranked,
+      afterPlayerStats,
+    );
+    await reloadMongoAccLegendProjection(client, mongoAcc);
+    return;
+  }
+
+  const priorRows = Array.isArray(lb) ? lb : [];
+  const storedFp = new Set(priorRows.map((s) => s?.fingerprint).filter(Boolean));
+
+  const newRev = [];
+  for (let i = ranked.length - 1; i >= 0; i--) {
+    const item = ranked[i];
+    const fp = fingerprintRankedBattleItem(item);
+    if (storedFp.has(fp)) {
+      break;
+    }
+    newRev.push({ item, fp });
+  }
+
+  if (newRev.length === 0) {
+    return;
+  }
+
+  const chronological = [...newRev].reverse();
+  const rowsToStoreChronological = [];
+  let mongoAccMut = { ...mongoAcc };
+  let lastResult = null;
+
+  for (let idx = 0; idx < chronological.length; idx++) {
+    const { item, fp } = chronological[idx];
+    const isAttack = item?.attack === true;
+    const legendEventType = isAttack ? 'attack' : 'defense';
+    const diffT = rankedBattleTrophyDeltaFromBattleLog(
+      isAttack,
+      item?.stars,
+      item?.destructionPercentage,
+      afterPlayerStats.leagueTier.id,
+    );
+    const unixTimeSeconds = Math.floor(Date.now() / 1000) + idx;
+    const eventData = {
+      season: seasonData.seasonId,
+      day: seasonData.daysNow,
+      trophiesCurrent: afterPlayerStats.trophies,
+      diffTrophies: diffT,
+      unixTimeSeconds,
+      attacksCurrent: afterPlayerStats.attackWins,
+      defensesCurrent: afterPlayerStats.defenseWins,
+      diffAttackWins: isAttack ? 1 : 0,
+      diffDefenseWins: isAttack ? 0 : 1,
+      destructionPercentage: Number(item?.destructionPercentage ?? 0),
+      stars: Math.min(3, Math.max(0, Number(item?.stars ?? 0))),
+      leagueId: afterPlayerStats.leagueTier.id,
+      leagueName: afterPlayerStats.leagueTier.name,
+    };
+    rowsToStoreChronological.push(
+      rankedBattleLogStoredRow(item, fp, {
+        diffTrophies: diffT,
+        trophiesCurrent: afterPlayerStats.trophies,
+        leagueId: afterPlayerStats.leagueTier.id,
+        leagueName: afterPlayerStats.leagueTier.name,
+        battleUnixTime: unixTimeSeconds,
+        detectedAt: unixTimeSeconds,
+      }),
+    );
+
+    lastResult = await writeLogLegendR2(
+      client,
+      mongoAccMut,
+      legendEventType,
+      eventData,
+    );
+    const updatedLegend = lastResult?.value?.legend;
+    if (updatedLegend) {
+      mongoAccMut = { ...mongoAccMut, legend: updatedLegend };
+    }
+    await sendLogLegendMain(
+      client,
+      afterPlayerStats,
+      mongoAccMut,
+      legendEventType,
+      eventData,
+      1,
+      0,
+      lastResult,
+      seasonData,
+    );
+  }
+
+  const newFpSet = new Set(rowsToStoreChronological.map((r) => r.fingerprint));
+  const tail = priorRows.filter((r) => !newFpSet.has(r.fingerprint));
+  const mergedRankedLog = [...tail, ...rowsToStoreChronological].slice(-120);
+  await client.clientMongo
+    .db('jwc')
+    .collection('accounts')
+    .updateOne({ tag: mongoAcc.tag }, { $set: { 'legend.rankedBattleLog': mergedRankedLog } });
+
+  await reloadMongoAccLegendProjection(client, mongoAcc);
+}
+
+function getWeeklyTournamentUnixBounds(seasonData) {
   const nowUnix = Math.floor(Date.now() / 1000);
   const startMs = new Date(seasonData?.tournamentWindow?.startTime).getTime();
   const endMs = new Date(seasonData?.tournamentWindow?.endTime).getTime();
@@ -832,6 +1063,128 @@ function getWeeklySummaryFromEvents(events, seasonData) {
   const weekEndUnix = Number.isFinite(endMs) && endMs > 0
     ? Math.floor(endMs / 1000)
     : startUnix + 7 * 24 * 60 * 60;
+  return { startUnix, weekEndUnix };
+}
+
+function getWeekRatedBattleAvgStats(events, seasonData) {
+  const { startUnix, weekEndUnix } = getWeeklyTournamentUnixBounds(seasonData);
+  const safeEvents = Array.isArray(events) ? events : [];
+  let atkStarSum = 0;
+  let atkStarN = 0;
+  let atkDestSum = 0;
+  let atkDestN = 0;
+  let defStarSum = 0;
+  let defStarN = 0;
+  let defDestSum = 0;
+  let defDestN = 0;
+  safeEvents.forEach((event) => {
+    if (typeof event?.unixTime !== 'number') {
+      return;
+    }
+    if (event.unixTime < startUnix || event.unixTime > weekEndUnix) {
+      return;
+    }
+    const stRaw = Number(event.stars);
+    const destRaw = Number(event.destructionPercentage);
+    if (event.action === 'attack') {
+      if (Number.isFinite(stRaw)) {
+        atkStarSum += stRaw;
+        atkStarN += 1;
+      }
+      if (Number.isFinite(destRaw)) {
+        atkDestSum += destRaw;
+        atkDestN += 1;
+      }
+      return;
+    }
+    if (event.action === 'defense') {
+      if (Number.isFinite(stRaw)) {
+        defStarSum += stRaw;
+        defStarN += 1;
+      }
+      if (Number.isFinite(destRaw)) {
+        defDestSum += destRaw;
+        defDestN += 1;
+      }
+    }
+  });
+  const round1 = (v) => Math.round(v * 10) / 10;
+  return {
+    attackStarsAvg: atkStarN ? round1(atkStarSum / atkStarN) : null,
+    attackDestAvg: atkDestN ? Math.round(atkDestSum / atkDestN) : null,
+    atkStarN,
+    atkDestN,
+    defenseStarsAvg: defStarN ? round1(defStarSum / defStarN) : null,
+    defenseDestAvg: defDestN ? Math.round(defDestSum / defDestN) : null,
+    defStarN,
+    defDestN,
+  };
+}
+
+function appendNonLegend1WeeklyRatedAvgLine(description, scPlayer, avgs, weeklySummary) {
+  if (scPlayer.leagueTier.id === config_coc.leagueId.legend) {
+    return description;
+  }
+  const ws = weeklySummary ?? {};
+  const boldTrophySum = (n) => {
+    if (n > 0) {
+      return `**+${n}**`;
+    }
+    if (n === 0) {
+      return `**0**`;
+    }
+    return `**${n}**`;
+  };
+  const signedAvg = (n) => (n >= 0 ? `+${n}` : `${n}`);
+
+  const lines = [];
+
+  const atkExtras = [];
+  if (avgs.atkStarN > 0) {
+    atkExtras.push(`${config.emote.star} ${avgs.attackStarsAvg} avg (${avgs.atkStarN})`);
+  }
+  if (avgs.atkDestN > 0) {
+    atkExtras.push(`${avgs.attackDestAvg}% dest (${avgs.atkDestN})`);
+  }
+  const atkExtraStr = atkExtras.length ? ` — ${atkExtras.join(', ')}` : '';
+
+  if (ws.attacks > 0) {
+    const avg = Math.round(ws.attackTrophies / ws.attacks);
+    lines.push(
+      `${config.emote.sword} ${boldTrophySum(ws.attackTrophies)} in ${ws.attacks} attacks (avg: ${signedAvg(avg)})${atkExtraStr}`,
+    );
+  } else if (atkExtras.length) {
+    lines.push(`${config.emote.sword} ${atkExtras.join(', ')}`);
+  }
+
+  const defExtras = [];
+  if (avgs.defStarN > 0) {
+    defExtras.push(`${config.emote.star} ${avgs.defenseStarsAvg} avg (${avgs.defStarN})`);
+  }
+  if (avgs.defDestN > 0) {
+    defExtras.push(`${avgs.defenseDestAvg}% dest (${avgs.defDestN})`);
+  }
+  const defExtraStr = defExtras.length ? ` — ${defExtras.join(', ')}` : '';
+
+  if (ws.defenses > 0) {
+    const avg = Math.round(ws.defenseTrophies / ws.defenses);
+    lines.push(
+      `${config.emote.shield} ${boldTrophySum(ws.defenseTrophies)} in ${ws.defenses} defenses (avg: ${signedAvg(avg)})${defExtraStr}`,
+    );
+  } else if (defExtras.length) {
+    lines.push(`${config.emote.shield} ${defExtras.join(', ')}`);
+  }
+
+  if (lines.length === 0) {
+    return description;
+  }
+
+  return `${description}:bar_chart: **This week**\n${lines.join('\n')}\n`;
+}
+
+function getWeeklySummaryFromEvents(events, seasonData) {
+  const safeEvents = Array.isArray(events) ? events : [];
+  const { startUnix, weekEndUnix } = getWeeklyTournamentUnixBounds(seasonData);
 
   let attacks = 0;
   let defenses = 0;
@@ -920,13 +1273,17 @@ async function createLogLegendAttack(
   eventData,
   nToday,
   nWeek,
+  weekRatedAvg,
   nEvents,
   i,
   seasonData,
 ) {
   const myEmbed = new EmbedBuilder();
   myEmbed.setTitle(
-    `${config.emote.sword} ${createDescriptionLegend(eventData.diffTrophies)}`,
+    `${config.emote.sword} ${createDescriptionLegend(
+      eventData.diffTrophies,
+      eventData.destructionPercentage,
+    )}`,
   );
   const leagueTierConfig = config_coc.leagueTiers.find(
     (tier) => tier.id === scPlayer.leagueTier.id,
@@ -945,7 +1302,7 @@ async function createLogLegendAttack(
       footer = `ATTACK ${attackOrder} | ${getLeagueTierDisplayName(scPlayer)}`;
     }
   }
-  myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
+  myEmbed.setFooter({ text: footer, iconURL: getRankedBattleLogFooterIconUrl(scPlayer) });
   myEmbed.setColor(config.color.attack);
   myEmbed.setTimestamp();
 
@@ -956,9 +1313,12 @@ async function createLogLegendAttack(
     const averageTrophies = Math.round(nToday.attackTrophies / nToday.attacks);
     description += `:bar_chart: **+${nToday.attackTrophies}** in ${nToday.attacks} attacks (avg: +${averageTrophies})\n`;
   }
-  if (scPlayer.leagueTier.id != config_coc.leagueId.legend) {
-    description += `:hourglass_flowing_sand: Week ends: <t:${nWeek.weekEndUnix}:F> (<t:${nWeek.weekEndUnix}:R>)\n`;
-  }
+  description = appendNonLegend1WeeklyRatedAvgLine(
+    description,
+    scPlayer,
+    weekRatedAvg,
+    nWeek,
+  );
 
   if (eventData.leagueId == config_coc.leagueId.legend) {
     // TOP200ランキング確認
@@ -981,6 +1341,7 @@ async function createLogLegendDefense(
   eventData,
   nToday,
   nWeek,
+  weekRatedAvg,
   nEvents,
   i,
   seasonData,
@@ -992,9 +1353,15 @@ async function createLogLegendDefense(
   const maxBattles = leagueTierConfig?.nBattles ?? 0;
   let title = '';
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
-    title = `${config.emote.shield} ${createDescriptionLegend(eventData.diffTrophies)}`;
+    title = `${config.emote.shield} ${createDescriptionLegend(
+      eventData.diffTrophies,
+      eventData.destructionPercentage,
+    )}`;
   } else {
-    title = `${config.emote.shield} ${createDescriptionNonLegend(eventData.diffTrophies)}`;
+    title = `${config.emote.shield} ${createDescriptionNonLegend(
+      eventData.diffTrophies,
+      eventData.destructionPercentage,
+    )}`;
   }
   myEmbed.setTitle(title);
   let footer = '';
@@ -1010,7 +1377,7 @@ async function createLogLegendDefense(
       footer = `DEFENSE ${defenseOrder} | ${getLeagueTierDisplayName(scPlayer)}`;
     }
   }
-  myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
+  myEmbed.setFooter({ text: footer, iconURL: getRankedBattleLogFooterIconUrl(scPlayer) });
   myEmbed.setColor(config.color.defense);
   myEmbed.setTimestamp();
   let description = `<t:${eventData.unixTimeSeconds}:t> :trophy: **${eventData.trophiesCurrent}** ${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}**\n`;
@@ -1022,9 +1389,12 @@ async function createLogLegendDefense(
     );
     description += `:bar_chart: **${nToday.defenseTrophies}** in ${nToday.defenses} defenses (avg: -${averageTrophies})\n`;
   }
-  if (scPlayer.leagueTier.id != config_coc.leagueId.legend) {
-    description += `:hourglass_flowing_sand: Week ends: <t:${nWeek.weekEndUnix}:F> (<t:${nWeek.weekEndUnix}:R>)\n`;
-  }
+  description = appendNonLegend1WeeklyRatedAvgLine(
+    description,
+    scPlayer,
+    weekRatedAvg,
+    nWeek,
+  );
 
   if (eventData.leagueId == config_coc.leagueId.legend) {
     // TOP200ランキング確認
@@ -1090,7 +1460,7 @@ async function createLogLegendBoth(scPlayer, diffTrophies, seasonData) {
   } else {
     footer = `${getLeagueTierDisplayName(scPlayer)}`;
   }
-  myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
+  myEmbed.setFooter({ text: footer, iconURL: getRankedBattleLogFooterIconUrl(scPlayer) });
   myEmbed.setColor(config.color.legend);
   myEmbed.setTimestamp();
   let description = `${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}** | ${scPlayer.tag}\n\n`;
@@ -1115,7 +1485,7 @@ async function createLogLegendWarning(scPlayer, diffTrophies, seasonData) {
   } else {
     footer = `${getLeagueTierDisplayName(scPlayer)}`;
   }
-  myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
+  myEmbed.setFooter({ text: footer, iconURL: getRankedBattleLogFooterIconUrl(scPlayer) });
   myEmbed.setColor(config.color.legend);
   myEmbed.setTimestamp();
   let description = `${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}** | ${scPlayer.tag}\n\n`;
@@ -1136,7 +1506,7 @@ async function createLogReset(scPlayer, mongoAcc, eventData, seasonData) {
   const title = `**⚔️ LEAGUE RESET!**`;
   myEmbed.setTitle(title);
   const footer = `${getLeagueTierDisplayName(scPlayer)}`;
-  myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
+  myEmbed.setFooter({ text: footer, iconURL: getRankedBattleLogFooterIconUrl(scPlayer) });
   myEmbed.setColor(config.color.main);
   myEmbed.setTimestamp();
   let description = '';
@@ -1196,7 +1566,14 @@ async function createLogReset(scPlayer, mongoAcc, eventData, seasonData) {
   return myEmbed;
 }
 
-function createDescriptionLegend(diffTrophies) {
+function formatDestructionPercentage(destructionPercentage) {
+  if (Number.isFinite(destructionPercentage)) {
+    return ` ${destructionPercentage}%`;
+  }
+  return '';
+}
+
+function createDescriptionLegend(diffTrophies, destructionPercentage = null) {
   let description = '';
   if (diffTrophies < 0) {
     description += `**${diffTrophies}** `;
@@ -1209,14 +1586,16 @@ function createDescriptionLegend(diffTrophies) {
     for (let i = 1; i <= functions.countStarsLegend(diffTrophies); i++) {
       description += `${config.emote.star}`;
     }
+    description += formatDestructionPercentage(destructionPercentage);
     if (functions.countStarsLegend(diffTrophies) == 3) {
       description += ` :boom:`;
     }
+    return description;
   }
-  return description;
+  return `${description}${formatDestructionPercentage(destructionPercentage)}`;
 }
 
-function createDescriptionNonLegend(diffTrophies) {
+function createDescriptionNonLegend(diffTrophies, destructionPercentage = null) {
   let description = '';
   if (diffTrophies < 0) {
     description += `**${diffTrophies}** `;
@@ -1229,11 +1608,13 @@ function createDescriptionNonLegend(diffTrophies) {
     for (let i = 1; i <= functions.countStarsNonLegend(diffTrophies); i++) {
       description += `${config.emote.star}`;
     }
+    description += formatDestructionPercentage(destructionPercentage);
     if (functions.countStarsNonLegend(diffTrophies) == 3) {
       description += ` :boom:`;
     }
+    return description;
   }
-  return description;
+  return `${description}${formatDestructionPercentage(destructionPercentage)}`;
 }
 
 /*async function createLogLegendNonLegend(scPlayer, diffTrophies, seasonData) {

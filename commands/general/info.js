@@ -6,6 +6,7 @@ import * as functions from '../../functions/functions.js';
 import * as fCanvas from '../../functions/fCanvas.js';
 import * as fRoster from '../../functions/fRoster.js';
 import * as fMongo from '../../functions/fMongo.js';
+import * as fBattleLog from '../../functions/fBattleLog.js';
 
 
 const nameCommand = 'info';
@@ -833,27 +834,6 @@ function formatNumber(num) {
   return Number(num || 0).toLocaleString('en-US');
 }
 
-async function fetchBattleLogItems(clientCoc, playerTag) {
-  if (typeof clientCoc?.getBattleLog === 'function') {
-    const items = await clientCoc.getBattleLog(playerTag);
-    return Array.isArray(items) ? items : [];
-  }
-
-  if (typeof clientCoc?.rest?.getBattleLog === 'function') {
-    const response = await clientCoc.rest.getBattleLog(playerTag);
-    return Array.isArray(response?.body?.items) ? response.body.items : [];
-  }
-
-  if (typeof clientCoc?.rest?.requestHandler?.request === 'function') {
-    const response = await clientCoc.rest.requestHandler.request(
-      `/players/${encodeURIComponent(playerTag)}/battlelog`,
-    );
-    return Array.isArray(response?.body?.items) ? response.body.items : [];
-  }
-
-  throw new Error('battlelog endpoint is not available in current clashofclans.js client');
-}
-
 function buildRecentLines(entries, maxLines = 10) {
   return entries.slice(0, maxLines).map((entry, idx) => {
     const side = entry?.attack ? 'A' : 'D';
@@ -884,7 +864,7 @@ async function accountBattlelog(interaction, client) {
   }
   const scPlayer = resultScan.scPlayer;
 
-  const allItems = await fetchBattleLogItems(client.clientCoc, playerTag);
+  const allItems = await fBattleLog.fetchBattleLogItems(client.clientCoc, playerTag);
   const filteredItems = (filterType === 'all')
     ? allItems
     : allItems.filter((item) => item?.battleType === filterType);

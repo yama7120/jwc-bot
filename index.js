@@ -16,6 +16,7 @@ import config_coc from './config/config_coc.js';
 import * as functions from './functions/functions.js';
 import * as fLegend from './functions/fLegend.js';
 import * as fMongo from './functions/fMongo.js';
+import { fetchBattleLogItems } from './functions/fBattleLog.js';
 import { post } from './functions/post.js';
 import {
   Client as ClientCoc,
@@ -221,7 +222,7 @@ class ClashOfClans {
   createTrophyPolling() {
     if (!this.apiKey) throw new Error('❌ Main CoC client not logged in');
     const pollingClient = new PollingClient({ keys: [this.apiKey] });
-    pollingClient.pollingInterval = 30000;
+    pollingClient.pollingInterval = 60000;
     return pollingClient;
   }
 }
@@ -343,7 +344,7 @@ class PollingSystem {
     try {
       this.pollingClientTrophies = pollingClient;
       await this.pollingClientTrophies.init();
-      console.log('⚙️ Trophy polling initialized (30s)');
+      console.log('⚙️ Trophy polling initialized (60s)');
       this.pollingClientTrophies.setPlayerEvent({
         name: 'playerStatsChange',
         filter: (before, after) =>
@@ -380,6 +381,7 @@ class PollingSystem {
           tag: 1,
           'legend.logSettings': 1,
           'legend.events': 1,
+          'legend.rankedBattleLog': 1,
           'leagueTier.id': 1,
           'pilotDC.id': 1,
           name: 1,
@@ -463,12 +465,32 @@ class PollingSystem {
     const afterSlim = pick(afterPlayerStats);
     this.playerUpdateLocks.add(tagPlayer);
     try {
+      let battleLogItems = null;
+      try {
+        if (this.client?.clientCoc) {
+          battleLogItems = await fetchBattleLogItems(
+            this.client.clientCoc,
+            tagPlayer,
+          );
+        } else {
+          console.warn(
+            `⚠️ clientCoc unavailable; skip battle log fetch for ${tagPlayer}`,
+          );
+        }
+      } catch (blErr) {
+        console.warn(
+          `⚠️ battle log fetch failed (${tagPlayer}):`,
+          blErr?.message ?? blErr,
+        );
+        battleLogItems = null;
+      }
       await this.fLegend.autoUpdateLegend(
         this.client,
         mongoAcc,
         beforeSlim,
         afterSlim,
         seasonData,
+        battleLogItems,
       );
     } catch (e) {
       console.error(`❌ autoUpdateLegend failed for ${tagPlayer}:`, e);
