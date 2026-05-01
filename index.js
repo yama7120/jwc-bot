@@ -16,7 +16,7 @@ import config_coc from './config/config_coc.js';
 import * as functions from './functions/functions.js';
 import * as fLegend from './functions/fLegend.js';
 import * as fMongo from './functions/fMongo.js';
-import { fetchBattleLogItems } from './functions/fBattleLog.js';
+import { fetchBattleLogItems, filterRankedBattleItems } from './functions/fBattleLog.js';
 import { post } from './functions/post.js';
 import {
   Client as ClientCoc,
@@ -362,6 +362,7 @@ class PollingSystem {
 
   // アカウントを更新
   async updateMonitoringAccounts() {
+    const syncStartedAt = Date.now();
     try {
       const query = {
         status: true,
@@ -396,10 +397,12 @@ class PollingSystem {
       await cursor.close();
       const newTags = newAccountsLegend.map((a) => a.tag);
       const newTagsSet = new Set(newTags);
+      let legendPollingRemovedPlayers = 0;
       if (this.pollingClientTrophies) {
         // 古いアカウントで新しいリストにないものをポーリングから削除
         const oldTags = this.accountsLegend.map((a) => a.tag);
         const removedTags = oldTags.filter((t) => !newTagsSet.has(t));
+        legendPollingRemovedPlayers = removedTags.length;
         if (removedTags.length > 0) {
           this.pollingClientTrophies.deletePlayers(removedTags);
         }
@@ -414,7 +417,11 @@ class PollingSystem {
       }
       this.accountsLegend = newAccountsLegend;
       global.accountsLegend = newAccountsLegend;
-      //console.log(`🔍 LEGEND ACCOUNTS MONITORING: ${newTags.length}`);
+      console.log(
+        `[legendPolling] kind=sync monitoredAccounts=${newTags.length}` +
+          ` removedPlayers=${legendPollingRemovedPlayers}` +
+          ` elapsed=${Date.now() - syncStartedAt}ms`,
+      );
     } catch (error) {
       console.error('❌ Error updating monitoring accounts:', error);
     }
@@ -422,6 +429,15 @@ class PollingSystem {
 
   // プレイヤーのステータスが変化したときの処理
   async handlePlayerStatsChange(beforePlayerStats, afterPlayerStats) {
+    const tagPlayer = afterPlayerStats.tag;
+    const namePlayer = afterPlayerStats.name ?? 'n/a';
+    console.log(
+      `[playerStatsChange] tag=${tagPlayer} name=${namePlayer}` +
+        ` trophies=${beforePlayerStats.trophies}>${afterPlayerStats.trophies}` +
+        ` attackWins=${beforePlayerStats.attackWins}>${afterPlayerStats.attackWins}` +
+        ` defenseWins=${beforePlayerStats.defenseWins}>${afterPlayerStats.defenseWins}` +
+        ` leagueTier=${afterPlayerStats.leagueTier?.id ?? 'n/a'}`,
+    );
     if (!this.accountsLegend || this.accountsLegend.length === 0) {
       console.log(
         `⚠️ accountsLegend not initialized; skip player stats change for tag: ${afterPlayerStats.tag}`,
@@ -433,7 +449,6 @@ class PollingSystem {
       this.client,
       currentDate,
     );
-    const tagPlayer = afterPlayerStats.tag;
     if (this.playerUpdateLocks.has(tagPlayer)) {
       return;
     }
@@ -464,6 +479,7 @@ class PollingSystem {
     const beforeSlim = pick(beforePlayerStats);
     const afterSlim = pick(afterPlayerStats);
     this.playerUpdateLocks.add(tagPlayer);
+    const startedAt = Date.now();
     try {
       let battleLogItems = null;
       try {
@@ -491,6 +507,21 @@ class PollingSystem {
         afterSlim,
         seasonData,
         battleLogItems,
+      );
+      const tierId = afterSlim.leagueTier?.id ?? 'n/a';
+      let battleLogLabel = 'unavailable';
+      if (Array.isArray(battleLogItems)) {
+        const rn = filterRankedBattleItems(battleLogItems).length;
+        battleLogLabel = `items=${battleLogItems.length} ranked=${rn}`;
+      }
+      console.log(
+        `[legendPolling] kind=statsChange tag=${tagPlayer}` +
+          ` leagueTier=${tierId}` +
+          ` trophies=${beforeSlim.trophies}>${afterSlim.trophies}` +
+          ` atk=${beforeSlim.attackWins}>${afterSlim.attackWins}` +
+          ` def=${beforeSlim.defenseWins}>${afterSlim.defenseWins}` +
+          ` battlelog=${battleLogLabel}` +
+          ` elapsed=${Date.now() - startedAt}ms`,
       );
     } catch (e) {
       console.error(`❌ autoUpdateLegend failed for ${tagPlayer}:`, e);
