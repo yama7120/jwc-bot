@@ -53,11 +53,10 @@ function nonLegendRankedRemainingDescriptionLine(
     : Math.max(0, Number(weeklySummary?.defenses ?? 0));
   const remaining = Math.max(0, cap - used);
   const label = kind === 'attack' ? 'attacks' : 'defenses';
-  const em = kind === 'attack' ? config.emote.sword : config.emote.shield;
   if (remaining <= 0) {
-    return `${em} **0/${cap}** — all ${label} used ✅\n`;
+    return `**0/${cap}** — all ${label} used ✅\n`;
   }
-  return `${em} **${remaining}/${cap}** ${label} remaining\n`;
+  return `**${remaining}/${cap}** ${label} remaining\n`;
 }
 
 function isLegendLeagueTierId(id) {
@@ -661,11 +660,6 @@ function aggregateDaysFromEvents(events) {
   const daysMap = new Map(); // key: 'season-day'
 
   events.forEach((event) => {
-    // legendリーグのイベントのみを処理
-    if (event.leagueId !== config_coc.leagueId.legend) {
-      return;
-    }
-
     const key = `${event.season}-${event.day}`;
 
     if (!daysMap.has(key)) {
@@ -688,27 +682,23 @@ function aggregateDaysFromEvents(events) {
 
     const dayEntry = daysMap.get(key);
 
-    // カウンター更新
+    // カウンター更新（ランク戦ログ由来は leagueId 付き。action が attack/defense のみ集計）
     switch (event.action) {
       case 'attack':
         dayEntry.attacks++;
         if (event.diffTrophies === 40) {
           dayEntry.triples++;
         }
-        // 攻撃で増加したトロフィー数を記録（正の値のみ）
-        if (event.diffTrophies > 0) {
-          dayEntry.attackTrophies += event.diffTrophies;
-        }
+        dayEntry.attackTrophies += event.diffTrophies ?? 0;
         break;
       case 'defense':
         dayEntry.defenses++;
         if (event.diffTrophies === -40) {
           dayEntry.defTriples++;
         }
-        // 防衛で減少したトロフィー数を記録（負の値のまま）
-        if (event.diffTrophies < 0) {
-          dayEntry.defenseTrophies += event.diffTrophies;
-        }
+        dayEntry.defenseTrophies += event.diffTrophies ?? 0;
+        break;
+      default:
         break;
     }
 
@@ -804,6 +794,7 @@ async function handleBattleLog(
           nEvents,
           i,
           seasonData,
+          legendEventType,
         );
       break;
 
@@ -819,6 +810,7 @@ async function handleBattleLog(
           nEvents,
           i,
           seasonData,
+          legendEventType,
         );
       if (
         logSettings.defenses === 'non-tripled' &&
@@ -834,6 +826,7 @@ async function handleBattleLog(
           nEvents,
           i,
           seasonData,
+          legendEventType,
         );
       break;
 
@@ -1154,7 +1147,13 @@ function getWeekRatedBattleAvgStats(events, seasonData) {
   };
 }
 
-function appendNonLegend1WeeklyRatedAvgLine(description, scPlayer, avgs, weeklySummary) {
+function appendNonLegend1WeeklyRatedAvgLine(
+  description,
+  scPlayer,
+  avgs,
+  weeklySummary,
+  legendEventType,
+) {
   if (scPlayer.leagueTier.id === config_coc.leagueId.legend) {
     return description;
   }
@@ -1171,48 +1170,54 @@ function appendNonLegend1WeeklyRatedAvgLine(description, scPlayer, avgs, weeklyS
   const signedAvg = (n) => (n >= 0 ? `+${n}` : `${n}`);
 
   const lines = [];
+  const showAttack = legendEventType === 'attack';
+  const showDefense = legendEventType === 'defense';
 
-  const atkExtras = [];
-  if (avgs.atkStarN > 0) {
-    atkExtras.push(`${config.emote.star} ${avgs.attackStarsAvg} avg (${avgs.atkStarN})`);
-  }
-  if (avgs.atkDestN > 0) {
-    atkExtras.push(`${avgs.attackDestAvg}% dest (${avgs.atkDestN})`);
-  }
-  const atkExtraStr = atkExtras.length ? ` — ${atkExtras.join(', ')}` : '';
+  if (showAttack) {
+    const atkExtras = [];
+    if (avgs.atkStarN > 0) {
+      atkExtras.push(`${config.emote.star} ${avgs.attackStarsAvg} avg (${avgs.atkStarN})`);
+    }
+    if (avgs.atkDestN > 0) {
+      atkExtras.push(`${avgs.attackDestAvg}% dest (${avgs.atkDestN})`);
+    }
+    const atkExtraStr = atkExtras.length ? ` — ${atkExtras.join(', ')}` : '';
 
-  if (ws.attacks > 0) {
-    const avg = Math.round(ws.attackTrophies / ws.attacks);
-    lines.push(
-      `${config.emote.sword} ${boldTrophySum(ws.attackTrophies)} in ${ws.attacks} attacks (avg: ${signedAvg(avg)})${atkExtraStr}`,
-    );
-  } else if (atkExtras.length) {
-    lines.push(`${config.emote.sword} ${atkExtras.join(', ')}`);
+    if (ws.attacks > 0) {
+      const avg = Math.round(ws.attackTrophies / ws.attacks);
+      lines.push(
+        `${config.emote.sword} ${boldTrophySum(ws.attackTrophies)} in ${ws.attacks} attacks (avg: ${signedAvg(avg)})${atkExtraStr}`,
+      );
+    } else if (atkExtras.length) {
+      lines.push(`${config.emote.sword} ${atkExtras.join(', ')}`);
+    }
   }
 
-  const defExtras = [];
-  if (avgs.defStarN > 0) {
-    defExtras.push(`${config.emote.star} ${avgs.defenseStarsAvg} avg (${avgs.defStarN})`);
-  }
-  if (avgs.defDestN > 0) {
-    defExtras.push(`${avgs.defenseDestAvg}% dest (${avgs.defDestN})`);
-  }
-  const defExtraStr = defExtras.length ? ` — ${defExtras.join(', ')}` : '';
+  if (showDefense) {
+    const defExtras = [];
+    if (avgs.defStarN > 0) {
+      defExtras.push(`${config.emote.star} ${avgs.defenseStarsAvg} avg (${avgs.defStarN})`);
+    }
+    if (avgs.defDestN > 0) {
+      defExtras.push(`${avgs.defenseDestAvg}% dest (${avgs.defDestN})`);
+    }
+    const defExtraStr = defExtras.length ? ` — ${defExtras.join(', ')}` : '';
 
-  if (ws.defenses > 0) {
-    const avg = Math.round(ws.defenseTrophies / ws.defenses);
-    lines.push(
-      `${config.emote.shield} ${boldTrophySum(ws.defenseTrophies)} in ${ws.defenses} defenses (avg: ${signedAvg(avg)})${defExtraStr}`,
-    );
-  } else if (defExtras.length) {
-    lines.push(`${config.emote.shield} ${defExtras.join(', ')}`);
+    if (ws.defenses > 0) {
+      const avg = Math.round(ws.defenseTrophies / ws.defenses);
+      lines.push(
+        `${config.emote.shield} ${boldTrophySum(ws.defenseTrophies)} in ${ws.defenses} defenses (avg: ${signedAvg(avg)})${defExtraStr}`,
+      );
+    } else if (defExtras.length) {
+      lines.push(`${config.emote.shield} ${defExtras.join(', ')}`);
+    }
   }
 
   if (lines.length === 0) {
     return description;
   }
 
-  return `${description}:bar_chart: **This week**\n${lines.join('\n')}\n`;
+  return `${description}${lines.join('\n')}\n`;
 }
 
 function getWeeklySummaryFromEvents(events, seasonData) {
@@ -1310,6 +1315,7 @@ async function createLogLegendAttack(
   nEvents,
   i,
   seasonData,
+  legendEventType,
 ) {
   const myEmbed = new EmbedBuilder();
   myEmbed.setTitle(
@@ -1331,7 +1337,6 @@ async function createLogLegendAttack(
   myEmbed.setTimestamp();
 
   let description = `<t:${eventData.unixTimeSeconds}:t> :trophy: **${eventData.trophiesCurrent}** ${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}**\n`;
-  description += nonLegendRankedRemainingDescriptionLine(scPlayer, nWeek, 'attack');
 
   // 今日の攻撃合計と平均を表示
   if (nToday.attacks >= 2) {
@@ -1343,6 +1348,7 @@ async function createLogLegendAttack(
     scPlayer,
     weekRatedAvg,
     nWeek,
+    legendEventType,
   );
 
   if (eventData.leagueId == config_coc.leagueId.legend) {
@@ -1354,6 +1360,10 @@ async function createLogLegendAttack(
 
     description += `${config.emote.discord}</legend stats:${config.command.legend.id}>`;
     description += ` ${config.emote.discord}</legend history own:${config.command.legend.id}>`;
+  }
+  const quotaLineAtk = nonLegendRankedRemainingDescriptionLine(scPlayer, nWeek, 'attack');
+  if (quotaLineAtk) {
+    description += description.endsWith('\n') ? quotaLineAtk : `\n${quotaLineAtk}`;
   }
   myEmbed.setDescription(description);
 
@@ -1370,6 +1380,7 @@ async function createLogLegendDefense(
   nEvents,
   i,
   seasonData,
+  legendEventType,
 ) {
   const myEmbed = new EmbedBuilder();
   let title = '';
@@ -1397,20 +1408,19 @@ async function createLogLegendDefense(
   myEmbed.setColor(config.color.defense);
   myEmbed.setTimestamp();
   let description = `<t:${eventData.unixTimeSeconds}:t> :trophy: **${eventData.trophiesCurrent}** ${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}**\n`;
-  description += nonLegendRankedRemainingDescriptionLine(scPlayer, nWeek, 'defense');
 
   // 今日の防衛合計と平均を表示
   if (nToday.defenses >= 2) {
-    const averageTrophies = Math.round(
-      Math.abs(nToday.defenseTrophies) / nToday.defenses,
-    );
-    description += `:bar_chart: **${nToday.defenseTrophies}** in ${nToday.defenses} defenses (avg: -${averageTrophies})\n`;
+    const averageTrophies = Math.round(nToday.defenseTrophies / nToday.defenses);
+    const avgLabel = averageTrophies >= 0 ? `+${averageTrophies}` : `${averageTrophies}`;
+    description += `:bar_chart: **${nToday.defenseTrophies}** in ${nToday.defenses} defenses (avg: ${avgLabel})\n`;
   }
   description = appendNonLegend1WeeklyRatedAvgLine(
     description,
     scPlayer,
     weekRatedAvg,
     nWeek,
+    legendEventType,
   );
 
   if (eventData.leagueId == config_coc.leagueId.legend) {
@@ -1422,6 +1432,10 @@ async function createLogLegendDefense(
 
     description += `${config.emote.discord}</legend stats:${config.command.legend.id}>`;
     description += ` ${config.emote.discord}</legend history own:${config.command.legend.id}>`;
+  }
+  const quotaLineDef = nonLegendRankedRemainingDescriptionLine(scPlayer, nWeek, 'defense');
+  if (quotaLineDef) {
+    description += description.endsWith('\n') ? quotaLineDef : `\n${quotaLineDef}`;
   }
   myEmbed.setDescription(description);
 
