@@ -14,18 +14,31 @@ const LEAGUE_SEASONS_LEAGUE_ID = 29000022;
 const LEAGUE_SEASONS_CACHE_MS = 10 * 60 * 1000;
 let leagueSeasonsCache = { fetchedAtMs: 0, items: null };
 
-async function fetchLeagueSeasons(clientCoc, leagueId = LEAGUE_SEASONS_LEAGUE_ID) {
-  if (!clientCoc) return [];
-  if (typeof clientCoc?.getLeagueSeasons === 'function') {
-    const seasons = await clientCoc.getLeagueSeasons(leagueId);
-    return Array.isArray(seasons) ? seasons : [];
+async function fetchLeagueSeasons(clientCoc) {
+  try {
+    if (!clientCoc) return [];
+    // NOTE: /leagues/{leagueId}/seasons is for CWL league seasons.
+    // We intentionally hardcode leagueId=29000022 per requirements.
+    if (typeof clientCoc?.rest?.requestHandler?.request === 'function') {
+      const res = await clientCoc.rest.requestHandler.request(
+        `/leagues/${LEAGUE_SEASONS_LEAGUE_ID}/seasons`,
+      );
+      const items = res?.body?.items;
+      return Array.isArray(items) ? items : [];
+    }
+    // clashofclans.js helper may differ by version; prefer raw REST route above.
+    if (typeof clientCoc?.getLeagueSeasons === 'function') {
+      const seasons = await clientCoc.getLeagueSeasons(LEAGUE_SEASONS_LEAGUE_ID);
+      return Array.isArray(seasons) ? seasons : [];
+    }
+    return [];
+  } catch (e) {
+    console.warn(
+      `[legend] failed to fetch league seasons (${LEAGUE_SEASONS_LEAGUE_ID}):`,
+      e?.message ?? e,
+    );
+    return [];
   }
-  if (typeof clientCoc?.rest?.requestHandler?.request === 'function') {
-    const res = await clientCoc.rest.requestHandler.request(`/leagues/${leagueId}/seasons`);
-    const items = res?.body?.items;
-    return Array.isArray(items) ? items : [];
-  }
-  return [];
 }
 
 async function getCurrentLeagueSeasonId(clientCoc) {
@@ -43,8 +56,11 @@ async function getCurrentLeagueSeasonId(clientCoc) {
     });
     return hit?.id ?? cached[0]?.id ?? null;
   }
-  const items = await fetchLeagueSeasons(clientCoc, LEAGUE_SEASONS_LEAGUE_ID);
+  const items = await fetchLeagueSeasons(clientCoc);
   leagueSeasonsCache = { fetchedAtMs: nowMs, items };
+  if (!Array.isArray(items) || items.length === 0) {
+    return null;
+  }
   const hit = items.find((s) => {
     const st = new Date(s?.startTime).getTime();
     const et = new Date(s?.endTime).getTime();
