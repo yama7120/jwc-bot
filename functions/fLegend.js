@@ -95,6 +95,9 @@ function getRankedBattlesCapForTier(leagueTierId) {
 }
 
 function leagueFooterCapSuffix(scPlayer) {
+  if (scPlayer?.leagueTier?.id === config_coc.leagueId.legend) {
+    return '';
+  }
   const cap = getRankedBattlesCapForTier(scPlayer?.leagueTier?.id);
   return cap > 0 ? ` [x${cap}]` : '';
 }
