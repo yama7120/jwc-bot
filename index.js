@@ -382,6 +382,7 @@ class PollingSystem {
           'legend.logSettings': 1,
           'legend.events': 1,
           'legend.rankedBattleLog': 1,
+          'legend.weeks': 1,
           'leagueTier.id': 1,
           'pilotDC.id': 1,
           name: 1,
