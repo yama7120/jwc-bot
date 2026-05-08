@@ -452,6 +452,7 @@ class PollingSystem {
       attackWins,
       defenseWins,
       leagueTier,
+      legendStatistics,
     }) => ({
       tag,
       name,
@@ -460,6 +461,7 @@ class PollingSystem {
       attackWins,
       defenseWins,
       leagueTier,
+      legendStatistics,
     });
     const beforeSlim = pick(beforePlayerStats);
     const afterSlim = pick(afterPlayerStats);

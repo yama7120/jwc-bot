@@ -583,6 +583,29 @@ function buildLegendBarChartLine(kind, nToday) {
   return '';
 }
 
+function buildWeeklySummaryLine(kind, legendEvents, seasonData) {
+  const ws = getWeeklySummaryFromEvents(legendEvents, seasonData);
+  if (!ws) return '';
+
+  if (kind === 'attack') {
+    const n = Number(ws.attacks ?? 0);
+    const sum = Number(ws.attackTrophies ?? 0);
+    if (!Number.isFinite(n) || !Number.isFinite(sum) || n <= 0) return '';
+    const avg = Math.round(sum / n);
+    return `${config.emote.sword} ${formatSignedInt(sum)} in ${n} attacks (avg: ${formatSignedInt(avg)})\n`;
+  }
+
+  if (kind === 'defense') {
+    const n = Number(ws.defenses ?? 0);
+    const sum = Number(ws.defenseTrophies ?? 0);
+    if (!Number.isFinite(n) || !Number.isFinite(sum) || n <= 0) return '';
+    const avg = Math.round(sum / n);
+    return `${config.emote.shield} ${formatSignedInt(sum)} in ${n} defenses (avg: ${formatSignedInt(avg)})\n`;
+  }
+
+  return '';
+}
+
 function buildRankedBattleStarsAndDestText(scPlayer, eventData) {
   const isLegend1 = scPlayer?.leagueTier?.id == config_coc.leagueId.legend;
   const countStars = isLegend1
@@ -1091,12 +1114,20 @@ async function createLogLegendAttack(
   let description = `${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}** [${scPlayer.tag}](${urlPlayer})\n`;
   description += `<t:${eventData.unixTimeSeconds}:t> ${buildRankedBattleStarsAndDestText(scPlayer, eventData)}\n`;
 
-  if (isLegendLeagueTierId(eventData.leagueId)) {
-    const bar = buildLegendBarChartLine('attack', result?.nToday);
-    if (bar) {
-      description += bar;
-    }
+  // legend1 は当日集計、それ以外は週次集計
+  if (scPlayer?.leagueTier?.id == config_coc.leagueId.legend) {
+    const dayLine = buildLegendBarChartLine('attack', result?.nToday);
+    if (dayLine) description += dayLine;
+  } else {
+    const weekLine = buildWeeklySummaryLine(
+      'attack',
+      result?.value?.legend?.events ?? scPlayer?.legend?.events ?? null,
+      seasonData,
+    );
+    if (weekLine) description += weekLine;
+  }
 
+  if (isLegendLeagueTierId(eventData.leagueId)) {
     const rankingDisplay = await getRankingDisplay(client, scPlayer);
     if (rankingDisplay) {
       description += rankingDisplay;
@@ -1140,12 +1171,20 @@ async function createLogLegendDefense(
   let description = `${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}** [${scPlayer.tag}](${urlPlayer})\n`;
   description += `<t:${eventData.unixTimeSeconds}:t> ${buildRankedBattleStarsAndDestText(scPlayer, eventData)}\n`;
 
-  if (isLegendLeagueTierId(eventData.leagueId)) {
-    const bar = buildLegendBarChartLine('defense', result?.nToday);
-    if (bar) {
-      description += bar;
-    }
+  // legend1 は当日集計、それ以外は週次集計
+  if (scPlayer?.leagueTier?.id == config_coc.leagueId.legend) {
+    const dayLine = buildLegendBarChartLine('defense', result?.nToday);
+    if (dayLine) description += dayLine;
+  } else {
+    const weekLine = buildWeeklySummaryLine(
+      'defense',
+      result?.value?.legend?.events ?? scPlayer?.legend?.events ?? null,
+      seasonData,
+    );
+    if (weekLine) description += weekLine;
+  }
 
+  if (isLegendLeagueTierId(eventData.leagueId)) {
     const rankingDisplay = await getRankingDisplay(client, scPlayer);
     if (rankingDisplay) {
       description += rankingDisplay;
