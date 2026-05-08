@@ -165,11 +165,12 @@ async function autoUpdateLegend(
   //console.dir(afterPlayerStats);
 
   const unixTimeSeconds = Math.floor(Date.now() / 1000);
-  const leagueSeasonId = await getCurrentLeagueSeasonId(client?.clientCoc);
 
   // 基本的なeventDataオブジェクトを作成（リセット通知用）
   const baseEventData = {
-    season: leagueSeasonId ?? seasonData.seasonId,
+    // NOTE: ranked battles / legend logs must use Legend seasonId.
+    // CWL league season id (e.g. "2015-07") breaks numeric season sorting in legend aggregations.
+    season: seasonData.seasonId,
     day: seasonData.daysNow,
     trophiesCurrent: afterPlayerStats.trophies,
     diffTrophies: afterPlayerStats.trophies - beforePlayerStats.trophies,
@@ -204,7 +205,7 @@ async function autoUpdateLegend(
       mongoAcc,
       battleLogItems,
       afterPlayerStats,
-      { ...seasonData, seasonId: baseEventData.season },
+      seasonData,
     );
     return;
   }
@@ -668,6 +669,7 @@ function rankedBattleTrophyDeltaFromBattleLog(
     return calcAttackTrophies(stars, destruction);
   }
 
+  // Legend I のみ防衛は攻撃側の獲得トロフィーのマイナス（対称ルール）
   if (leagueId === config_coc.leagueId.legend) {
     return -calcAttackTrophies(stars, destruction);
   }
@@ -860,6 +862,7 @@ async function processLegendRankedBattleLog(
     const diffT = diffsChronological[idx];
     runningTrophies += diffT;
     const unixTimeSeconds = baseUnixTimeSeconds + (idx * spacedStepSeconds);
+    const includeRanking = idx === chronological.length - 1;
     const eventData = {
       season: seasonData.seasonId,
       day: seasonData.daysNow,
@@ -874,6 +877,7 @@ async function processLegendRankedBattleLog(
       stars: Math.min(3, Math.max(0, Number(item?.stars ?? 0))),
       leagueId: afterPlayerStats.leagueTier.id,
       leagueName: afterPlayerStats.leagueTier.name,
+      includeRanking,
     };
     rowsToStoreChronological.push(
       rankedBattleLogStoredRow(item, fp, {
@@ -1128,9 +1132,11 @@ async function createLogLegendAttack(
   }
 
   if (isLegendLeagueTierId(eventData.leagueId)) {
-    const rankingDisplay = await getRankingDisplay(client, scPlayer);
-    if (rankingDisplay) {
-      description += rankingDisplay;
+    if (eventData.includeRanking !== false) {
+      const rankingDisplay = await getRankingDisplay(client, scPlayer);
+      if (rankingDisplay) {
+        description += rankingDisplay;
+      }
     }
 
     description += `${config.emote.discord}</legend stats:${config.command.legend.id}>`;
@@ -1185,9 +1191,11 @@ async function createLogLegendDefense(
   }
 
   if (isLegendLeagueTierId(eventData.leagueId)) {
-    const rankingDisplay = await getRankingDisplay(client, scPlayer);
-    if (rankingDisplay) {
-      description += rankingDisplay;
+    if (eventData.includeRanking !== false) {
+      const rankingDisplay = await getRankingDisplay(client, scPlayer);
+      if (rankingDisplay) {
+        description += rankingDisplay;
+      }
     }
 
     description += `${config.emote.discord}</legend stats:${config.command.legend.id}>`;
