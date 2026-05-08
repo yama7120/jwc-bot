@@ -507,6 +507,7 @@ async function handleBattleLog(
           i,
           seasonData,
           legendEventType,
+          result,
         );
       break;
 
@@ -520,6 +521,7 @@ async function handleBattleLog(
           i,
           seasonData,
           legendEventType,
+          result,
         );
       if (
         logSettings.defenses === 'non-tripled' &&
@@ -533,6 +535,7 @@ async function handleBattleLog(
           i,
           seasonData,
           legendEventType,
+          result,
         );
       break;
 
@@ -551,6 +554,40 @@ async function handleBattleLog(
       );
   }
   return null;
+}
+
+function formatSignedInt(n) {
+  const v = Math.round(Number(n) || 0);
+  return v >= 0 ? `+${v}` : `${v}`;
+}
+
+function buildLegendBarChartLine(kind, nToday) {
+  if (!nToday) return '';
+
+  if (kind === 'attack') {
+    const n = Number(nToday.attacks ?? 0);
+    const sum = Number(nToday.attackTrophies ?? 0);
+    if (!Number.isFinite(n) || !Number.isFinite(sum) || n <= 0) return '';
+    const avg = Math.round(sum / n);
+    return `:bar_chart: ${formatSignedInt(sum)} in ${n} attacks (avg: ${formatSignedInt(avg)})\n`;
+  }
+
+  if (kind === 'defense') {
+    const n = Number(nToday.defenses ?? 0);
+    const sum = Number(nToday.defenseTrophies ?? 0);
+    if (!Number.isFinite(n) || !Number.isFinite(sum) || n <= 0) return '';
+    const avg = Math.round(sum / n);
+    return `:bar_chart: ${formatSignedInt(sum)} in ${n} defenses (avg: ${formatSignedInt(avg)})\n`;
+  }
+
+  return '';
+}
+
+function buildRankedBattleResultText(scPlayer, eventData) {
+  const fn = scPlayer?.leagueTier?.id == config_coc.leagueId.legend
+    ? createDescriptionLegend
+    : createDescriptionNonLegend;
+  return fn(eventData.diffTrophies, eventData.destructionPercentage);
 }
 
 function calcAttackTrophies(stars, destruction) {
@@ -1002,13 +1039,12 @@ async function createLogLegendAttack(
   i,
   seasonData,
   legendEventType,
+  result = null,
 ) {
   const myEmbed = new EmbedBuilder();
+  const titleEmote = eventData.diffTrophies >= 0 ? config.emote.up : config.emote.down;
   myEmbed.setTitle(
-    `${config.emote.sword} ${createDescriptionLegend(
-      eventData.diffTrophies,
-      eventData.destructionPercentage,
-    )}`,
+    `${titleEmote} **${formatSignedInt(eventData.diffTrophies)}** :trophy: **${eventData.trophiesCurrent}**`,
   );
   let footer = '';
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
@@ -1022,13 +1058,19 @@ async function createLogLegendAttack(
   myEmbed.setColor(config.color.attack);
   myEmbed.setTimestamp();
 
-  let description = `<t:${eventData.unixTimeSeconds}:t> :trophy: **${eventData.trophiesCurrent}** ${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}**\n`;
+  let description = `${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}**\n`;
+  description += `<t:${eventData.unixTimeSeconds}:t> ${buildRankedBattleResultText(scPlayer, eventData)}\n`;
 
-  if (eventData.leagueId == config_coc.leagueId.legend) {
+  if (isLegendLeagueTierId(eventData.leagueId)) {
     // TOP200ランキング確認
     const rankingDisplay = await getRankingDisplay(client, scPlayer);
     if (rankingDisplay) {
       description += rankingDisplay;
+    }
+
+    const bar = buildLegendBarChartLine('attack', result?.nToday);
+    if (bar) {
+      description += bar;
     }
 
     description += `${config.emote.discord}</legend stats:${config.command.legend.id}>`;
@@ -1047,21 +1089,13 @@ async function createLogLegendDefense(
   i,
   seasonData,
   legendEventType,
+  result = null,
 ) {
   const myEmbed = new EmbedBuilder();
-  let title = '';
-  if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
-    title = `${config.emote.shield} ${createDescriptionLegend(
-      eventData.diffTrophies,
-      eventData.destructionPercentage,
-    )}`;
-  } else {
-    title = `${config.emote.shield} ${createDescriptionNonLegend(
-      eventData.diffTrophies,
-      eventData.destructionPercentage,
-    )}`;
-  }
-  myEmbed.setTitle(title);
+  const titleEmote = eventData.diffTrophies >= 0 ? config.emote.up : config.emote.down;
+  myEmbed.setTitle(
+    `${titleEmote} **${formatSignedInt(eventData.diffTrophies)}** :trophy: **${eventData.trophiesCurrent}**`,
+  );
   let footer = '';
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     footer =
@@ -1073,13 +1107,19 @@ async function createLogLegendDefense(
   myEmbed.setFooter({ text: footer, iconURL: getRankedBattleLogFooterIconUrl(scPlayer) });
   myEmbed.setColor(config.color.defense);
   myEmbed.setTimestamp();
-  let description = `<t:${eventData.unixTimeSeconds}:t> :trophy: **${eventData.trophiesCurrent}** ${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}**\n`;
+  let description = `${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}**\n`;
+  description += `<t:${eventData.unixTimeSeconds}:t> ${buildRankedBattleResultText(scPlayer, eventData)}\n`;
 
-  if (eventData.leagueId == config_coc.leagueId.legend) {
+  if (isLegendLeagueTierId(eventData.leagueId)) {
     // TOP200ランキング確認
     const rankingDisplay = await getRankingDisplay(client, scPlayer);
     if (rankingDisplay) {
       description += rankingDisplay;
+    }
+
+    const bar = buildLegendBarChartLine('defense', result?.nToday);
+    if (bar) {
+      description += bar;
     }
 
     description += `${config.emote.discord}</legend stats:${config.command.legend.id}>`;
@@ -1093,36 +1133,35 @@ async function createLogLegendDefense(
 // ランキング表示用の共通関数
 async function getRankingDisplay(client, scPlayer) {
   try {
-    const playerRanks = await client.clientCoc.getPlayerRanks(
-      config_coc.locationId.japan,
-    );
-    const playerRank = playerRanks.find((rank) => rank.tag === scPlayer.tag);
-
-    if (playerRank && playerRank.rank <= 200) {
-      let rankingText = `:flag_jp: No. **${playerRank.rank}** in JAPAN`;
-
-      // 20位以内の場合はグローバルランキングも取得
-      if (playerRank.rank <= 20) {
-        try {
-          const globalRanks = await client.clientCoc.getPlayerRanks('global');
-          const globalRank = globalRanks.find(
-            (rank) => rank.tag === scPlayer.tag,
-          );
-
-          if (globalRank) {
-            rankingText += ` :earth_asia: No. **${globalRank.rank}** in GLOBAL\n`;
-          } else {
-            rankingText += `\n`;
-          }
-        } catch (globalError) {
-          console.error('グローバルランキング取得エラー:', globalError);
-        }
-      } else {
-        rankingText += `\n`;
-      }
-
-      return rankingText;
+    // legend1 はグローバル順位を常に表示する（取得できる限り）
+    let globalRank = null;
+    try {
+      const globalRanks = await client.clientCoc.getPlayerRanks('global');
+      globalRank = globalRanks.find((rank) => rank.tag === scPlayer.tag) ?? null;
+    } catch (globalError) {
+      console.error('グローバルランキング取得エラー:', globalError);
     }
+
+    let japanRank = null;
+    try {
+      const playerRanks = await client.clientCoc.getPlayerRanks(
+        config_coc.locationId.japan,
+      );
+      japanRank = playerRanks.find((rank) => rank.tag === scPlayer.tag) ?? null;
+    } catch (jpError) {
+      console.error('日本ランキング取得エラー:', jpError);
+    }
+
+    let rankingText = '';
+    if (globalRank) {
+      rankingText += `:earth_asia: No. **${globalRank.rank}** in GLOBAL\n`;
+    }
+    // 日本ランクが200位以内でなくても、見つかればグローバルの後に表示する
+    if (japanRank) {
+      rankingText += `:flag_jp: No. **${japanRank.rank}** in JAPAN\n`;
+    }
+
+    return rankingText;
   } catch (error) {
     console.error('ランキング取得エラー:', error);
   }
