@@ -816,22 +816,31 @@ async function processLegendRankedBattleLog(
   const rowsToStoreChronological = [];
   let mongoAccMut = { ...mongoAcc };
   let lastResult = null;
-
-  for (let idx = 0; idx < chronological.length; idx++) {
-    const { item, fp } = chronological[idx];
+  const baseUnixTimeSeconds = Math.floor(Date.now() / 1000);
+  const spacedStepSeconds = 120;
+  const diffsChronological = chronological.map(({ item }) => {
     const isAttack = item?.attack === true;
-    const legendEventType = isAttack ? 'attack' : 'defense';
-    const diffT = rankedBattleTrophyDeltaFromBattleLog(
+    return rankedBattleTrophyDeltaFromBattleLog(
       isAttack,
       item?.stars,
       item?.destructionPercentage,
       afterPlayerStats.leagueTier.id,
     );
-    const unixTimeSeconds = Math.floor(Date.now() / 1000) + idx;
+  });
+  const totalDelta = diffsChronological.reduce((sum, v) => sum + (Number(v) || 0), 0);
+  let runningTrophies = Number(afterPlayerStats.trophies) - totalDelta;
+
+  for (let idx = 0; idx < chronological.length; idx++) {
+    const { item, fp } = chronological[idx];
+    const isAttack = item?.attack === true;
+    const legendEventType = isAttack ? 'attack' : 'defense';
+    const diffT = diffsChronological[idx];
+    runningTrophies += diffT;
+    const unixTimeSeconds = baseUnixTimeSeconds + (idx * spacedStepSeconds);
     const eventData = {
       season: seasonData.seasonId,
       day: seasonData.daysNow,
-      trophiesCurrent: afterPlayerStats.trophies,
+      trophiesCurrent: runningTrophies,
       diffTrophies: diffT,
       unixTimeSeconds,
       attacksCurrent: afterPlayerStats.attackWins,
@@ -846,7 +855,7 @@ async function processLegendRankedBattleLog(
     rowsToStoreChronological.push(
       rankedBattleLogStoredRow(item, fp, {
         diffTrophies: diffT,
-        trophiesCurrent: afterPlayerStats.trophies,
+        trophiesCurrent: runningTrophies,
         leagueId: afterPlayerStats.leagueTier.id,
         leagueName: afterPlayerStats.leagueTier.name,
         battleUnixTime: unixTimeSeconds,
@@ -1064,7 +1073,7 @@ async function createLogLegendAttack(
   const myEmbed = new EmbedBuilder();
   const titleEmote = eventData.diffTrophies >= 0 ? config.emote.up : config.emote.down;
   myEmbed.setTitle(
-    `${titleEmote} **${formatSignedInt(eventData.diffTrophies)}** :trophy: **${eventData.trophiesCurrent}**`,
+    `${titleEmote}**${formatSignedInt(eventData.diffTrophies)}** :trophy: **${eventData.trophiesCurrent}**`,
   );
   let footer = '';
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
@@ -1079,19 +1088,18 @@ async function createLogLegendAttack(
   myEmbed.setTimestamp();
 
   const urlPlayer = `https://link.clashofclans.com/jp?action=OpenPlayerProfile&tag=${scPlayer.tag.slice(1)}`;
-  let description = `${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}** | [${scPlayer.tag}](${urlPlayer})\n`;
+  let description = `${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}** [${scPlayer.tag}](${urlPlayer})\n`;
   description += `<t:${eventData.unixTimeSeconds}:t> ${buildRankedBattleStarsAndDestText(scPlayer, eventData)}\n`;
 
   if (isLegendLeagueTierId(eventData.leagueId)) {
-    // TOP200ランキング確認
-    const rankingDisplay = await getRankingDisplay(client, scPlayer);
-    if (rankingDisplay) {
-      description += rankingDisplay;
-    }
-
     const bar = buildLegendBarChartLine('attack', result?.nToday);
     if (bar) {
       description += bar;
+    }
+
+    const rankingDisplay = await getRankingDisplay(client, scPlayer);
+    if (rankingDisplay) {
+      description += rankingDisplay;
     }
 
     description += `${config.emote.discord}</legend stats:${config.command.legend.id}>`;
@@ -1115,7 +1123,7 @@ async function createLogLegendDefense(
   const myEmbed = new EmbedBuilder();
   const titleEmote = eventData.diffTrophies >= 0 ? config.emote.up : config.emote.down;
   myEmbed.setTitle(
-    `${titleEmote} **${formatSignedInt(eventData.diffTrophies)}** :trophy: **${eventData.trophiesCurrent}**`,
+    `${titleEmote}**${formatSignedInt(eventData.diffTrophies)}** :trophy: **${eventData.trophiesCurrent}**`,
   );
   let footer = '';
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
@@ -1129,19 +1137,18 @@ async function createLogLegendDefense(
   myEmbed.setColor(config.color.defense);
   myEmbed.setTimestamp();
   const urlPlayer = `https://link.clashofclans.com/jp?action=OpenPlayerProfile&tag=${scPlayer.tag.slice(1)}`;
-  let description = `${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}** | [${scPlayer.tag}](${urlPlayer})\n`;
+  let description = `${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}** [${scPlayer.tag}](${urlPlayer})\n`;
   description += `<t:${eventData.unixTimeSeconds}:t> ${buildRankedBattleStarsAndDestText(scPlayer, eventData)}\n`;
 
   if (isLegendLeagueTierId(eventData.leagueId)) {
-    // TOP200ランキング確認
-    const rankingDisplay = await getRankingDisplay(client, scPlayer);
-    if (rankingDisplay) {
-      description += rankingDisplay;
-    }
-
     const bar = buildLegendBarChartLine('defense', result?.nToday);
     if (bar) {
       description += bar;
+    }
+
+    const rankingDisplay = await getRankingDisplay(client, scPlayer);
+    if (rankingDisplay) {
+      description += rankingDisplay;
     }
 
     description += `${config.emote.discord}</legend stats:${config.command.legend.id}>`;
@@ -1155,14 +1162,8 @@ async function createLogLegendDefense(
 // ランキング表示用の共通関数
 async function getRankingDisplay(client, scPlayer) {
   try {
-    // legend1 はグローバル順位を常に表示する（取得できる限り）
-    let globalRank = null;
-    try {
-      const globalRanks = await client.clientCoc.getPlayerRanks('global');
-      globalRank = globalRanks.find((rank) => rank.tag === scPlayer.tag) ?? null;
-    } catch (globalError) {
-      console.error('グローバルランキング取得エラー:', globalError);
-    }
+    // グローバル順位は /players/{playerTag} の legendStatistics に含まれる
+    const globalRankValue = scPlayer?.legendStatistics?.currentSeason?.rank ?? null;
 
     let japanRank = null;
     try {
@@ -1175,12 +1176,11 @@ async function getRankingDisplay(client, scPlayer) {
     }
 
     let rankingText = '';
-    if (globalRank) {
-      rankingText += `:earth_asia: No. **${globalRank.rank}** in GLOBAL\n`;
-    }
-    // 日本ランクが200位以内でなくても、見つかればグローバルの後に表示する
     if (japanRank) {
       rankingText += `:flag_jp: No. **${japanRank.rank}** in JAPAN\n`;
+    }
+    if (Number.isFinite(Number(globalRankValue)) && Number(globalRankValue) > 0) {
+      rankingText += `:earth_asia: No. **${Number(globalRankValue)}** in GLOBAL\n`;
     }
 
     return rankingText;
