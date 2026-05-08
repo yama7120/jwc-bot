@@ -138,10 +138,9 @@ function scheduleCronWithGuard(jobName, expression, task, options = {}) {
     cronLocks.set(jobName, true);
     const startedAt = Date.now();
     try {
-      console.log(`[CRON][START] ${jobName}`);
       await withTimeout(task(), timeoutMs, jobName);
       const elapsed = Date.now() - startedAt;
-      console.log(`[CRON][DONE] ${jobName} (${elapsed} ms)`);
+      void elapsed;
     } catch (error) {
       const elapsed = Date.now() - startedAt;
       console.error(`[CRON][ERROR] ${jobName} (${elapsed} ms):`, error);

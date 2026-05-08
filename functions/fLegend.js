@@ -569,7 +569,7 @@ function buildLegendBarChartLine(kind, nToday) {
     const sum = Number(nToday.attackTrophies ?? 0);
     if (!Number.isFinite(n) || !Number.isFinite(sum) || n <= 0) return '';
     const avg = Math.round(sum / n);
-    return `:bar_chart: ${formatSignedInt(sum)} in ${n} attacks (avg: ${formatSignedInt(avg)})\n`;
+    return `${config.emote.sword} ${formatSignedInt(sum)} in ${n} attacks (avg: ${formatSignedInt(avg)})\n`;
   }
 
   if (kind === 'defense') {
@@ -577,17 +577,37 @@ function buildLegendBarChartLine(kind, nToday) {
     const sum = Number(nToday.defenseTrophies ?? 0);
     if (!Number.isFinite(n) || !Number.isFinite(sum) || n <= 0) return '';
     const avg = Math.round(sum / n);
-    return `:bar_chart: ${formatSignedInt(sum)} in ${n} defenses (avg: ${formatSignedInt(avg)})\n`;
+    return `${config.emote.shield} ${formatSignedInt(sum)} in ${n} defenses (avg: ${formatSignedInt(avg)})\n`;
   }
 
   return '';
 }
 
-function buildRankedBattleResultText(scPlayer, eventData) {
-  const fn = scPlayer?.leagueTier?.id == config_coc.leagueId.legend
-    ? createDescriptionLegend
-    : createDescriptionNonLegend;
-  return fn(eventData.diffTrophies, eventData.destructionPercentage);
+function buildRankedBattleStarsAndDestText(scPlayer, eventData) {
+  const isLegend1 = scPlayer?.leagueTier?.id == config_coc.leagueId.legend;
+  const countStars = isLegend1
+    ? functions.countStarsLegend(eventData.diffTrophies)
+    : functions.countStarsNonLegend(eventData.diffTrophies);
+
+  let s = '';
+  if (countStars === 0) {
+    s += `${config.emote.starGray}`;
+  } else {
+    for (let i = 1; i <= countStars; i++) {
+      s += `${config.emote.star}`;
+    }
+  }
+
+  const dp = Number(eventData.destructionPercentage);
+  if (Number.isFinite(dp)) {
+    s += ` ${dp}%`;
+  }
+
+  if (countStars === 3) {
+    s += ` :boom:`;
+  }
+
+  return s;
 }
 
 function calcAttackTrophies(stars, destruction) {
@@ -1058,8 +1078,9 @@ async function createLogLegendAttack(
   myEmbed.setColor(config.color.attack);
   myEmbed.setTimestamp();
 
-  let description = `${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}**\n`;
-  description += `<t:${eventData.unixTimeSeconds}:t> ${buildRankedBattleResultText(scPlayer, eventData)}\n`;
+  const urlPlayer = `https://link.clashofclans.com/jp?action=OpenPlayerProfile&tag=${scPlayer.tag.slice(1)}`;
+  let description = `${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}** | [${scPlayer.tag}](${urlPlayer})\n`;
+  description += `<t:${eventData.unixTimeSeconds}:t> ${buildRankedBattleStarsAndDestText(scPlayer, eventData)}\n`;
 
   if (isLegendLeagueTierId(eventData.leagueId)) {
     // TOP200ランキング確認
@@ -1107,8 +1128,9 @@ async function createLogLegendDefense(
   myEmbed.setFooter({ text: footer, iconURL: getRankedBattleLogFooterIconUrl(scPlayer) });
   myEmbed.setColor(config.color.defense);
   myEmbed.setTimestamp();
-  let description = `${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}**\n`;
-  description += `<t:${eventData.unixTimeSeconds}:t> ${buildRankedBattleResultText(scPlayer, eventData)}\n`;
+  const urlPlayer = `https://link.clashofclans.com/jp?action=OpenPlayerProfile&tag=${scPlayer.tag.slice(1)}`;
+  let description = `${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}** | [${scPlayer.tag}](${urlPlayer})\n`;
+  description += `<t:${eventData.unixTimeSeconds}:t> ${buildRankedBattleStarsAndDestText(scPlayer, eventData)}\n`;
 
   if (isLegendLeagueTierId(eventData.leagueId)) {
     // TOP200ランキング確認

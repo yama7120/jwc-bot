@@ -69,9 +69,7 @@ async function autoUpdateWar(client, league, week) {
       }
     },
   );
-  console.log(
-    `[cronWarAutoUpdate] league=${league} wars=${mongoWars.length}/${mongoWars2.length} elapsed=${Date.now() - startedAt}ms`,
-  );
+  void startedAt;
 }
 
 async function sendReminderMain(client, mongoWar) {
