@@ -609,9 +609,13 @@ function buildWeeklySummaryLine(kind, legendEvents, seasonData) {
 
 function buildRankedBattleStarsAndDestText(scPlayer, eventData) {
   const isLegend1 = scPlayer?.leagueTier?.id == config_coc.leagueId.legend;
-  const countStars = isLegend1
-    ? functions.countStarsLegend(eventData.diffTrophies)
-    : functions.countStarsNonLegend(eventData.diffTrophies);
+  // battle log 由来の eventData.stars があればそれを使う（non-legend は diffTrophies から逆算できないため）
+  const starsFromEvent = Number(eventData?.stars);
+  const countStars = Number.isFinite(starsFromEvent)
+    ? Math.min(3, Math.max(0, starsFromEvent))
+    : (isLegend1
+      ? functions.countStarsLegend(eventData.diffTrophies)
+      : functions.countStarsNonLegend(eventData.diffTrophies));
 
   let s = '';
   if (countStars === 0) {
@@ -838,6 +842,9 @@ async function processLegendRankedBattleLog(
   }
 
   const chronological = [...newRev].reverse();
+  console.log(
+    `[legend] processLegendRankedBattleLog ${mongoAcc.tag}: detected ${chronological.length} new battles in this cycle`,
+  );
   const rowsToStoreChronological = [];
   let mongoAccMut = { ...mongoAcc };
   let lastResult = null;
@@ -1132,6 +1139,9 @@ async function createLogLegendAttack(
   }
 
   if (isLegendLeagueTierId(eventData.leagueId)) {
+    console.log(
+      `[legend] createLogLegendAttack ${scPlayer.tag}: includeRanking=${eventData.includeRanking}`,
+    );
     if (eventData.includeRanking !== false) {
       const rankingDisplay = await getRankingDisplay(client, scPlayer);
       if (rankingDisplay) {
@@ -1191,6 +1201,9 @@ async function createLogLegendDefense(
   }
 
   if (isLegendLeagueTierId(eventData.leagueId)) {
+    console.log(
+      `[legend] createLogLegendDefense ${scPlayer.tag}: includeRanking=${eventData.includeRanking}`,
+    );
     if (eventData.includeRanking !== false) {
       const rankingDisplay = await getRankingDisplay(client, scPlayer);
       if (rankingDisplay) {
