@@ -321,23 +321,31 @@ async function addNewDayToLegendAccounts(client, seasonData) {
 
     console.log(`Found ${accounts.length} accounts with legend.days array`);
 
-    const newDayObject = {
-      season: seasonId,
-      day: currentDay,
-      trophies: 0,
-      diffTrophies: 0,
-      attacks: 0,
-      defenses: 0,
-      triples: 0,
-      defTriples: 0,
-      attackTrophies: 0,
-      defenseTrophies: 0,
-      globalRank: null,
-      japanRank: null
-    };
-
     for (const account of accounts) {
       try {
+        // 新しい1日の開始トロフィーは、直前の day の終了値（無ければ現在のトロフィー）を引き継ぐ
+        const prevDayTrophies = Array.isArray(account?.legend?.days)
+          ? Number(account.legend.days[0]?.trophies)
+          : NaN;
+        const startingTrophies = Number.isFinite(prevDayTrophies) && prevDayTrophies > 0
+          ? prevDayTrophies
+          : Number(account?.trophies) || 0;
+
+        const newDayObject = {
+          season: seasonId,
+          day: currentDay,
+          trophies: startingTrophies,
+          diffTrophies: 0,
+          attacks: 0,
+          defenses: 0,
+          triples: 0,
+          defTriples: 0,
+          attackTrophies: 0,
+          defenseTrophies: 0,
+          globalRank: null,
+          japanRank: null
+        };
+
         await client.clientMongo
           .db('jwc')
           .collection('accounts')
