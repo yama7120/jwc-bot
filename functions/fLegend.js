@@ -842,9 +842,6 @@ async function processLegendRankedBattleLog(
   }
 
   const chronological = [...newRev].reverse();
-  console.log(
-    `[legend] processLegendRankedBattleLog ${mongoAcc.tag}: detected ${chronological.length} new battles in this cycle`,
-  );
   const rowsToStoreChronological = [];
   let mongoAccMut = { ...mongoAcc };
   let lastResult = null;
@@ -1139,9 +1136,6 @@ async function createLogLegendAttack(
   }
 
   if (isLegendLeagueTierId(eventData.leagueId)) {
-    console.log(
-      `[legend] createLogLegendAttack ${scPlayer.tag}: includeRanking=${eventData.includeRanking}`,
-    );
     if (eventData.includeRanking !== false) {
       const rankingDisplay = await getRankingDisplay(client, scPlayer);
       if (rankingDisplay) {
@@ -1149,8 +1143,10 @@ async function createLogLegendAttack(
       }
     }
 
-    description += `${config.emote.discord}</legend stats:${config.command.legend.id}>`;
-    description += ` ${config.emote.discord}</legend history own:${config.command.legend.id}>`;
+    if (eventData.leagueId === config_coc.leagueId.legend) {
+      description += `${config.emote.discord}</legend stats:${config.command.legend.id}>`;
+      description += ` ${config.emote.discord}</legend history own:${config.command.legend.id}>`;
+    }
   }
   myEmbed.setDescription(description);
 
@@ -1201,9 +1197,6 @@ async function createLogLegendDefense(
   }
 
   if (isLegendLeagueTierId(eventData.leagueId)) {
-    console.log(
-      `[legend] createLogLegendDefense ${scPlayer.tag}: includeRanking=${eventData.includeRanking}`,
-    );
     if (eventData.includeRanking !== false) {
       const rankingDisplay = await getRankingDisplay(client, scPlayer);
       if (rankingDisplay) {
@@ -1211,8 +1204,10 @@ async function createLogLegendDefense(
       }
     }
 
-    description += `${config.emote.discord}</legend stats:${config.command.legend.id}>`;
-    description += ` ${config.emote.discord}</legend history own:${config.command.legend.id}>`;
+    if (eventData.leagueId === config_coc.leagueId.legend) {
+      description += `${config.emote.discord}</legend stats:${config.command.legend.id}>`;
+      description += ` ${config.emote.discord}</legend history own:${config.command.legend.id}>`;
+    }
   }
   myEmbed.setDescription(description);
 
