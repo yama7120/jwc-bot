@@ -1143,7 +1143,10 @@ async function createLogLegendAttack(
       }
     }
 
-    if (eventData.leagueId === config_coc.leagueId.legend) {
+    if (
+      eventData.leagueId === config_coc.leagueId.legend
+      && eventData.includeRanking !== false
+    ) {
       description += `${config.emote.discord}</legend stats:${config.command.legend.id}>`;
       description += ` ${config.emote.discord}</legend history own:${config.command.legend.id}>`;
     }
@@ -1204,7 +1207,10 @@ async function createLogLegendDefense(
       }
     }
 
-    if (eventData.leagueId === config_coc.leagueId.legend) {
+    if (
+      eventData.leagueId === config_coc.leagueId.legend
+      && eventData.includeRanking !== false
+    ) {
       description += `${config.emote.discord}</legend stats:${config.command.legend.id}>`;
       description += ` ${config.emote.discord}</legend history own:${config.command.legend.id}>`;
     }
