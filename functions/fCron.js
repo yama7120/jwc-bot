@@ -321,12 +321,23 @@ async function addNewDayToLegendAccounts(client, seasonData) {
 
     console.log(`Found ${accounts.length} accounts with legend.days array`);
 
+    let nSkipped = 0;
     for (const account of accounts) {
       try {
+        const daysArr = Array.isArray(account?.legend?.days) ? account.legend.days : [];
+
+        // 既に当日エントリ (season, day) が存在するアカウントはスキップ（重複 push 防止）
+        const hasCurrentDay = daysArr.some(
+          (d) => d?.season === seasonId && d?.day === currentDay,
+        );
+        if (hasCurrentDay) {
+          nSkipped += 1;
+          continue;
+        }
+
         // 新しい1日の開始トロフィーは、直前の day の終了値（無ければ現在のトロフィー）を引き継ぐ
-        const prevDayTrophies = Array.isArray(account?.legend?.days)
-          ? Number(account.legend.days[0]?.trophies)
-          : NaN;
+        // 当日エントリが存在しない前提なので、legend.days[0] は前日以前のもの
+        const prevDayTrophies = Number(daysArr[0]?.trophies);
         const startingTrophies = Number.isFinite(prevDayTrophies) && prevDayTrophies > 0
           ? prevDayTrophies
           : Number(account?.trophies) || 0;
@@ -346,11 +357,20 @@ async function addNewDayToLegendAccounts(client, seasonData) {
           japanRank: null
         };
 
+        // 競合対策: フィルタ側で当日エントリが無いことを再確認（read→write 間に
+        // ランク戦経由で day=currentDay が作られた場合は no-op になる）
         await client.clientMongo
           .db('jwc')
           .collection('accounts')
           .updateOne(
-            { tag: account.tag },
+            {
+              tag: account.tag,
+              'legend.days': {
+                $not: {
+                  $elemMatch: { season: seasonId, day: currentDay },
+                },
+              },
+            },
             {
               $push: {
                 'legend.days': {
@@ -363,6 +383,9 @@ async function addNewDayToLegendAccounts(client, seasonData) {
       } catch (error) {
         console.error(`Error updating account ${account.tag}:`, error);
       }
+    }
+    if (nSkipped > 0) {
+      console.log(`Skipped ${nSkipped} accounts already having day=${currentDay} entry`);
     }
 
     console.log('Successfully added new day objects to legend accounts');
@@ -444,8 +467,23 @@ async function sendLogUpdated(client, nAccs, seasonData) {
     `${config.emote.legend} **TOP 10 LEGEND PLAYERS**`
   ];
 
+  // cron は 02:00 JST = CoC 日境界で起動するため seasonData.daysNow は
+  // 「これから始まる新しい日 (N)」を指す。TOP10 で表示したいのは
+  // 「ちょうど終わった日 (N-1)」のサマリなので targetDay = daysNow - 1。
+  const targetSeason = seasonData.seasonId;
+  const targetDay = seasonData.daysNow - 1;
+
   accounts.forEach((acc, index) => {
-    let dayStats = acc.legend.days[0];
+    const daysArr = Array.isArray(acc.legend?.days) ? acc.legend.days : [];
+    const dayStats = daysArr.find(
+      (d) => d?.season === targetSeason && d?.day === targetDay,
+    ) ?? {
+      trophies: acc.trophies ?? 0,
+      diffTrophies: 0,
+      attackTrophies: 0,
+      defenseTrophies: 0,
+    };
+
     const diffTrophies =
       dayStats.diffTrophies >= 0
         ? `+${dayStats.diffTrophies}`
