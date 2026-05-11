@@ -71,8 +71,10 @@ export default {
       console.log('END: fCron.cronUpdate2am');
     });
 
-    // 毎週火曜 8:00（月曜 32:00：23:00 UTC）
-    scheduleCronWithGuard('rankedBattles', '00 00 23 * * 1', async () => {
+    // 毎週火曜 02:30 JST (= 月曜 17:30 UTC)
+    // 週次リセット (JST 火 02:00) 直後の leagueTier をスナップショット。
+    // 同時刻の cronUpdate2am と CoC API レート制限が競合しないよう 30 分後にずらす。
+    scheduleCronWithGuard('rankedBattles', '00 30 17 * * 1', async () => {
       await fCron.rankedBattles(client);
       console.log('END: fCron.rankedBattles');
     });

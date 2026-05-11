@@ -712,12 +712,22 @@ async function reloadMongoAccLegendProjection(client, mongoAcc) {
   }
 }
 
+function legendWeekKey(w) {
+  if (!w) return null;
+  const id = w.weekId ?? weeklyTournamentIdFromStartUnix(w.weekStartUnix);
+  if (!id) return null;
+  return `${w.season}|${id}`;
+}
+
 function mergeLegendWeeks(existingWeeks, weekEntry) {
   const safe = Array.isArray(existingWeeks) ? existingWeeks : [];
-  const key = `${weekEntry.season}|${weekEntry.weekStartUnix}`;
-  const filtered = safe.filter(
-    (w) => `${w?.season}|${w?.weekStartUnix}` !== key,
-  );
+  const targetKey = legendWeekKey(weekEntry);
+  // 同じ週 (season + weekId) の既存エントリを除去して、新エントリで置き換える。
+  // weekId は UTC 月曜日付なので、旧スケジュール (Mon 05:00 UTC) で保存された
+  // weekStartUnix から導出した ID とも一致する → 自然にマイグレーションされる。
+  const filtered = targetKey
+    ? safe.filter((w) => legendWeekKey(w) !== targetKey)
+    : safe;
   return [...filtered, weekEntry]
     .sort((a, b) => (b.weekStartUnix ?? 0) - (a.weekStartUnix ?? 0))
     .slice(0, 80);
@@ -735,6 +745,7 @@ async function updateLegendWeeksFromEvents(
   const av = getWeekRatedBattleAvgStats(legendEvents, seasonData);
   const weekEntry = {
     season: seasonData.seasonId,
+    weekId: weeklyTournamentIdFromStartUnix(startUnix),
     weekStartUnix: startUnix,
     weekEndUnix,
     leagueId: leagueTier?.id ?? null,
@@ -938,17 +949,56 @@ async function processLegendRankedBattleLog(
   await reloadMongoAccLegendProjection(client, mongoAcc);
 }
 
-function getWeeklyTournamentUnixBounds(seasonData) {
-  const nowUnix = Math.floor(Date.now() / 1000);
-  const startMs = new Date(seasonData?.tournamentWindow?.startTime).getTime();
-  const endMs = new Date(seasonData?.tournamentWindow?.endTime).getTime();
-  const startUnix = Number.isFinite(startMs) && startMs > 0
-    ? Math.floor(startMs / 1000)
-    : nowUnix - 7 * 24 * 60 * 60;
-  const weekEndUnix = Number.isFinite(endMs) && endMs > 0
-    ? Math.floor(endMs / 1000)
-    : startUnix + 7 * 24 * 60 * 60;
-  return { startUnix, weekEndUnix };
+/**
+ * 週次トーナメント (Legend 1 以外) の境界を JST ベースで自前計算する。
+ *
+ * 仕様:
+ *   - 週開始: JST 火 02:00  (= UTC 月 17:00)
+ *   - 週終了: 翌 JST 月 02:00 (= UTC 日 17:00)  ← 週開始 + 6日
+ *   - JST 月 02:00 〜 火 02:00 はバトル不可の 24h ギャップ
+ *
+ * ギャップ中 (= 週終了後・次の週開始前) に呼ばれた場合は「直前に終わった週」
+ * の境界を返す。これにより、cronUpdate2am (JST 02:00) 直後に呼ばれても
+ * 集計対象は前週分のまま保たれる。
+ *
+ * 第2引数 (legacy: seasonData) は互換のため受け取るが未使用。
+ */
+function getWeeklyTournamentUnixBounds(_seasonData, nowMs = Date.now()) {
+  const d = new Date(nowMs);
+  const day = d.getUTCDay(); // 0=Sun ... 6=Sat
+  const hour = d.getUTCHours();
+
+  // 「直近の UTC 月 17:00」までの経過日数
+  // Mon=0, Tue=1, ..., Sun=6
+  let daysSinceWeekStart = (day + 6) % 7;
+  // 月曜の 17:00 UTC 未満は「先週月曜が直近の週開始」
+  if (day === 1 && hour < 17) {
+    daysSinceWeekStart = 7;
+  }
+
+  const weekStartDate = new Date(Date.UTC(
+    d.getUTCFullYear(),
+    d.getUTCMonth(),
+    d.getUTCDate() - daysSinceWeekStart,
+    17, 0, 0, 0,
+  ));
+  // 週終了 = 週開始 + 6 日 (24h ギャップは含めない)
+  const weekEndDate = new Date(weekStartDate.getTime() + 6 * 24 * 60 * 60 * 1000);
+
+  return {
+    startUnix: Math.floor(weekStartDate.getTime() / 1000),
+    weekEndUnix: Math.floor(weekEndDate.getTime() / 1000),
+  };
+}
+
+/**
+ * 週次トーナメントの安定 ID。UTC 月曜の YYYY-MM-DD を返す。
+ * 旧スケジュール (Mon 05:00 UTC 起点) で保存されたデータも同じ ID に揃うので、
+ * `mergeLegendWeeks` のキー突合に使える。
+ */
+function weeklyTournamentIdFromStartUnix(startUnix) {
+  if (!Number.isFinite(startUnix) || startUnix <= 0) return null;
+  return new Date(startUnix * 1000).toISOString().slice(0, 10);
 }
 
 function getWeekRatedBattleAvgStats(events, seasonData) {
