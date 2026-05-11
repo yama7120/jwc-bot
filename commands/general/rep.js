@@ -161,6 +161,15 @@ let data = new SlashCommandBuilder()
           )
           .addStringOption((option) =>
             option
+              .setName('status_season')
+              .setDescription('status の対象シーズン（未指定＝次シーズン）')
+              .addChoices(
+                { name: '今シーズン', value: 'current' },
+                { name: '次シーズン', value: 'next' },
+              ),
+          )
+          .addStringOption((option) =>
+            option
               .setName('status')
               .setDescription('参加/不参加')
               .addChoices(
@@ -1231,6 +1240,7 @@ async function editTeamInformation(client, interaction) {
   const iRep2nd = await interaction.options.getUser('rep_2nd');
   const iRep3rd = await interaction.options.getUser('rep_3rd');
   const changeLeague = await interaction.options.getString('change_league');
+  const iStatusSeason = await interaction.options.getString('status_season');
   const iStatus = await interaction.options.getString('status');
   const flagRemove = await interaction.options.getString('remove');
 
@@ -1366,12 +1376,15 @@ async function editTeamInformation(client, interaction) {
 
   let status = null;
   if (iStatus) {
+    const seasonValue =
+      iStatusSeason === 'current' ? config.season[league] : config.seasonNext[league];
+    const statusKey = functions.seasonToString(seasonValue);
     if (mongoTeam.status) {
       status = mongoTeam.status;
-      status[functions.seasonToString(config.seasonNext[league])] = iStatus;
+      status[statusKey] = iStatus;
     } else {
       status = {};
-      status[functions.seasonToString(config.seasonNext[league])] = iStatus;
+      status[statusKey] = iStatus;
     }
     listing.status = status;
   }

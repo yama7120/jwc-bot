@@ -1394,22 +1394,48 @@ async function sendClanInfo(interaction, client, clanAbbr) {
 
   myDescription += '### STATUS';
   myDescription += `\n`;
-  let statusEmote = '';
-  if (!mongoClan.status) {
-    statusEmote = ':question:';
-  } else {
-    let status =
-      mongoClan.status[seasonToString(config.seasonNext[mongoClan.league])];
-    if (status == 'true') {
-      statusEmote = ':white_check_mark:';
-    } else if (status == 'false') {
-      statusEmote = ':x:';
-    } else {
-      statusEmote = ':question:';
+  const leagueForStatus = mongoClan.league;
+  const seasonNumNext = config.seasonNext[leagueForStatus];
+  const seasonNumCurr = config.season[leagueForStatus];
+  const statusEmoteFor = (raw) => {
+    if (raw === 'true' || raw === true) {
+      return ':white_check_mark:';
     }
+    if (raw === 'false' || raw === false) {
+      return ':x:';
+    }
+    return ':question:';
+  };
+  const statusRows = [];
+  const keyNext = seasonToString(seasonNumNext);
+  const keyCurr = seasonToString(seasonNumCurr);
+  if (mongoClan.status && Object.prototype.hasOwnProperty.call(mongoClan.status, keyNext)) {
+    statusRows.push({
+      n: seasonNumNext,
+      emote: statusEmoteFor(mongoClan.status[keyNext]),
+    });
   }
-  myDescription += ` ${statusEmote} SEASON ${config.seasonNext[mongoClan.league]}`;
-  myDescription += `\n\n`;
+  if (
+    mongoClan.status &&
+    keyCurr !== keyNext &&
+    Object.prototype.hasOwnProperty.call(mongoClan.status, keyCurr)
+  ) {
+    statusRows.push({
+      n: seasonNumCurr,
+      emote: statusEmoteFor(mongoClan.status[keyCurr]),
+    });
+  }
+  statusRows.sort((a, b) => b.n - a.n);
+  if (statusRows.length === 0) {
+    myDescription += ` :question: SEASON ${seasonNumNext}`;
+    myDescription += `\n\n`;
+  } else {
+    for (const row of statusRows) {
+      myDescription += ` ${row.emote} SEASON ${row.n}`;
+      myDescription += `\n`;
+    }
+    myDescription += `\n`;
+  }
 
   myDescription += '### REPS';
   myDescription += `\n`;
