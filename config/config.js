@@ -9,8 +9,8 @@ export default {
   cronWarStatus: { j1: 'on', j2: 'on', swiss: 'on', mix: 'on', five: 'off' }, // on / off
   weekNow: { j1: 2, j2: 2, swiss: 1, mix: 1, five: 0 },
   season: { j1: 19, j2: 19, j: 19, swiss: 19, mix: 19, five: 3 },
-  seasonNext: { j1: 19, j2: 19, swiss: 19, mix: 19, five: 4 }, // 応募受付時の表示、ロール付与時
-  seasonLast: { j1: 18, j2: 18, swiss: 18, mix: 18.5, five: 3 },
+  seasonNext: { j1: 20, j2: 20, swiss: 20, mix: 20, five: 4 }, // 応募受付時の表示、ロール付与時
+  seasonLast: { j1: 19, j2: 19, swiss: 19, mix: 19, five: 3 },
   league: {
     j1: 'J1',
     j2: 'J2',
@@ -635,6 +635,13 @@ export default {
         j2: '1463140190771216537',
         swiss: '1463140303681880159',
         mix: '1463140394710863989',
+      },
+      s20: {
+        all: '1503378304210702377',
+        j1: '1503378453154762843',
+        j2: '1503378570683088997',
+        swiss: '1503378645060812912',
+        mix: '1503378680884498513',
       },
     },
     repsServer5v: {
