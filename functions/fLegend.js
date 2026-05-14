@@ -6,8 +6,10 @@ import config_coc from '../config/config_coc.js';
 import * as functions from './functions.js';
 import * as fRanking from './fRanking.js';
 import {
+  dedupeRankedBattleLogRowsPreferLast,
   filterRankedBattleItems,
   fingerprintRankedBattleItem,
+  rankedBattleTimeKey,
 } from './fBattleLog.js';
 
 const LEAGUE_SEASONS_LEAGUE_ID = 29000022;
@@ -803,10 +805,11 @@ async function setLegendRankedBattleLogBootstrap(
       }),
     );
   }
+  const rowsDeduped = dedupeRankedBattleLogRowsPreferLast(rows);
   await client.clientMongo
     .db('jwc')
     .collection('accounts')
-    .updateOne({ tag }, { $set: { 'legend.rankedBattleLog': rows } });
+    .updateOne({ tag }, { $set: { 'legend.rankedBattleLog': rowsDeduped } });
 }
 
 /**
@@ -837,11 +840,20 @@ async function processLegendRankedBattleLog(
 
   const priorRows = Array.isArray(lb) ? lb : [];
   const storedFp = new Set(priorRows.map((s) => s?.fingerprint).filter(Boolean));
+  const storedBattleTimes = new Set(
+    priorRows
+      .map((s) => s?.battleTime)
+      .filter((t) => typeof t === 'string' && t.length > 0),
+  );
 
   const newRev = [];
   for (let i = ranked.length - 1; i >= 0; i--) {
     const item = ranked[i];
     const fp = fingerprintRankedBattleItem(item);
+    const btKey = rankedBattleTimeKey(item);
+    if (btKey && storedBattleTimes.has(btKey)) {
+      break;
+    }
     if (storedFp.has(fp)) {
       break;
     }
@@ -940,7 +952,10 @@ async function processLegendRankedBattleLog(
 
   const newFpSet = new Set(rowsToStoreChronological.map((r) => r.fingerprint));
   const tail = priorRows.filter((r) => !newFpSet.has(r.fingerprint));
-  const mergedRankedLog = [...tail, ...rowsToStoreChronological].slice(-120);
+  const mergedRankedLog = dedupeRankedBattleLogRowsPreferLast([
+    ...tail,
+    ...rowsToStoreChronological,
+  ]).slice(-120);
   await client.clientMongo
     .db('jwc')
     .collection('accounts')
