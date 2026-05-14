@@ -389,7 +389,7 @@ export default {
           maxLevel: {
             th3: 2, th4: 2, th5: 3, th6: 3, th7: 4, th8: 5, th9: 6, th10: 7,
             th11: 8, th12: 9, th13: 9, th14: 10, th15: 11, 
-            th16: 12, th17: 12, th18: 12,
+            th16: 12, th17: 12, th18: 13,
           },
         },
         {
@@ -405,7 +405,7 @@ export default {
           maxLevel: {
             th3: 2, th4: 2, th5: 3, th6: 3, th7: 4, th8: 5, th9: 6, th10: 7,
             th11: 7, th12: 8, th13: 8, th14: 8, th15: 9, 
-            th16: 9, th17: 9, th18: 9,
+            th16: 9, th17: 9, th18: 10,
           },
         },
         {
@@ -429,7 +429,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 2, th5: 2, th6: 3, th7: 4, th8: 5, th9: 6, th10: 6,
             th11: 7, th12: 8, th13: 9, th14: 10, th15: 10, 
-            th16: 11, th17: 12, th18: 12,
+            th16: 11, th17: 12, th18: 13,
           },
         },
         {
@@ -453,7 +453,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 0, th5: 0, th6: 0, th7: 2, th8: 3, th9: 4, th10: 5,
             th11: 5, th12: 7, th13: 8, th14: 9, th15: 10, 
-            th16: 11, th17: 12, th18: 12,
+            th16: 11, th17: 12, th18: 13,
           },
         },
         {
@@ -493,7 +493,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 0,
             th11: 0, th12: 2, th13: 3, th14: 4, th15: 5, 
-            th16: 6, th17: 7, th18: 7,
+            th16: 6, th17: 7, th18: 8,
           },
         },
         {
@@ -517,7 +517,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 0,
             th11: 0, th12: 0, th13: 0, th14: 0, th15: 2, 
-            th16: 3, th17: 3, th18: 3,
+            th16: 3, th17: 3, th18: 4,
           },
         },
         {
@@ -559,7 +559,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 2, th9: 4, th10: 5,
             th11: 6, th12: 7, th13: 8, th14: 9, th15: 10, 
-            th16: 11, th17: 11, th18: 11,
+            th16: 11, th17: 12, th18: 12,
           },
         },
         {
@@ -567,7 +567,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 2, th9: 4, th10: 5,
             th11: 7, th12: 9, th13: 10, th14: 11, th15: 12, 
-            th16: 13, th17: 14, th18: 14,
+            th16: 13, th17: 14, th18: 15,
           },
         },
         {
@@ -607,7 +607,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 0,
             th11: 0, th12: 2, th13: 3, th14: 3, th15: 3, 
-            th16: 3, th17: 3, th18: 3,
+            th16: 3, th17: 3, th18: 4,
           },
         },
         {
@@ -623,7 +623,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 0,
             th11: 0, th12: 0, th13: 0, th14: 2, th15: 3, 
-            th16: 4, th17: 5, th18: 5,
+            th16: 4, th17: 5, th18: 6,
           },
         },
         {
@@ -659,7 +659,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 0, th5: 0, th6: 0, th7: 4, th8: 5, th9: 5, th10: 5,
             th11: 5, th12: 6, th13: 6, th14: 6, th15: 6, 
-            th16: 6, th17: 6, th18: 6,
+            th16: 6, th17: 6, th18: 7,
           },
         },
         {
@@ -675,7 +675,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 2, th10: 5,
             th11: 6, th12: 7, th13: 7, th14: 7, th15: 7, 
-            th16: 7, th17: 7, th18: 7,
+            th16: 7, th17: 7, th18: 8,
           },
         },
         {
@@ -683,7 +683,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 3,
             th11: 5, th12: 5, th13: 6, th14: 7, th15: 8, 
-            th16: 8, th17: 8, th18: 8,
+            th16: 8, th17: 8, th18: 9,
           },
         },
         {
@@ -699,7 +699,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 0,
             th11: 0, th12: 0, th13: 2, th14: 3, th15: 4, 
-            th16: 5, th17: 6, th18: 6,
+            th16: 5, th17: 6, th18: 7,
           },
         },
         {
@@ -765,7 +765,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 0,
             th11: 0, th12: 2, th13: 2, th14: 3, th15: 3, 
-            th16: 4, th17: 4, th18: 4,
+            th16: 4, th17: 4, th18: 5,
           },
         },
         {
@@ -773,7 +773,7 @@ export default {
           maxLevel: {
             th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 0,
             th11: 0, th12: 0, th13: 0, th14: 2, th15: 3, 
-            th16: 4, th17: 5, th18: 5,
+            th16: 4, th17: 5, th18: 6,
           },
         },
       ],
@@ -898,7 +898,7 @@ export default {
         maxLevel: {
           th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 0,
           th11: 0, th12: 0, th13: 4, th14: 4, th15: 4, 
-          th16: 5, th17: 5, th18: 5,
+          th16: 5, th17: 5, th18: 6,
         },
       },
       {
@@ -906,7 +906,7 @@ export default {
         maxLevel: {
           th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 0,
           th11: 0, th12: 0, th13: 4, th14: 4, th15: 4, 
-          th16: 5, th17: 5, th18: 5,
+          th16: 5, th17: 5, th18: 6,
         },
       },
       {
@@ -922,7 +922,7 @@ export default {
         maxLevel: {
           th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 0,
           th11: 0, th12: 0, th13: 0, th14: 0, th15: 4, 
-          th16: 4, th17: 5, th18: 5,
+          th16: 4, th17: 5, th18: 6,
         },
       },
       {
@@ -931,6 +931,14 @@ export default {
           th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 0,
           th11: 0, th12: 0, th13: 0, th14: 0, th15: 0, 
           th16: 3, th17: 4, th18: 4,
+        },
+      },
+      {
+        id: 94, name: 'Sky Wagon',
+        maxLevel: {
+          th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 0,
+          th11: 0, th12: 0, th13: 0, th14: 0, th15: 0, 
+          th16: 0, th17: 2, th18: 4,
         },
       },
     ],
@@ -1119,6 +1127,10 @@ export default {
       {
         id: 964, name: 'Rocket Backpack', hero: 'Dragon Duke', type: 'epic',
         emote: '<:eqRocketBackpack:1491967601390256288>'
+      },
+      {
+        id: 965, name: 'Electro Fangs', hero: 'Dragon Duke', type: 'common',
+        emote: '<:eqElectroFangs:1504306725623435284>'
       },
     ],
     /*
