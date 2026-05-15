@@ -50,12 +50,8 @@ export default {
       description += `[__document__](${config.link.rule.j.url})\n`;
       description += `* **SWISS** *SEASON ${config.link.rule.swiss.season}*\n`;
       description += `[__document__](${config.link.rule.swiss.url})\n`;
-      description += `* **MIX** *SEASON ${config.link.rule.mix.season} 10v*\n`;
+      description += `* **MIX** *SEASON ${config.link.rule.mix.season}*\n`;
       description += `[__document__](${config.link.rule.mix.url})\n`;
-      description += `* **MIX** *SEASON ${config.link.rule.mix.season} 5v*\n`;
-      description += `[__document__](${config.link.rule.mix5v.url})\n`;
-      description += `* **5V** *SEASON ${config.link.rule.five.season}*\n`;
-      description += `[__document__](${config.link.rule.five.url})\n`;
       //description += `\n`;
       //description += `* [__マッチングに関わるルールおよびペナルティ__](${client.config.link.rule.war})\n`;
       //description += `* [__ロスターに関わるルールおよびペナルティ__](${client.config.link.rule.roster})\n`;

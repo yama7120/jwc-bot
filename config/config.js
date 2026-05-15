@@ -142,19 +142,18 @@ export default {
     },
     rule: {
       j: {
-        season: 17,
-        url: 'https://docs.google.com/document/d/1Uv7njI_6j1P54CEER3VMnNYA1xTVUJpw7MdxT5f72Po/edit?usp=sharing',
+        season: 20,
+        url: 'https://docs.google.com/document/d/1n6KPhaGIptZ_xGKCNqjpjqBeoZ1xrMCm4WZu4RCT8Dc/edit?usp=sharing',
       },
       swiss: {
-        season: 17,
-        url: 'https://docs.google.com/document/d/1B6HZOO9bzVJRsFJpLqS96GOgsJ_dfrxdqsI3f6K1FRc/edit?usp=sharing',
+        season: 20,
+        url: 'https://docs.google.com/document/d/1R7Kd2kWrkOraEbo2Gl6ELww9Q7RUtXP9o6mQMkCSRCE/edit?usp=sharing',
       },
       mix: {
-        //season: 17,
-        //url: 'https://docs.google.com/document/d/1ie5bYoS22ebMbfMj2x9PX_50tfA2pyEvqvFcaz4X1aM/edit?usp=sharing',
-        season: 18,
-        url: 'https://docs.google.com/document/d/1a58XTRQjlkafwV58MM39uYMnXSgLCcsPvTEFjuOsOSU/edit?usp=sharing',
+        season: 20,
+        url: 'https://docs.google.com/document/d/1Q5hZ8qY205991PXLuYH3yzorKlL0gP3b9BlKC7Igzng/edit?usp=sharing',
       },
+      /*
       mix5v: {
         season: 18,
         url: 'https://docs.google.com/document/d/1FNSd3JNL8Adg3UC1fr6pxHYti9pDkeVcaPjXjFqVR94/edit?usp=sharing',
@@ -163,6 +162,7 @@ export default {
         season: 3,
         url: 'https://docs.google.com/document/d/1FhBgiy0ge3m6c8WzsqJfNDDjFwmd5_5IXAFCoqJbibA/edit?usp=sharing',
       },
+      */
     },
   },
   urlImage: {
