@@ -1,57 +1,75 @@
-/** CoC battle log の戦闘時刻（同一戦を一意に識別するのに使う） */
-function rankedBattleTimeKey(item) {
-  const raw = item?.battleTime ?? item?.endTime ?? item?.time ?? '';
-  return typeof raw === 'string' && raw.length > 0 ? raw : '';
-}
-
-/**
- * ランク戦ログ行の重複検出キー。
- * armyShareCode 等が後から付くと旧キーと一致しなくなるため、battleTime があるときはそれを主キーにする。
- */
+/** ランク戦ログ行の重複検出（API に battleTime は無い想定。armyShareCode は使わない） */
 function fingerprintRankedBattleItem(item) {
   const battleType = item?.battleType ?? '';
-  const bt = rankedBattleTimeKey(item);
-  if (bt) {
-    const atk = item?.attack === true ? '1' : '0';
-    return `v2|${battleType}|${atk}|${bt}`;
-  }
   const atk = item?.attack === true ? '1' : '0';
   const opp = item?.opponentPlayerTag ?? '';
   const stars = Number(item?.stars ?? 0);
   const dest = Number(item?.destructionPercentage ?? 0);
-  const code = item?.armyShareCode ?? '';
-  return `${battleType}|${atk}|${opp}|${stars}|${dest}|${code}`;
+  return `${battleType}|${atk}|${opp}|${stars}|${dest}`;
 }
 
-/**
- * Mongo `legend.rankedBattleLog` 用。同一 battleTime は後勝ち（API で指紋が揺れて二重保存された行を収束）。
- */
-function dedupeRankedBattleLogRowsPreferLast(rows) {
-  if (!Array.isArray(rows) || rows.length <= 1) {
-    return Array.isArray(rows) ? rows : [];
-  }
-  const indexByKey = new Map();
-  const out = [];
-  for (const r of rows) {
-    const bt = r?.battleTime;
-    const key =
-      typeof bt === 'string' && bt.length > 0
-        ? `bt:${bt}`
-        : typeof r?.fingerprint === 'string' && r.fingerprint.length > 0
-          ? `fp:${r.fingerprint}`
-          : null;
-    if (!key) {
-      out.push(r);
-      continue;
+/** legend.events 用: 同日・同 action では opponent は一意（ゲーム仕様） */
+function legendRankedOpponentKey(season, day, action, opponentTag) {
+  const opp = typeof opponentTag === 'string' ? opponentTag.trim() : '';
+  if (!opp) return null;
+  return `${season}|${day}|${action}|${opp}`;
+}
+
+function hasLegendRankedOpponentEvent(events, season, day, action, opponentTag) {
+  const key = legendRankedOpponentKey(season, day, action, opponentTag);
+  if (!key) return false;
+  const safe = Array.isArray(events) ? events : [];
+  return safe.some(
+    (e) => legendRankedOpponentKey(e.season, e.day, e.action, e.opponentPlayerTag) === key,
+  );
+}
+
+function rankedBattleLogRowAction(row) {
+  if (row?.action === 'attack' || row?.action === 'defense') return row.action;
+  return row?.attack === true ? 'attack' : 'defense';
+}
+
+/** API 行が既に events / 旧 rankedBattleLog にあるか（ログ末尾走査の打ち切り用） */
+function battleLogItemMatchesStoredRankedBattle(item, events, rankedBattleLog) {
+  const action = item?.attack === true ? 'attack' : 'defense';
+  const opp = item?.opponentPlayerTag ?? '';
+  const stars = Number(item?.stars ?? 0);
+  const dest = Number(item?.destructionPercentage ?? 0);
+  if (!opp) return false;
+
+  const safeEvents = Array.isArray(events) ? events : [];
+  for (const e of safeEvents) {
+    if (
+      e.opponentPlayerTag === opp
+      && e.action === action
+      && Number(e.stars) === stars
+      && Number(e.destructionPercentage) === dest
+    ) {
+      return true;
     }
-    if (indexByKey.has(key)) {
-      out[indexByKey.get(key)] = r;
-    } else {
-      indexByKey.set(key, out.length);
-      out.push(r);
-    }
   }
-  return out;
+
+  const rbl = Array.isArray(rankedBattleLog) ? rankedBattleLog : [];
+  return rbl.some(
+    (r) =>
+      r.opponentPlayerTag === opp
+      && rankedBattleLogRowAction(r) === action
+      && Number(r.stars) === stars
+      && Number(r.destructionPercentage) === dest,
+  );
+}
+
+function isLegendRankedEventsSeeded(legend) {
+  if (!legend) return false;
+  if (legend.rankedEventsSeeded === true) return true;
+  const events = legend.events ?? [];
+  if (events.some((e) => typeof e.opponentPlayerTag === 'string' && e.opponentPlayerTag.length > 0)) {
+    return true;
+  }
+  if (Array.isArray(legend.rankedBattleLog) && legend.rankedBattleLog.length > 0) {
+    return true;
+  }
+  return false;
 }
 
 function filterRankedBattleItems(items) {
@@ -83,9 +101,11 @@ async function fetchBattleLogItems(clientCoc, playerTag) {
 }
 
 export {
-  dedupeRankedBattleLogRowsPreferLast,
+  battleLogItemMatchesStoredRankedBattle,
   fetchBattleLogItems,
   fingerprintRankedBattleItem,
   filterRankedBattleItems,
-  rankedBattleTimeKey,
+  hasLegendRankedOpponentEvent,
+  isLegendRankedEventsSeeded,
+  legendRankedOpponentKey,
 };

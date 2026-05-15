@@ -6,10 +6,10 @@ import config_coc from '../config/config_coc.js';
 import * as functions from './functions.js';
 import * as fRanking from './fRanking.js';
 import {
-  dedupeRankedBattleLogRowsPreferLast,
+  battleLogItemMatchesStoredRankedBattle,
   filterRankedBattleItems,
-  fingerprintRankedBattleItem,
-  rankedBattleTimeKey,
+  hasLegendRankedOpponentEvent,
+  isLegendRankedEventsSeeded,
 } from './fBattleLog.js';
 
 const LEAGUE_SEASONS_LEAGUE_ID = 29000022;
@@ -226,7 +226,26 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
   // 単一イベントの場合は配列に変換
   const events = Array.isArray(eventData) ? eventData : [eventData];
 
-  const newEvents = events.map((event) => {
+  const existingEvents = Array.isArray(mongoAcc.legend?.events)
+    ? mongoAcc.legend.events
+    : [];
+
+  const newEvents = [];
+  for (const event of events) {
+    const opp =
+      typeof event.opponentPlayerTag === 'string' ? event.opponentPlayerTag.trim() : '';
+    if (
+      opp
+      && hasLegendRankedOpponentEvent(
+        existingEvents,
+        event.season,
+        event.day,
+        legendEventType,
+        opp,
+      )
+    ) {
+      continue;
+    }
     const row = {
       unixTime: event.unixTimeSeconds,
       season: event.season,
@@ -237,14 +256,21 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
       leagueId: event.leagueId,
       leagueName: event.leagueName,
     };
+    if (opp) {
+      row.opponentPlayerTag = opp;
+    }
     if (Number.isFinite(event.stars)) {
       row.stars = Math.min(3, Math.max(0, Number(event.stars)));
     }
     if (Number.isFinite(event.destructionPercentage)) {
       row.destructionPercentage = Number(event.destructionPercentage);
     }
-    return row;
-  });
+    newEvents.push(row);
+  }
+
+  if (newEvents.length === 0) {
+    return { skipped: true, nToday: null, value: { legend: mongoAcc.legend } };
+  }
 
   // 1. 新しいイベントの最後のdayを取得
   const lastEvent = newEvents[newEvents.length - 1];
@@ -683,27 +709,6 @@ function rankedBattleTrophyDeltaFromBattleLog(
   return calcDefenseTrophies(stars, destruction);
 }
 
-function rankedBattleLogStoredRow(item, fingerprint, meta = {}) {
-  return {
-    fingerprint,
-    battleType: 'ranked',
-    attack: item?.attack === true,
-    action: item?.attack === true ? 'attack' : 'defense',
-    battleTime: item?.battleTime ?? item?.endTime ?? item?.time ?? null,
-    opponentPlayerTag: item?.opponentPlayerTag ?? '',
-    stars: Number(item?.stars ?? 0),
-    destructionPercentage: Number(item?.destructionPercentage ?? 0),
-    armyShareCode: item?.armyShareCode ?? '',
-    diffTrophies: meta.diffTrophies ?? null,
-    trophiesCurrent: meta.trophiesCurrent ?? null,
-    leagueId: meta.leagueId ?? null,
-    leagueName: meta.leagueName ?? null,
-    battleUnixTime: meta.battleUnixTime ?? null,
-    storedAt: Math.floor(Date.now() / 1000),
-    detectedAt: meta.detectedAt ?? Math.floor(Date.now() / 1000),
-  };
-}
-
 async function reloadMongoAccLegendProjection(client, mongoAcc) {
   const doc = await client.clientMongo
     .db('jwc')
@@ -770,50 +775,107 @@ async function updateLegendWeeksFromEvents(
   mongoAcc.legend = { ...(mongoAcc.legend ?? {}), weeks: merged };
 }
 
-async function setLegendRankedBattleLogBootstrap(
+function buildRankedEventDataFromBattleLogItem(
+  item,
+  afterPlayerStats,
+  seasonData,
+  runningTrophies,
+  diffT,
+  unixTimeSeconds,
+  includeRanking,
+) {
+  const isAttack = item?.attack === true;
+  const opp = typeof item?.opponentPlayerTag === 'string' ? item.opponentPlayerTag.trim() : '';
+  return {
+    season: seasonData.seasonId,
+    day: seasonData.daysNow,
+    trophiesCurrent: runningTrophies,
+    diffTrophies: diffT,
+    unixTimeSeconds,
+    attacksCurrent: afterPlayerStats.attackWins,
+    defensesCurrent: afterPlayerStats.defenseWins,
+    diffAttackWins: isAttack ? 1 : 0,
+    diffDefenseWins: isAttack ? 0 : 1,
+    destructionPercentage: Number(item?.destructionPercentage ?? 0),
+    stars: Math.min(3, Math.max(0, Number(item?.stars ?? 0))),
+    leagueId: afterPlayerStats.leagueTier.id,
+    leagueName: afterPlayerStats.leagueTier.name,
+    includeRanking,
+    opponentPlayerTag: opp || undefined,
+  };
+}
+
+/** 初回のみ API の ranked ログを events に無通知で取り込み（以降は opponent で差分検出） */
+async function bootstrapLegendRankedEvents(
   client,
-  tag,
+  mongoAcc,
   rankedItems,
   afterPlayerStats,
+  seasonData,
 ) {
-  const capped =
-    rankedItems.length > 120
-      ? rankedItems.slice(-120)
-      : rankedItems;
-  const rows = [];
-  const seen = new Set();
+  const capped = rankedItems.length > 120 ? rankedItems.slice(-120) : rankedItems;
+  let mongoAccMut = { ...mongoAcc };
+
   for (const item of capped) {
-    const fp = fingerprintRankedBattleItem(item);
-    if (seen.has(fp)) {
+    const opp = item?.opponentPlayerTag ?? '';
+    if (!opp) continue;
+    if (
+      battleLogItemMatchesStoredRankedBattle(
+        item,
+        mongoAccMut.legend?.events,
+        mongoAccMut.legend?.rankedBattleLog,
+      )
+    ) {
       continue;
     }
-    seen.add(fp);
+
     const isAttack = item?.attack === true;
+    const legendEventType = isAttack ? 'attack' : 'defense';
     const diffT = rankedBattleTrophyDeltaFromBattleLog(
       isAttack,
       item?.stars,
       item?.destructionPercentage,
       afterPlayerStats.leagueTier.id,
     );
-    rows.push(
-      rankedBattleLogStoredRow(item, fp, {
-        diffTrophies: diffT,
-        trophiesCurrent: afterPlayerStats.trophies,
-        leagueId: afterPlayerStats.leagueTier.id,
-        leagueName: afterPlayerStats.leagueTier.name,
-        battleUnixTime: null,
-      }),
+    const eventData = buildRankedEventDataFromBattleLogItem(
+      item,
+      afterPlayerStats,
+      seasonData,
+      afterPlayerStats.trophies,
+      diffT,
+      Math.floor(Date.now() / 1000),
+      false,
     );
+
+    const result = await writeLogLegendR2(
+      client,
+      mongoAccMut,
+      legendEventType,
+      eventData,
+    );
+    if (result?.skipped) continue;
+    const updatedLegend = result?.value?.legend;
+    if (updatedLegend) {
+      mongoAccMut = { ...mongoAccMut, legend: updatedLegend };
+    }
   }
-  const rowsDeduped = dedupeRankedBattleLogRowsPreferLast(rows);
+
   await client.clientMongo
     .db('jwc')
     .collection('accounts')
-    .updateOne({ tag }, { $set: { 'legend.rankedBattleLog': rowsDeduped } });
+    .updateOne(
+      { tag: mongoAcc.tag },
+      {
+        $set: { 'legend.rankedEventsSeeded': true },
+        $unset: { 'legend.rankedBattleLog': '' },
+      },
+    );
+  await reloadMongoAccLegendProjection(client, mongoAcc);
 }
 
 /**
- * battleType ranked のみを Mongo に保持し、新規行だけ通知する。
+ * battleType ranked のみを legend.events に記録し、新規行だけ通知する。
+ * 同日・同 action では opponentPlayerTag は一意（API に battleTime は無い想定）。
  * CoC API の battle log は古い戦闘ほど先頭・新しいほど末尾（下）の並び想定。
  */
 async function processLegendRankedBattleLog(
@@ -823,41 +885,31 @@ async function processLegendRankedBattleLog(
   afterPlayerStats,
   seasonData,
 ) {
-  const ranked = filterRankedBattleItems(battleLogItems);
-  const lb = mongoAcc.legend?.rankedBattleLog;
-  const notBootstrapped = lb === undefined || lb === null;
+  await reloadMongoAccLegendProjection(client, mongoAcc);
 
-  if (notBootstrapped) {
-    await setLegendRankedBattleLogBootstrap(
+  const ranked = filterRankedBattleItems(battleLogItems);
+
+  if (!isLegendRankedEventsSeeded(mongoAcc.legend)) {
+    await bootstrapLegendRankedEvents(
       client,
-      mongoAcc.tag,
+      mongoAcc,
       ranked,
       afterPlayerStats,
+      seasonData,
     );
-    await reloadMongoAccLegendProjection(client, mongoAcc);
     return;
   }
 
-  const priorRows = Array.isArray(lb) ? lb : [];
-  const storedFp = new Set(priorRows.map((s) => s?.fingerprint).filter(Boolean));
-  const storedBattleTimes = new Set(
-    priorRows
-      .map((s) => s?.battleTime)
-      .filter((t) => typeof t === 'string' && t.length > 0),
-  );
+  const legendEvents = mongoAcc.legend?.events ?? [];
+  const legacyRankedLog = mongoAcc.legend?.rankedBattleLog;
 
   const newRev = [];
   for (let i = ranked.length - 1; i >= 0; i--) {
     const item = ranked[i];
-    const fp = fingerprintRankedBattleItem(item);
-    const btKey = rankedBattleTimeKey(item);
-    if (btKey && storedBattleTimes.has(btKey)) {
+    if (battleLogItemMatchesStoredRankedBattle(item, legendEvents, legacyRankedLog)) {
       break;
     }
-    if (storedFp.has(fp)) {
-      break;
-    }
-    newRev.push({ item, fp });
+    newRev.push(item);
   }
 
   if (newRev.length === 0) {
@@ -865,12 +917,11 @@ async function processLegendRankedBattleLog(
   }
 
   const chronological = [...newRev].reverse();
-  const rowsToStoreChronological = [];
   let mongoAccMut = { ...mongoAcc };
   let lastResult = null;
   const baseUnixTimeSeconds = Math.floor(Date.now() / 1000);
   const spacedStepSeconds = 120;
-  const diffsChronological = chronological.map(({ item }) => {
+  const diffsChronological = chronological.map((item) => {
     const isAttack = item?.attack === true;
     return rankedBattleTrophyDeltaFromBattleLog(
       isAttack,
@@ -883,38 +934,21 @@ async function processLegendRankedBattleLog(
   let runningTrophies = Number(afterPlayerStats.trophies) - totalDelta;
 
   for (let idx = 0; idx < chronological.length; idx++) {
-    const { item, fp } = chronological[idx];
+    const item = chronological[idx];
     const isAttack = item?.attack === true;
     const legendEventType = isAttack ? 'attack' : 'defense';
     const diffT = diffsChronological[idx];
     runningTrophies += diffT;
     const unixTimeSeconds = baseUnixTimeSeconds + (idx * spacedStepSeconds);
     const includeRanking = idx === chronological.length - 1;
-    const eventData = {
-      season: seasonData.seasonId,
-      day: seasonData.daysNow,
-      trophiesCurrent: runningTrophies,
-      diffTrophies: diffT,
+    const eventData = buildRankedEventDataFromBattleLogItem(
+      item,
+      afterPlayerStats,
+      seasonData,
+      runningTrophies,
+      diffT,
       unixTimeSeconds,
-      attacksCurrent: afterPlayerStats.attackWins,
-      defensesCurrent: afterPlayerStats.defenseWins,
-      diffAttackWins: isAttack ? 1 : 0,
-      diffDefenseWins: isAttack ? 0 : 1,
-      destructionPercentage: Number(item?.destructionPercentage ?? 0),
-      stars: Math.min(3, Math.max(0, Number(item?.stars ?? 0))),
-      leagueId: afterPlayerStats.leagueTier.id,
-      leagueName: afterPlayerStats.leagueTier.name,
       includeRanking,
-    };
-    rowsToStoreChronological.push(
-      rankedBattleLogStoredRow(item, fp, {
-        diffTrophies: diffT,
-        trophiesCurrent: runningTrophies,
-        leagueId: afterPlayerStats.leagueTier.id,
-        leagueName: afterPlayerStats.leagueTier.name,
-        battleUnixTime: unixTimeSeconds,
-        detectedAt: unixTimeSeconds,
-      }),
     );
 
     lastResult = await writeLogLegendR2(
@@ -923,6 +957,9 @@ async function processLegendRankedBattleLog(
       legendEventType,
       eventData,
     );
+    if (lastResult?.skipped) {
+      continue;
+    }
     const updatedLegend = lastResult?.value?.legend;
     if (updatedLegend) {
       mongoAccMut = { ...mongoAccMut, legend: updatedLegend };
@@ -950,16 +987,16 @@ async function processLegendRankedBattleLog(
     );
   }
 
-  const newFpSet = new Set(rowsToStoreChronological.map((r) => r.fingerprint));
-  const tail = priorRows.filter((r) => !newFpSet.has(r.fingerprint));
-  const mergedRankedLog = dedupeRankedBattleLogRowsPreferLast([
-    ...tail,
-    ...rowsToStoreChronological,
-  ]).slice(-120);
   await client.clientMongo
     .db('jwc')
     .collection('accounts')
-    .updateOne({ tag: mongoAcc.tag }, { $set: { 'legend.rankedBattleLog': mergedRankedLog } });
+    .updateOne(
+      { tag: mongoAcc.tag },
+      {
+        $set: { 'legend.rankedEventsSeeded': true },
+        $unset: { 'legend.rankedBattleLog': '' },
+      },
+    );
 
   await reloadMongoAccLegendProjection(client, mongoAcc);
 }
