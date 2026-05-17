@@ -19,6 +19,8 @@ export default {
         { season: 16, year: 2024, lvTH: 16 },
         { season: 17, year: 2025, lvTH: 17 },
         { season: 18, year: 2025, lvTH: 17 },
+        { season: 19, year: 2026, lvTH: 18 },
+        { season: 20, year: 2026, lvTH: 18 },
       ],
       j2: [
         { season: 2, year: 2017, lvTH: 11 },
@@ -38,6 +40,8 @@ export default {
         { season: 16, year: 2024, lvTH: 16 },
         { season: 17, year: 2025, lvTH: 17 },
         { season: 18, year: 2025, lvTH: 17 },
+        { season: 19, year: 2026, lvTH: 18 },
+        { season: 20, year: 2026, lvTH: 18 },
       ],
       j3: [
         { season: 2, year: 2017, lvTH: 11 },
@@ -60,6 +64,8 @@ export default {
         { season: 16, year: 2024, lvTH: 16 },
         { season: 17, year: 2025, lvTH: 17 },
         { season: 18, year: 2025, lvTH: 17 },
+        { season: 19, year: 2026, lvTH: 18 },
+        { season: 20, year: 2026, lvTH: 18 },
       ],
       mix: [
         { season: 12, year: 2022, lvTH: [14, 13, 12], bd: [4, 3, 3], hit: 1 },
@@ -69,6 +75,8 @@ export default {
         { season: 17, year: 2025, lvTH: [17, 16, 15, 14, 13], bd: [3, 1, 2, 2, 2], hit: 1 },
         { season: 18, year: 2025, lvTH: [17, 16, 15, 14, 13], bd: [3, 1, 2, 2, 2], hit: 1 },
         { season: 18.5, year: 2025, lvTH: [17, 16, 15, 14, 13], bd: [1, 1, 1, 1, 1], hit: 1 },
+        { season: 19, year: 2026, lvTH: [18, 17, 16, 15, 14], bd: [3, 1, 2, 2, 2], hit: 1 },
+        { season: 20, year: 2026, lvTH: [18, 17, 16], bd: [1, 2, 2], hit: 1 },
       ],
       five: [
         { season: 1, year: 2022, lvTH: 14 },
@@ -165,9 +173,9 @@ export default {
           { rank: 3, name: 'MoQ', note: '' },
         ],
         s18: [
-          { rank: 1, name: ':question:', note: '' },
-          { rank: 2, name: ':question:', note: '' },
-          { rank: 3, name: ':question:', note: '' },
+          { rank: 1, name: 'UWS 69', note: '' },
+          { rank: 2, name: '774', note: '' },
+          { rank: 3, name: 'ネコふんじゃったΣ(￣。￣ﾉ)', note: '' },
         ],
       },
       j2: {
@@ -250,9 +258,14 @@ export default {
           { rank: 3, name: 'ラブ&ピノ子', note: '' },
         ],
         s18: [
-          { rank: 1, name: ':question:', note: '' },
-          { rank: 2, name: ':question:', note: '' },
-          { rank: 3, name: ':question:', note: '' },
+          { rank: 1, name: 'Angelic Remnant', note: '' },
+          { rank: 2, name: 'ラブ&ピノ子', note: '' },
+          { rank: 3, name: 'T.B.O.S', note: '' },
+        ],
+        s19: [
+          { rank: 1, name: '溢れるジョージ', note: '' },
+          { rank: 2, name: '夜中クラン専門部', note: '' },
+          { rank: 3, name: '無課金弱者連合NEO', note: '' },
         ],
       },
       j3: {
@@ -338,9 +351,14 @@ export default {
           { rank: 3, name: 'クラクラチャンネルOMINÖS', note: '' },
         ],
         s18: [
-          { rank: 1, name: ':question:', note: '' },
-          { rank: 2, name: ':question:', note: '' },
-          { rank: 3, name: ':question:', note: '' },
+          { rank: 1, name: 'UWS 69', note: '' },
+          { rank: 2, name: 'SAMURAI', note: '' },
+          { rank: 3, name: 'ネコふんじゃったΣ(￣。￣ﾉ)', note: '' },
+        ],
+        s19: [
+          { rank: 1, name: 'UWS 69', note: '' },
+          { rank: 2, name: 'Angelic Remnant', note: '' },
+          { rank: 3, name: 'JAM', note: '' },
         ],
       },
       mix: {
@@ -375,9 +393,12 @@ export default {
           { rank: 3, name: 'クラクラチャンネルOMINÖS', note: '' },
         ],
         s18_5: [
-          { rank: 1, name: ':question:', note: '' },
-          { rank: 2, name: ':question:', note: '' },
-          { rank: 3, name: ':question:', note: '' },
+          { rank: 1, name: 'HAYA KINGDOM', note: '' },
+          { rank: 2, name: 'Extinction', note: '' },
+        ],
+        s19: [
+          { rank: 1, name: '美女＆ピノ子', note: '' },
+          { rank: 2, name: 'クラクラチャンネルOMINÖS', note: '' },
         ],
       },
       five: {
