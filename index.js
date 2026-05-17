@@ -16,6 +16,7 @@ import config_coc from './config/config_coc.js';
 import * as functions from './functions/functions.js';
 import * as fLegend from './functions/fLegend.js';
 import * as fMongo from './functions/fMongo.js';
+import { loadWeekNowFromDb, getWeekNowSnapshot } from './functions/weekNow.js';
 import { fetchBattleLogItems } from './functions/fBattleLog.js';
 import { post } from './functions/post.js';
 import {
@@ -544,14 +545,11 @@ class PollingSystem {
     console.log('✅ connected to the Mongo database');
     client.clientMongo = clientMongo;
 
-    const dbWeekNow = await fMongo.getWeekNowFromDb(clientMongo);
-    if (dbWeekNow) {
-      for (const key of Object.keys(appConfig.weekNow)) {
-        if (dbWeekNow[key] != null) appConfig.weekNow[key] = dbWeekNow[key];
-      }
-      console.log('✅ weekNow loaded from DB:', appConfig.weekNow);
+    const weekNowLoaded = await loadWeekNowFromDb(clientMongo);
+    if (Object.keys(weekNowLoaded).length > 0) {
+      console.log('✅ weekNow loaded from DB:', getWeekNowSnapshot());
     } else {
-      console.log('⚠️ weekNow not found in DB, using config default');
+      console.log('⚠️ weekNow not found in DB');
     }
 
     // コマンド・イベント

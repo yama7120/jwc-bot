@@ -3,6 +3,7 @@ import { EmbedBuilder } from 'discord.js';
 import config from '../config/config.js';
 import config_coc from '../config/config_coc.js';
 import * as functions from './functions.js';
+import { setWeekNowLeague } from './weekNow.js';
 
 async function registerAcc(
   client,
@@ -1578,6 +1579,7 @@ async function setWeekNowInDb(clientMongo, league, week) {
       { $set: updateField },
       { upsert: true },
     );
+  setWeekNowLeague(league, week);
 }
 export { setWeekNowInDb };
 

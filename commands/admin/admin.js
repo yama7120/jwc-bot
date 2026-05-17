@@ -1216,7 +1216,6 @@ export default {
         const league = interaction.options.getString('league');
         const week = interaction.options.getInteger('week');
         await fMongo.setWeekNowInDb(client.clientMongo, league, week);
-        config.weekNow[league] = week;
         await interaction.followUp({
           content: `:white_check_mark: **weekNow** updated: ${config.league[league]} → **Week ${week}**`,
           ephemeral: true,

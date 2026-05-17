@@ -6,8 +6,7 @@ export default {
   lvTH: 18,
   lvTHmix: [18, 17, 16, 15, 14],
   rangeLvTH: { min: 12, max: 18 },
-  cronWarStatus: { j1: 'on', j2: 'on', swiss: 'on', mix: 'on', five: 'off' }, // on / off
-  weekNow: { j1: 2, j2: 2, swiss: 1, mix: 1, five: 0 },
+  cronWarStatus: { j1: 'on', j2: 'on', swiss: 'off', mix: 'off', five: 'off' }, // on / off
   season: { j1: 19, j2: 19, j: 19, swiss: 19, mix: 19, five: 3 },
   seasonNext: { j1: 20, j2: 20, swiss: 20, mix: 20, five: 4 }, // 応募受付時の表示、ロール付与時
   seasonLast: { j1: 19, j2: 19, swiss: 19, mix: 19, five: 3 },

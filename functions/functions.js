@@ -7,6 +7,7 @@ import config_coc from '../config/config_coc.js';
 import schedule from '../config/schedule.js';
 import * as fGetWars from './fGetWars.js';
 import * as fRanking from './fRanking.js';
+import { getWeekNow as getWeekNowFromCache } from './weekNow.js';
 
 /**
  * チャンネルへ安全にメッセージを送信するユーティリティ。
@@ -72,8 +73,7 @@ function isYama(iSenderId) {
 }
 
 async function getWeekNow(league) {
-  const weekNowNum = Number(config.weekNow[league]);
-  return weekNowNum;
+  return getWeekNowFromCache(league);
 }
 export { getWeekNow };
 
@@ -1066,7 +1066,7 @@ export { getEmbedStatusInfo };
 async function getDescriptionStatusInfo(league) {
   let description = '';
 
-  description += `${config.league[league]}: **Week ${config.weekNow[league]}**`;
+  description += `${config.league[league]}: **Week ${getWeekNowFromCache(league)}**`;
   if (config.cronWarStatus[league] == 'on') {
     description += ' :green_circle: _active_';
   }

@@ -6,6 +6,7 @@ import config_coc from '../config/config_coc.js';
 
 import * as functions from './functions.js';
 import * as fMongo from './fMongo.js';
+import { getWeekNow } from './weekNow.js';
 import * as fGetWars from './fGetWars.js';
 import * as fRanking from './fRanking.js';
 import * as fCanvas from './fCanvas.js';
@@ -16,7 +17,7 @@ const WAR_UPDATE_CONCURRENCY = 4;
 async function cronWarAutoUpdate(client, league) {
   const unixTime = Math.floor(Date.now() / 1000);
   const status = config.cronWarStatus[league];
-  const weekNow = config.weekNow[league];
+  const weekNow = getWeekNow(league);
   if (status == 'on') {
     await autoUpdateWar(client, league, weekNow);
   }
@@ -102,7 +103,7 @@ async function sendReminderMain(client, mongoWar) {
 }
 
 async function sendReminder(client, channelId, mongoWar, mongoClanA, mongoClanB) {
-  const weekNow = config.weekNow[mongoWar.league];
+  const weekNow = getWeekNow(mongoWar.league);
 
   const isBotDataFetchOK = mongoWar.week === weekNow;
 
