@@ -1580,7 +1580,7 @@ async function getTeamInfo(client, league, teamAbbr) {
   const teamList = await client.clientMongo
     .db('jwc')
     .collection('config')
-    .findOne({ name: 'teamList' });
+    .findOne({ _id: 'teamList' });
 
   const team = teamList[league].find((team) => team.team_abbr === teamAbbr);
 

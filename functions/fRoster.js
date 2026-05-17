@@ -212,13 +212,14 @@ async function setDescriptionRosterLeague(client, iLeague) {
 
 async function setDescriptionRosterLeagueOne(clientMongo, iLeague, index, teamAbbr, teamName) {
   const teamList = await clientMongo.db('jwc').collection('config').findOne(
-    { name: 'teamList' },
+    { _id: 'teamList' },
     { projection: { [iLeague]: 1, _id: 0 } }
   );
 
   let numAccounts = 0;
   let numPlayers = 0;
-  teamList[iLeague].forEach((team) => {
+  const leagueTeams = teamList?.[iLeague] ?? [];
+  leagueTeams.forEach((team) => {
     if (team.team_abbr == teamAbbr) {
       numPlayers = team.players;
       numAccounts = team.accounts;
