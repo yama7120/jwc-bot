@@ -1605,8 +1605,9 @@ async function editRoleMain(interaction, user, action, league, flagReturn) {
   // 小数のseasonに対応するため、文字列として処理
   const seasonValue = config.seasonNext[league];
   const seasonStr = seasonToString(seasonValue);
-  const roleIdAll = config.roleId.repsServer[seasonStr].all;
-  const roleIdLeague = config.roleId.repsServer[seasonStr][league];
+  const seasonRoles = config.roleId.repsServer[seasonStr];
+  const roleIdAll = seasonRoles?.all;
+  const roleIdLeague = seasonRoles?.[league];
   const roleIdJ1 = config.roleId.repsServer[seasonStr].j1;
   const roleIdJ2 = config.roleId.repsServer[seasonStr].j2;
   const roleIdS = config.roleId.repsServer[seasonStr].swiss;
@@ -1616,6 +1617,7 @@ async function editRoleMain(interaction, user, action, league, flagReturn) {
 
   if (action == 'add') {
     if (
+      roleIdLeague != null &&
       !interaction.guild.members.cache
         .get(user.id)
         ._roles.includes(roleIdLeague)
@@ -1623,12 +1625,15 @@ async function editRoleMain(interaction, user, action, league, flagReturn) {
       await editRole(interaction, user, roleIdLeague, action, flagReturn);
     }
     if (
+      roleIdAll != null &&
       !interaction.guild.members.cache.get(user.id)._roles.includes(roleIdAll)
     ) {
       await editRole(interaction, user, roleIdAll, action, flagReturn);
     }
   } else if (action == 'remove') {
-    await editRole(interaction, user, roleIdLeague, action, flagReturn);
+    if (roleIdLeague != null) {
+      await editRole(interaction, user, roleIdLeague, action, flagReturn);
+    }
     if (
       !interaction.guild.members.cache.get(user.id)._roles.includes(roleIdJ1)
     ) {
@@ -1647,7 +1652,9 @@ async function editRoleMain(interaction, user, action, league, flagReturn) {
               roleIdC == null ||
               !interaction.guild.members.cache.get(user.id)._roles.includes(roleIdC)
             ) {
-              await editRole(interaction, user, roleIdAll, action, flagReturn);
+              if (roleIdAll != null) {
+                await editRole(interaction, user, roleIdAll, action, flagReturn);
+              }
             }
           }
         }

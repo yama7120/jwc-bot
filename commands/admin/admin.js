@@ -42,7 +42,18 @@ let data = new SlashCommandBuilder()
             ],
           )
           .addStringOption((option) =>
-            option.setName('league').setDescription('リーグ').setRequired(true),
+            option
+              .setName('league')
+              .setDescription('リーグ (j1/j2/swiss/mix/five/cup)')
+              .setRequired(true)
+              .addChoices(
+                { name: 'J1', value: 'j1' },
+                { name: 'J2', value: 'j2' },
+                { name: 'SWISS', value: 'swiss' },
+                { name: 'MIX', value: 'mix' },
+                { name: '5V', value: 'five' },
+                { name: 'CUP', value: 'cup' },
+              ),
           )
           .addStringOption((option) =>
             option
@@ -72,7 +83,18 @@ let data = new SlashCommandBuilder()
             ],
           )
           .addStringOption((option) =>
-            option.setName('league').setDescription('リーグ').setRequired(true),
+            option
+              .setName('league')
+              .setDescription('リーグ (j1/j2/swiss/mix/five/cup)')
+              .setRequired(true)
+              .addChoices(
+                { name: 'J1', value: 'j1' },
+                { name: 'J2', value: 'j2' },
+                { name: 'SWISS', value: 'swiss' },
+                { name: 'MIX', value: 'mix' },
+                { name: '5V', value: 'five' },
+                { name: 'CUP', value: 'cup' },
+              ),
           )
           .addStringOption((option) =>
             option
@@ -786,10 +808,8 @@ let data = new SlashCommandBuilder()
   );
 
 config.choices.league5.forEach((choice) => {
-  // create
+  // create (team_channel / team_data は CUP 含む choices を定義済み)
   data.options[0].options[0].options[0].addChoices(choice);
-  data.options[0].options[1].options[0].addChoices(choice);
-  data.options[0].options[2].options[0].addChoices(choice);
   // update
   data.options[1].options[0].options[0].addChoices(choice);
   data.options[1].options[1].options[0].addChoices(choice);
@@ -1480,8 +1500,8 @@ async function createNegoCh(interaction, client, league, week, mongoWar) {
   const rep2ndId2 = mongoClanOpp.rep_2nd.id;
   let rep3rdId2 = 0;
 
-  let clanAbbr1 = clanAbbr.replace(/s-/g, '').replace(/m-/g, '');
-  let clanAbbr2 = clanAbbrOpp.replace(/s-/g, '').replace(/m-/g, '');
+  let clanAbbr1 = clanAbbr.replace(/s-/g, '').replace(/m-/g, '').replace(/c-/g, '');
+  let clanAbbr2 = clanAbbrOpp.replace(/s-/g, '').replace(/m-/g, '').replace(/c-/g, '');
 
   let parentIdNego = league == 'cup' ? schedule.parentIdNegoCup : schedule.parentIdNego;
   let adminId = config.roleId.admins;
@@ -1664,6 +1684,8 @@ async function createTeamCh(
     chName = `s-` + chName;
   } else if (iLeague == 'mix') {
     chName = `m-` + chName;
+  } else if (iLeague == 'cup') {
+    chName = `c-` + chName;
   }
   chName = `🆕` + chName;
   let idAdmins = '';
