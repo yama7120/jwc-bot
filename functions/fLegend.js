@@ -81,6 +81,49 @@ function isLegendLeagueSeasonTrophyReset(beforePlayerStats, afterPlayerStats) {
   return diffTrophies <= -100;
 }
 
+/** Legend I 以外のランク戦シーズン切り替え（前シーズンの battle log が一括で「新規」扱いされるのを防ぐ） */
+function isNonLegendRankedSeasonStart(
+  beforePlayerStats,
+  afterPlayerStats,
+  seasonData,
+  mongoAcc,
+) {
+  if (afterPlayerStats.leagueTier?.id === config_coc.leagueId.legend) {
+    return false;
+  }
+
+  const storedSeason = mongoAcc?.legend?.lastRankedSeasonId;
+  if (
+    typeof storedSeason === 'string'
+    && storedSeason.length > 0
+    && storedSeason !== seasonData.seasonId
+  ) {
+    return true;
+  }
+
+  const events = Array.isArray(mongoAcc?.legend?.events)
+    ? mongoAcc.legend.events
+    : [];
+  if (events.length > 0) {
+    const hasCurrentSeason = events.some((e) => e?.season === seasonData.seasonId);
+    const hasOtherSeason = events.some(
+      (e) => typeof e?.season === 'string' && e.season !== seasonData.seasonId,
+    );
+    if (hasOtherSeason && !hasCurrentSeason) {
+      return true;
+    }
+  }
+
+  if (
+    seasonData.daysNow === 1
+    && beforePlayerStats.trophies - afterPlayerStats.trophies >= 200
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 function getLeagueTierDisplayName(scPlayer) {
   const leagueTierId = scPlayer?.leagueTier?.id;
   const leagueTierConfig = config_coc.leagueTiers.find(
@@ -197,6 +240,42 @@ async function autoUpdateLegend(
       seasonData,
     );
     await sendLogEmbed(client, mongoAcc, embed);
+    return;
+  }
+
+  // Legend I 以外: シーズン切り替え時は新シーズン通知のみ（前シーズン分の防衛/攻撃は通知しない）
+  if (
+    isNonLegendRankedSeasonStart(
+      beforePlayerStats,
+      afterPlayerStats,
+      seasonData,
+      mongoAcc,
+    )
+  ) {
+    const embed = await createLogLegendNewSeason(
+      afterPlayerStats,
+      mongoAcc,
+      baseEventData,
+      seasonData,
+    );
+    await sendLogEmbed(client, mongoAcc, embed);
+    if (Array.isArray(battleLogItems)) {
+      await ingestLegendRankedBattleLogSilent(
+        client,
+        mongoAcc,
+        filterRankedBattleItems(battleLogItems),
+        afterPlayerStats,
+        seasonData,
+      );
+    } else {
+      await client.clientMongo
+        .db('jwc')
+        .collection('accounts')
+        .updateOne(
+          { tag: mongoAcc.tag },
+          { $set: { 'legend.lastRankedSeasonId': seasonData.seasonId } },
+        );
+    }
     return;
   }
 
@@ -866,7 +945,81 @@ async function bootstrapLegendRankedEvents(
     .updateOne(
       { tag: mongoAcc.tag },
       {
-        $set: { 'legend.rankedEventsSeeded': true },
+        $set: {
+          'legend.rankedEventsSeeded': true,
+          'legend.lastRankedSeasonId': seasonData.seasonId,
+        },
+        $unset: { 'legend.rankedBattleLog': '' },
+      },
+    );
+  await reloadMongoAccLegendProjection(client, mongoAcc);
+}
+
+/** シーズン切り替え時など: ranked battle log を events に取り込むだけ（Discord 通知なし） */
+async function ingestLegendRankedBattleLogSilent(
+  client,
+  mongoAcc,
+  rankedItems,
+  afterPlayerStats,
+  seasonData,
+) {
+  const capped = rankedItems.length > 120 ? rankedItems.slice(-120) : rankedItems;
+  let mongoAccMut = { ...mongoAcc };
+
+  for (const item of capped) {
+    const opp = item?.opponentPlayerTag ?? '';
+    if (!opp) continue;
+    if (
+      battleLogItemMatchesStoredRankedBattle(
+        item,
+        mongoAccMut.legend?.events,
+        mongoAccMut.legend?.rankedBattleLog,
+      )
+    ) {
+      continue;
+    }
+
+    const isAttack = item?.attack === true;
+    const legendEventType = isAttack ? 'attack' : 'defense';
+    const diffT = rankedBattleTrophyDeltaFromBattleLog(
+      isAttack,
+      item?.stars,
+      item?.destructionPercentage,
+      afterPlayerStats.leagueTier.id,
+    );
+    const eventData = buildRankedEventDataFromBattleLogItem(
+      item,
+      afterPlayerStats,
+      seasonData,
+      afterPlayerStats.trophies,
+      diffT,
+      Math.floor(Date.now() / 1000),
+      false,
+    );
+
+    const result = await writeLogLegendR2(
+      client,
+      mongoAccMut,
+      legendEventType,
+      eventData,
+    );
+    if (result?.skipped) continue;
+    const updatedLegend = result?.value?.legend;
+    if (updatedLegend) {
+      mongoAccMut = { ...mongoAccMut, legend: updatedLegend };
+    }
+  }
+
+  await client.clientMongo
+    .db('jwc')
+    .collection('accounts')
+    .updateOne(
+      { tag: mongoAcc.tag },
+      {
+        $set: {
+          'legend.rankedEventsSeeded': true,
+          'legend.lastRankedSeasonId': seasonData.seasonId,
+        },
         $unset: { 'legend.rankedBattleLog': '' },
       },
     );
@@ -913,6 +1066,22 @@ async function processLegendRankedBattleLog(
   }
 
   if (newRev.length === 0) {
+    return;
+  }
+
+  // シーズン初日に大量の「新規」が出た場合は誤検知（events 80件切り詰め等）→ 通知せず取り込みのみ
+  if (
+    afterPlayerStats.leagueTier.id !== config_coc.leagueId.legend
+    && seasonData.daysNow <= 1
+    && newRev.length >= 5
+  ) {
+    await ingestLegendRankedBattleLogSilent(
+      client,
+      mongoAcc,
+      ranked,
+      afterPlayerStats,
+      seasonData,
+    );
     return;
   }
 
@@ -993,7 +1162,10 @@ async function processLegendRankedBattleLog(
     .updateOne(
       { tag: mongoAcc.tag },
       {
-        $set: { 'legend.rankedEventsSeeded': true },
+        $set: {
+          'legend.rankedEventsSeeded': true,
+          'legend.lastRankedSeasonId': seasonData.seasonId,
+        },
         $unset: { 'legend.rankedBattleLog': '' },
       },
     );
@@ -1068,6 +1240,9 @@ function getWeekRatedBattleAvgStats(events, seasonData) {
     if (typeof event?.unixTime !== 'number') {
       return;
     }
+    if (event.season && event.season !== seasonData.seasonId) {
+      return;
+    }
     if (event.unixTime < startUnix || event.unixTime > weekEndUnix) {
       return;
     }
@@ -1119,6 +1294,9 @@ function getWeeklySummaryFromEvents(events, seasonData) {
 
   safeEvents.forEach((event) => {
     if (typeof event?.unixTime !== 'number') {
+      return;
+    }
+    if (event.season && event.season !== seasonData.seasonId) {
       return;
     }
     if (event.unixTime < startUnix || event.unixTime > weekEndUnix) {
