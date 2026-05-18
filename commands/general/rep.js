@@ -145,7 +145,9 @@ let data = new SlashCommandBuilder()
             option.setName('rep_1st').setDescription('代表者1'),
           )
           .addUserOption((option) =>
-            option.setName('rep_2nd').setDescription('代表者2'),
+            option
+              .setName('rep_2nd')
+              .setDescription('代表者2（CUP では任意）'),
           )
           .addUserOption((option) =>
             option.setName('rep_3rd').setDescription('代表者3（オプション）'),
@@ -181,6 +183,7 @@ let data = new SlashCommandBuilder()
           .addStringOption((option) =>
             option.setName('remove').setDescription('削除').addChoices(
               //{ name: 'Log channel', value: 'logCh' },
+              { name: '2nd rep', value: 'rep2nd' },
               { name: '3rd rep', value: 'rep3rd' },
               { name: 'All', value: 'all' },
             ),
@@ -1343,7 +1346,30 @@ async function editTeamInformation(client, interaction) {
     listing.logo_url = iUrlLogo;
   }
 
-  if (flagRemove == 'rep3rd') {
+  if (flagRemove == 'rep2nd') {
+    listing.rep_2nd = null;
+    if (
+      rep2ndNow &&
+      rep2ndNow != '' &&
+      rep2ndNow != 'non-registered' &&
+      rep2ndNow.id
+    ) {
+      const repRemove = interaction.guild.members.cache.get(rep2ndNow.id);
+      if (repRemove !== undefined) {
+        if (league == 'five') {
+          await functions.editRoleMain5v(interaction, repRemove, 'remove', 0);
+        } else {
+          await functions.editRoleMain(
+            interaction,
+            repRemove,
+            'remove',
+            league,
+            0,
+          );
+        }
+      }
+    }
+  } else if (flagRemove == 'rep3rd') {
     listing.rep_3rd = null;
   } else if (iRep1st || iRep2nd || iRep3rd) {
     const rep1st = await editRole(

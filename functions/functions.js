@@ -1457,7 +1457,9 @@ async function sendClanInfo(interaction, client, clanAbbr) {
       }
       myDescription += `:one: ${username1} <@!${mongoClan.rep_1st.id}>\n`;
     }
-    myDescription += `:two: :question:\n`;
+    if (mongoClan.league != 'cup') {
+      myDescription += `:two: :question:\n`;
+    }
   } else {
     if (mongoClan.rep_1st.id == null) {
       myDescription += `:one: *${mongoClan.rep_1st}*\n`;

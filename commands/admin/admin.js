@@ -70,8 +70,8 @@ let data = new SlashCommandBuilder()
           .addUserOption((option) =>
             option
               .setName('rep2nd')
-              .setDescription('代表者2')
-              .setRequired(true),
+              .setDescription('代表者2（CUP 以外は必須）')
+              .setRequired(false),
           ),
       )
       .addSubcommand((subcommand) =>
@@ -1613,12 +1613,20 @@ async function createTeamChMain(interaction, client) {
   const iRep1st = await interaction.options.getUser('rep1st');
   const iRep2nd = await interaction.options.getUser('rep2nd');
 
+  if (iLeague != 'cup' && iRep2nd == null) {
+    await interaction.followUp({
+      content: ':exclamation: 代表者2は必須です（CUP 以外）',
+      ephemeral: true,
+    });
+    return;
+  }
+
   let ch = await createTeamCh(
     interaction,
     iLeague,
     iTeamName,
     iRep1st.id,
-    iRep2nd.id,
+    iRep2nd?.id ?? null,
   );
 
   let title = `**TEAM CHANNEL CREATED**`;
@@ -1626,7 +1634,9 @@ async function createTeamChMain(interaction, client) {
   description += `**${config.league[iLeague]}**\n`;
   description += `<#${ch.id}>\n\n`;
   description += `:one: <@!${iRep1st.id}>\n`;
-  description += `:two: <@!${iRep2nd.id}>`;
+  if (iRep2nd != null) {
+    description += `:two: <@!${iRep2nd.id}>`;
+  }
 
   let embed = new EmbedBuilder()
     .setTitle(title)
@@ -1639,7 +1649,9 @@ async function createTeamChMain(interaction, client) {
   // メッセージ文言作成
   let myContent = ``;
   myContent += `<@!${iRep1st.id}>\n`;
-  myContent += `<@!${iRep2nd.id}>\n`;
+  if (iRep2nd != null) {
+    myContent += `<@!${iRep2nd.id}>\n`;
+  }
   myContent += `こちらのチャンネルで各種必要情報をご提出ください。\n`;
   myContent += `\n`;
   // 小数シーズン(例: 18.5)でも安全に動くように整数化
@@ -1697,32 +1709,35 @@ async function createTeamCh(
     idAdmins = config.roleId.admins;
     idBots = config.roleId.bots;
   }
+  const permissionOverwrites = [
+    {
+      id: interaction.guild.roles.everyone.id, // everyone
+      deny: [PermissionsBitField.Flags.ViewChannel],
+    },
+    {
+      id: idAdmins,
+      allow: [PermissionsBitField.Flags.ViewChannel],
+    },
+    {
+      id: idBots,
+      allow: [PermissionsBitField.Flags.ViewChannel],
+    },
+    {
+      id: idRep1st,
+      allow: [PermissionsBitField.Flags.ViewChannel],
+    },
+  ];
+  if (idRep2nd != null) {
+    permissionOverwrites.push({
+      id: idRep2nd,
+      allow: [PermissionsBitField.Flags.ViewChannel],
+    });
+  }
   let ch = await interaction.guild.channels.create({
     name: chName,
     type: ChannelType.GuildText,
     parent: config.parentId.repsServer[iLeague],
-    permissionOverwrites: [
-      {
-        id: interaction.guild.roles.everyone.id, // everyone
-        deny: [PermissionsBitField.Flags.ViewChannel],
-      },
-      {
-        id: idAdmins,
-        allow: [PermissionsBitField.Flags.ViewChannel],
-      },
-      {
-        id: idBots,
-        allow: [PermissionsBitField.Flags.ViewChannel],
-      },
-      {
-        id: idRep1st,
-        allow: [PermissionsBitField.Flags.ViewChannel],
-      },
-      {
-        id: idRep2nd,
-        allow: [PermissionsBitField.Flags.ViewChannel],
-      },
-    ],
+    permissionOverwrites,
   });
 
   return ch;
