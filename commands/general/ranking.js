@@ -260,6 +260,9 @@ export default {
         }
         else if (iLeague == 'five') {
           teams = [{ team_abbr: 'Entire', clan_name: '5V', team_name: '5V', division: '' }].concat(teams);
+        }
+        else if (iLeague == 'cup') {
+          teams = [{ team_abbr: 'Entire', clan_name: 'CUP', team_name: 'CUP', division: '' }].concat(teams);
         };
         if (teams.length >= 25) {
           teams = teams.filter(function(team, index) { return index < 25 });

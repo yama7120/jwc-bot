@@ -415,7 +415,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
     ctx.fillText(text, pos.h81 + 30, pos_triple);
     text = `/${mongoTeam.score.sum.clan.overkill.nAt.total}`;
     ctx.fillText(text, pos.h41 + 30, pos_triple);
-  } else if (league == 'swiss' || league == 'five') {
+  } else if (league == 'swiss' || league == 'five' || league == 'cup') {
     var imgRatio = 0.5;
     var imgStars = await Canvas.loadImage(`./image/scStarTriple.png`);
     var posImgStarsH = pos.h91 - (300 * imgRatio) / 2 - 50;
@@ -598,7 +598,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
     chartDataTeam[5] = mongoTeam.stats.tScoreDef.sum.fresh.total;
     chartDataTeam[6] = mongoTeam.stats.tScoreDef.sum.cleanup.total;
     chartDataTeam[7] = mongoTeam.stats.tScoreDef.sum.overkill.total;
-  } else if (league == 'swiss' || league == 'five') {
+  } else if (league == 'swiss' || league == 'five' || league == 'cup') {
     chartLabels = ['All att.', 'Fresh att.', 'All def.', 'Fresh def.'];
     chartDataAvg = [50, 50, 50, 50];
     chartDataTeam[0] = mongoTeam.stats.tScore.sum.allAttackTypes.total;
@@ -1060,7 +1060,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
         counter += 1;
       }
     });
-  } else if (league == 'swiss' || league == 'five') {
+  } else if (league == 'swiss' || league == 'five' || league == 'cup') {
     posStart_topPlayers.total = pos.v51;
     spacing = 70;
     let counter = 1;
@@ -1322,7 +1322,7 @@ async function standings(league, standings, leagueStats) {
       ctx.fillText(text, pos.h172, headerHeight);
     };
     */
-  } else if (league == 'swiss' || league == 'five') {
+  } else if (league == 'swiss' || league == 'five' || league == 'cup') {
   } else if (league == 'mix') {
     // change TH level
     text = 'TH17';
@@ -1388,7 +1388,7 @@ async function standings(league, standings, leagueStats) {
   ctx.fillText(text, posH.sd, headerHeight + 50);
   text = 'Destruction Percentage';
   ctx.fillText(text, posH.dp, headerHeight + 50);
-  if (league == 'swiss' || league == 'five') {
+  if (league == 'swiss' || league == 'five' || league == 'cup') {
     ctx.fillStyle = config.rgb.snowWhite;
     setFont(ctx, config.canvasFontSize.xxSmall);
     text = 'Triples / Attacks';
@@ -1463,7 +1463,7 @@ async function standings(league, standings, leagueStats) {
 
       text = team.team_name.replace(/\\/g, '').replace(/‪⋆͛/g, '');
       let fontSizeTeamName = '';
-      if (league == 'swiss' || league == 'five') {
+      if (league == 'swiss' || league == 'five' || league == 'cup') {
         fontSizeTeamName = config.canvasFontSize.xxxxSmall;
       } else {
         fontSizeTeamName = config.canvasFontSize.xxSmall;
@@ -1600,7 +1600,7 @@ async function standings(league, standings, leagueStats) {
             10,
             spacing / 4,
           );
-        } else if (league == 'swiss' || league == 'five') {
+        } else if (league == 'swiss' || league == 'five' || league == 'cup') {
           ctxHitrate(
             ctx,
             score.clan.allAttackTypes,
@@ -1799,7 +1799,8 @@ async function standings(league, standings, leagueStats) {
       league == 'j1' ||
       league == 'swiss' ||
       league == 'mix' ||
-      league == 'five'
+      league == 'five' ||
+      league == 'cup'
     ) {
       statsLeague = leagueStats.stats.sumQ;
     } else if (league == 'j2') {
@@ -1907,7 +1908,7 @@ async function standings(league, standings, leagueStats) {
           10,
           spacing / 4,
         );
-      } else if (league == 'swiss' || league == 'five') {
+      } else if (league == 'swiss' || league == 'five' || league == 'cup') {
         ctxHitrate(
           ctx,
           statsLeague.allAttackTypes,

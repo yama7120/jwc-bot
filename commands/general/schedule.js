@@ -91,27 +91,34 @@ export default {
       title = `:calendar: **SCHEDULE**`;
       footer = `${config.footer} ${config.league[iLeague]} SEASON ${config.season[iLeague]}`;
 
-      if (iLeague == 'five') {
-        Object.keys(schedule.dateDef5v.day).forEach((key) => {
+      if (iLeague == 'five' || iLeague == 'cup') {
+        const dateDef = iLeague == 'five' ? schedule.dateDef5v : schedule.dateDefCup;
+        const battleUnit = iLeague == 'cup' ? '時間' : '分';
+        Object.keys(dateDef.day).forEach((key) => {
           const week = key.slice(1);
           if (week > 0) {
             description += `### WEEK ${week}`;
             description += `\n`;
-            if (schedule.dateDef5v.day[key] == 'BYE') {
+            if (dateDef.day[key] == 'BYE') {
               description += `*BYE*\n`;
             } else {
-              description += `:alarm_clock: ${schedule.dateDef5v.day[key].toLocaleDateString('ja-JP', options)}`;
-              description += ` ${schedule.dateDef5v.time[key]}\n`;
-              description += `:hourglass_flowing_sand: ${schedule.timePrep[iLeague]} 分 / :crossed_swords: ${schedule.timeBattle[iLeague]} 分\n`;
-              description += `:calendar: ${schedule.dateDef5v.period[key]} 日間\n`;
+              description += `:alarm_clock: ${dateDef.day[key].toLocaleDateString('ja-JP', options)}`;
+              description += ` ${dateDef.time[key]}\n`;
+              description += `:hourglass_flowing_sand: ${schedule.timePrep[iLeague]} 分 / :crossed_swords: ${schedule.timeBattle[iLeague]} ${battleUnit}\n`;
+              if (dateDef.start?.[key] && dateDef.end?.[key]) {
+                description += `:calendar: ${dateDef.start[key].toLocaleDateString('ja-JP', options)} ～ `;
+                description += `${dateDef.end[key].toLocaleDateString('ja-JP', options)}\n`;
+              } else {
+                description += `:calendar: ${dateDef.period[key]} 日間\n`;
+              }
             }
           }
         });
         description += `\n`;
         description += `:alarm_clock: 基準日・基準時間\n`;
         description += `:hourglass_flowing_sand: 準備時間 / :crossed_swords: 対戦時間\n`;
-        description += `:calendar: 基準期間（基準日を含めた日数）\n`;
-      } else if (iLeague != 'five') {
+        description += `:calendar: ${iLeague == 'cup' ? '基準期間' : '基準期間（基準日を含めた日数）'}\n`;
+      } else if (iLeague != 'five' && iLeague != 'cup') {
         Object.keys(schedule.dateDef[iLeague].day).forEach((key) => {
           const week = key.slice(1);
           if (week > 0) {

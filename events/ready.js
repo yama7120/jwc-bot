@@ -50,6 +50,7 @@ export default {
       swiss: '*/7 * * * *',
       mix: '*/5 * * * *',
       five: '*/1 * * * *',
+      cup: '*/5 * * * *',
     };
     for (const [league, schedule] of Object.entries(cronWarSchedules)) {
       if (config.cronWarStatus?.[league] === 'on') {

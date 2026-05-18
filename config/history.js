@@ -83,6 +83,9 @@ export default {
         { season: 2, year: 2024, lvTH: 16 },
         { season: 3, year: 2025, lvTH: 17 },
       ],
+      cup: [
+        { season: 1, year: 2026, lvTH: 18, hit: 2 },
+      ],
     },
     champions: {
       j1: {
@@ -176,6 +179,11 @@ export default {
           { rank: 1, name: 'UWS 69', note: '' },
           { rank: 2, name: '774', note: '' },
           { rank: 3, name: 'ネコふんじゃったΣ(￣。￣ﾉ)', note: '' },
+        ],
+        s19: [
+          { rank: 1, name: 'UWS 69', note: '' },
+          { rank: 2, name: 'MoQ', note: '' },
+          { rank: 3, name: 'Angelic Remnant', note: '' },
         ],
       },
       j2: {

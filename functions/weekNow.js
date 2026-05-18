@@ -1,4 +1,4 @@
-export const WEEK_NOW_LEAGUES = ['j1', 'j2', 'swiss', 'mix', 'five'];
+export const WEEK_NOW_LEAGUES = ['j1', 'j2', 'swiss', 'mix', 'five', 'cup'];
 
 const cache = Object.create(null);
 

@@ -432,6 +432,9 @@ export default {
         }
         else if (iLeague == 'five') {
           query = { 'homeClanAbbr.five': clanAbbr };
+        }
+        else if (iLeague == 'cup') {
+          query = { 'homeClanAbbr.cup': clanAbbr };
         };
         const options = { projection: { tag: 1, name: 1, townHallLevel: 1 } };
         const sort = { townHallLevel: -1, name: 1 };
@@ -531,7 +534,7 @@ export default {
       usefulLinks(interaction, client);
     }
     else if (subcommand == 'champions') {
-      champions(interaction, client);
+      await champions(interaction, client);
     }
     else if (subcommand == 'streamer') {
       streamer(interaction, client);
@@ -1610,7 +1613,7 @@ async function champions(interaction, client) {
   let iLeague = await interaction.options.getString('league');
 
   const arrHistory = config_history.history[iLeague];
-  const arrChampions = config_history.champions[iLeague];
+  const arrChampions = config_history.champions[iLeague] ?? {};
 
   //console.dir(arrHistory);
   //console.dir(arrChampions);
@@ -1633,7 +1636,8 @@ async function champions(interaction, client) {
     };
     description += ` _${history.year}_`;
     description += `\n`;
-    for (const champion of arrChampions[functions.seasonToString(history.season)]) {
+    const championList = arrChampions[functions.seasonToString(history.season)] ?? [];
+    for (const champion of championList) {
       description += `${config.emote.place[champion.rank]} **${champion.name}**`;
       if (champion.note != '') {
         description += ` [${champion.note}]`;

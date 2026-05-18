@@ -364,6 +364,51 @@ export default {
       w10: '22:00',
     },
   },
+  // CUP S1: 毎月10日基準（基準期間9日～11日）、5ヶ月
+  dateDefCup: {
+    start: {
+      w1: new Date(year, 6 - 1, 9),
+      w2: new Date(year, 7 - 1, 9),
+      w3: new Date(year, 8 - 1, 9),
+      w4: new Date(year, 9 - 1, 9),
+      w5: new Date(year, 10 - 1, 9),
+    },
+    day: {
+      w1: new Date(year, 6 - 1, 10),
+      w2: new Date(year, 7 - 1, 10),
+      w3: new Date(year, 8 - 1, 10),
+      w4: new Date(year, 9 - 1, 10),
+      w5: new Date(year, 10 - 1, 10),
+    },
+    end: {
+      w1: new Date(year, 6 - 1, 11),
+      w2: new Date(year, 7 - 1, 11),
+      w3: new Date(year, 8 - 1, 11),
+      w4: new Date(year, 9 - 1, 11),
+      w5: new Date(year, 10 - 1, 11),
+    },
+    period: {
+      w1: 3,
+      w2: 3,
+      w3: 3,
+      w4: 3,
+      w5: 3,
+    },
+    time: {
+      w1: '11:00',
+      w2: '11:00',
+      w3: '11:00',
+      w4: '11:00',
+      w5: '11:00',
+    },
+  },
+  parentIdNegoCup: {
+    w1: '1505749716636270632',
+    w2: '1505749803965874336',
+    w3: '1505750106144505866',
+    w4: '1505750189296849067',
+    w5: '1505750297052713051',
+  },
   parentIdNego: {
     w0: '1313028172689838192',
     w1: '1114913529393328218',
@@ -455,6 +500,7 @@ export default {
     swiss: 4,
     mix: 4,
     five: 5,
+    cup: 2,
   },
   timeBattle: {
     j1: 24,
@@ -462,6 +508,7 @@ export default {
     swiss: 8,
     mix: 8,
     five: 45,
+    cup: 12,
   },
   scTimePrep: [
     { name: '5m', value: '5m' },

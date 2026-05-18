@@ -163,7 +163,7 @@ async function getClanWarUpdateDB(client, mongoWar) {
           if (clanWar.clan.members.length < 15) {
             return flagUpdate;
           }
-        } else if (league == 'swiss' || league == 'mix' || league == 'five') {
+        } else if (league == 'swiss' || league == 'mix' || league == 'five' || league == 'cup') {
           if (clanWar.clan.members.length != config.minSize[league]) {
             return flagUpdate;
           }

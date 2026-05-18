@@ -537,7 +537,7 @@ async function updateScore(clientMongo, league, mongoClan) {
               };
             };
           }
-          else if (league == 'swiss' || league == 'mix') {
+          else if (league == 'swiss' || league == 'mix' || league == 'cup') {
             if (week <= config.weeksQ[league]) {
               nWarQ += 1;
               nWinQ += win;
@@ -588,7 +588,7 @@ async function updateScore(clientMongo, league, mongoClan) {
                   sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, 'opponent');
                 };
               }
-              else if (league == 'swiss' || league == 'mix') {
+              else if (league == 'swiss' || league == 'mix' || league == 'cup') {
                 if (week <= config.weeksQ[league]) {
                   sumScoreClanQ = await sumResult(sumScoreClanQ, mongoWar, 'clan');
                   sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, 'opponent');
@@ -617,7 +617,7 @@ async function updateScore(clientMongo, league, mongoClan) {
                   sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, 'clan');
                 };
               }
-              else if (league == 'swiss' || league == 'mix') {
+              else if (league == 'swiss' || league == 'mix' || league == 'cup') {
                 if (week <= config.weeksQ[league]) {
                   sumScoreClanQ = await sumResult(sumScoreClanQ, mongoWar, 'opponent');
                   sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, 'clan');
@@ -1553,7 +1553,7 @@ async function calcStatsAccs(clientMongo, league, clanAbbr, season) {
 
     let stats = {};
     if (mongoAcc.stats == null) {
-      stats = { j1: '', j2: '', swiss: '', mix: '', five: '' };
+      stats = { j1: '', j2: '', swiss: '', mix: '', five: '', cup: '' };
     }
     else {
       stats = mongoAcc.stats;

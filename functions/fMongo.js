@@ -105,6 +105,12 @@ async function registerAcc(
       if (pilotName != null) {
         listing.pilotName.five = pilotName;
       }
+    } else if (league.indexOf('cup') != -1) {
+      listing.homeClanAbbr.cup = clanAbbr;
+      listing.league.cup = league;
+      if (pilotName != null) {
+        listing.pilotName.cup = pilotName;
+      }
     }
   }
 
@@ -585,7 +591,7 @@ async function standings(clientMongo, league) {
       'score.sumQ.clan.destruction': -1,
       clan_abbr: 1,
     };
-  } else if (league == 'swiss' || league == 'five') {
+  } else if (league == 'swiss' || league == 'five' || league == 'cup') {
     sort = {
       'score.sum.point': -1,
       //'score.sum.numWar': 1,
@@ -610,7 +616,7 @@ async function standings(clientMongo, league) {
     if (team.score) {
       if (league == 'j1' || league == 'mix') {
         teamStats.sumScore = team.score.sumQ;
-      } else if (league == 'j2' || league == 'swiss' || league == 'five') {
+      } else if (league == 'j2' || league == 'swiss' || league == 'five' || league == 'cup') {
         teamStats.sumScore = team.score.sum;
       }
       if (team.score.penalty != null) {
@@ -1181,6 +1187,16 @@ async function statsPlayer(clientMongo) {
       stats.five = calcStatsLeague(dbValuePlayerNew.stats.five, acc.stats.five);
     } else {
       stats.five = dbValuePlayerNew.stats.five;
+    }
+    if (
+      acc.stats.cup?.attacks != null &&
+      acc.stats.cup.attacks != 'no attack' &&
+      acc.townHallLevel == config.lvTH &&
+      acc.stats.cup.season == config.season.cup
+    ) {
+      stats.cup = calcStatsLeague(dbValuePlayerNew.stats.cup, acc.stats.cup);
+    } else {
+      stats.cup = dbValuePlayerNew.stats.cup;
     }
     let listing = {};
     listing.stats = stats;

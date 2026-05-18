@@ -1032,12 +1032,12 @@ async function dealWar5v(client, interaction) {
 async function dealWar(client, interaction) {
   const iDateTimeUnix = await interaction.options.getString('date');
   const iTimeMatch = await interaction.options.getString('time');
-  const iTimePrep = await interaction.options.getString('prep_time');
-  const iTimeBattle = await interaction.options.getString('battle_time');
+  let iTimePrep = await interaction.options.getString('prep_time');
+  let iTimeBattle = await interaction.options.getString('battle_time');
   const iClanAbbrSend = await interaction.options
     .getString('send')
     .toLowerCase();
-  const iSize = await interaction.options.getString('size');
+  let iSize = await interaction.options.getString('size');
 
   let day_arr = ['日', '月', '火', '水', '木', '金', '土'];
   let date = new Date(iDateTimeUnix * 1000);
@@ -1064,6 +1064,13 @@ async function dealWar(client, interaction) {
   let match = mongoWar.match;
   let clanAbbr = mongoWar.clan_abbr;
   let opponentAbbr = mongoWar.opponent_abbr;
+
+  if (league == 'cup') {
+    iTimeBattle = '12h';
+    if (iSize == null) {
+      iSize = '5v5';
+    }
+  }
 
   let clanAbbrA = '';
   let clanAbbrB = '';

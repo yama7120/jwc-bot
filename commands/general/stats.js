@@ -152,6 +152,9 @@ export default {
       }
       else if (iLeague == 'five') {
         query = { 'homeClanAbbr.five': clanAbbr };
+      }
+      else if (iLeague == 'cup') {
+        query = { 'homeClanAbbr.cup': clanAbbr };
       };
       const options = { projection: { stats: 0, attacks: 0, defenses: 0, legend: 0, stats_last_season: 0, lvHeroEquipment: 0 } };
       const sort = { townHallLevel: -1, name: 1 };
@@ -611,7 +614,7 @@ async function statsLeague(interaction, client) {
       description += `  ( ${stats.overkill.nTriple.total} / ${stats.overkill.nAt.total} )\n`;
     };
   }
-  else if (iLeague == 'swiss' || iLeague == 'five') {
+  else if (iLeague == 'swiss' || iLeague == 'five' || iLeague == 'cup') {
     description += `:boom: **${Math.round(stats.allAttackTypes.hitrate.total * 10) / 10}**%`;
     description += `  ( ${stats.allAttackTypes.nTriple.total} / ${stats.allAttackTypes.nAt.total} )\n`;
   }
@@ -717,6 +720,11 @@ async function statsPlayer(interaction, client) {
     description += createDescriptionAttacks(stats, 'five');
     description += `\n`;
   };
+  if (stats.cup?.attacks?.total?.nAttacks > 0) {
+    description += `* **CUP**  ${config.emote.thn[`th${config.lvTH}`]}\n`;
+    description += createDescriptionAttacks(stats, 'cup');
+    description += `\n`;
+  };
 
   if (description == '') {
     description = '*No attack*';
@@ -776,6 +784,11 @@ async function statsPlayer(interaction, client) {
     if (stats.five.defenses.total.nDefenses > 0) {
       description += `* **5V**  ${config.emote.thn[`th${config.lvTH}`]}\n`;
       description += createDescriptionDefenses(stats, 'five');
+      description += `\n`;
+    };
+    if (stats.cup?.defenses?.total?.nDefenses > 0) {
+      description += `* **CUP**  ${config.emote.thn[`th${config.lvTH}`]}\n`;
+      description += createDescriptionDefenses(stats, 'cup');
       description += `\n`;
     };
 

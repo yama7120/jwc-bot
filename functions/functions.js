@@ -846,6 +846,7 @@ async function getAccInfoDescriptionJWC(mongoAcc) {
   description += `SWISS *S${config.season.swiss}*: ${(mongoAcc?.homeClanAbbr?.swiss?.trim().toUpperCase() || 'FREE') === 'FREE' ? '*FREE*' : `**${mongoAcc.homeClanAbbr.swiss.toUpperCase()}**`}\n`;
   description += `MIX *S${config.season.mix}*: ${(mongoAcc?.homeClanAbbr?.mix?.trim().toUpperCase() || 'FREE') === 'FREE' ? '*FREE*' : `**${mongoAcc.homeClanAbbr.mix.toUpperCase()}**`}\n`;
   description += `5V *S${config.season.five}*: ${(mongoAcc?.homeClanAbbr?.five?.trim().toUpperCase() || 'FREE') === 'FREE' ? '*FREE*' : `**${mongoAcc.homeClanAbbr.five.toUpperCase()}**`}\n`;
+  description += `CUP *S${config.season.cup}*: ${(mongoAcc?.homeClanAbbr?.cup?.trim().toUpperCase() || 'FREE') === 'FREE' ? '*FREE*' : `**${mongoAcc.homeClanAbbr.cup.toUpperCase()}**`}\n`;
   description += `\n`;
 
   return description;
@@ -1045,6 +1046,7 @@ async function getEmbedStatusInfo(clientMongo, isAdmin, unixTime) {
   description += await getDescriptionStatusInfo('swiss');
   description += await getDescriptionStatusInfo('mix');
   description += await getDescriptionStatusInfo('five');
+  description += await getDescriptionStatusInfo('cup');
 
   description += '\n';
   description += '* **Last Update**\n';
@@ -1308,11 +1310,14 @@ async function getDescriptionNego(
     myContent += `* 日程と、どちらから申請するかを決めてください。\n`;
     myContent += `* 交渉結果は </rep deal_war:1229035726549680191> コマンドで報告してください。 <#1123531433475063818>\n`;
     myContent += `* 下記の基準日から変更する場合は、必ず基準期間内に __マッチング__ するようご注意ください。\n`;
+    if (league == 'cup') {
+      myContent += `* 対戦時間は **12 時間** で変更は不可とします。\n`;
+    }
 
     myDescription += `**${teamNameA}** :vs: **${teamNameB}**\n`;
     myDescription += `\n`;
 
-    if (league == 'swiss' || league == 'mix') {
+    if (league == 'swiss' || league == 'mix' || league == 'cup') {
       myDescription += `対戦人数（固定）： `;
     } else {
       myDescription += `対戦人数（増加可）： `;
@@ -1606,6 +1611,7 @@ async function editRoleMain(interaction, user, action, league, flagReturn) {
   const roleIdJ2 = config.roleId.repsServer[seasonStr].j2;
   const roleIdS = config.roleId.repsServer[seasonStr].swiss;
   const roleIdM = config.roleId.repsServer[seasonStr].mix;
+  const roleIdC = config.roleId.repsServer[seasonStr]?.cup;
   const arrRolesAll = [roleIdJ1, roleIdJ2, roleIdS, roleIdM];
 
   if (action == 'add') {
@@ -1637,7 +1643,12 @@ async function editRoleMain(interaction, user, action, league, flagReturn) {
               .get(user.id)
               ._roles.includes(roleIdS)
           ) {
-            await editRole(interaction, user, roleIdAll, action, flagReturn);
+            if (
+              roleIdC == null ||
+              !interaction.guild.members.cache.get(user.id)._roles.includes(roleIdC)
+            ) {
+              await editRole(interaction, user, roleIdAll, action, flagReturn);
+            }
           }
         }
       }
@@ -1705,7 +1716,8 @@ function detectTownHallLevel(league, lvTownHall) {
     league == 'j1' ||
     league == 'j2' ||
     league == 'swiss' ||
-    league == 'five'
+    league == 'five' ||
+    league == 'cup'
   ) {
     if (lvTownHall == config.lvTH) {
       return true;

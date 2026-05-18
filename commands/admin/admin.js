@@ -702,7 +702,7 @@ let data = new SlashCommandBuilder()
           .addStringOption((option) =>
             option
               .setName('league')
-              .setDescription('リーグ (j1/j2/swiss/mix/five)')
+              .setDescription('リーグ (j1/j2/swiss/mix/five/cup)')
               .setRequired(true)
               .addChoices(
                 { name: 'J1', value: 'j1' },
@@ -710,6 +710,7 @@ let data = new SlashCommandBuilder()
                 { name: 'SWISS', value: 'swiss' },
                 { name: 'MIX', value: 'mix' },
                 { name: '5V', value: 'five' },
+                { name: 'CUP', value: 'cup' },
               ),
           )
           .addIntegerOption((option) =>
@@ -1482,7 +1483,7 @@ async function createNegoCh(interaction, client, league, week, mongoWar) {
   let clanAbbr1 = clanAbbr.replace(/s-/g, '').replace(/m-/g, '');
   let clanAbbr2 = clanAbbrOpp.replace(/s-/g, '').replace(/m-/g, '');
 
-  let parentIdNego = schedule.parentIdNego;
+  let parentIdNego = league == 'cup' ? schedule.parentIdNegoCup : schedule.parentIdNego;
   let adminId = config.roleId.admins;
   let botId = config.roleId.bots;
 
