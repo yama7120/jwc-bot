@@ -157,6 +157,10 @@ export default {
         season: 20,
         url: 'https://docs.google.com/document/d/1Q5hZ8qY205991PXLuYH3yzorKlL0gP3b9BlKC7Igzng/edit?usp=sharing',
       },
+      cup: {
+        season: 1,
+        url: 'https://docs.google.com/document/d/1IFBVk1Djce5tfc42d5AXZg8BfPw0MxElOzHwygQAVIs/edit?usp=sharing',
+      },
       /*
       mix5v: {
         season: 18,

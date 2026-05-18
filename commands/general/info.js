@@ -1567,6 +1567,8 @@ async function usefulLinks(interaction, client) {
     description += `[__document__](${config.link.rule.swiss.url})\n`;
     description += `* **MIX** *SEASON ${config.link.rule.mix.season}*\n`;
     description += `[__document__](${config.link.rule.mix.url})\n`;
+    description += `* **JWC CUP** *SEASON ${config.link.rule.cup.season}*\n`;
+    description += `[__document__](${config.link.rule.cup.url})\n`;
   }
   else if (iItem == 'server') {
     let content = '';
