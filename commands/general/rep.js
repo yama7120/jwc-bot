@@ -1237,6 +1237,16 @@ async function editTeamInformation(client, interaction) {
     .db('jwc')
     .collection('clans')
     .findOne({ rep_channel: interaction.channel.id });
+
+  if (mongoTeam == null) {
+    await interaction.followUp({
+      content:
+        ':exclamation: *Team not found for this channel. Run `/admin create team_data` in the team channel first.*',
+      ephemeral: true,
+    });
+    return;
+  }
+
   const league = mongoTeam.league;
 
   const iTeam = await interaction.options.getString('team');
@@ -1511,10 +1521,25 @@ async function editMyChannel(client, interaction) {
   const iLog3 = interaction.options.getString('attacks_defenses');
   const iLog4 = interaction.options.getString('end');
 
-  const mongoTeam = await client.clientMongo
+  let mongoTeam = await client.clientMongo
     .db('jwc')
     .collection('clans')
     .findOne({ clan_abbr: teamAbbr });
+
+  if (mongoTeam == null) {
+    mongoTeam = await client.clientMongo
+      .db('jwc')
+      .collection('clans')
+      .findOne({ rep_channel: interaction.channel.id });
+  }
+
+  if (mongoTeam == null) {
+    await interaction.followUp({
+      content: ':exclamation: *Team not found. Run `/admin create team_data` first.*',
+      ephemeral: true,
+    });
+    return;
+  }
 
   if (
     interaction.user.id != mongoTeam.rep_1st?.id &&
