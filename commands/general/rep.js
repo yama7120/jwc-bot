@@ -1534,12 +1534,21 @@ async function editMyChannel(client, interaction) {
   }
 
   if (mongoTeam == null) {
+    mongoTeam = await client.clientMongo
+      .db('jwc')
+      .collection('clans')
+      .findOne({ 'log.main.channel_id': interaction.channel.id });
+  }
+
+  if (mongoTeam == null) {
     await interaction.followUp({
-      content: ':exclamation: *Team not found. Run `/admin create team_data` first.*',
+      content: `:exclamation: *Team not found (\`${teamAbbr}\`). Run \`/admin create team_data\` first.*`,
       ephemeral: true,
     });
     return;
   }
+
+  const clanAbbrResolved = mongoTeam.clan_abbr;
 
   if (
     interaction.user.id != mongoTeam.rep_1st?.id &&
@@ -1610,7 +1619,7 @@ async function editMyChannel(client, interaction) {
   await client.clientMongo
     .db('jwc')
     .collection('clans')
-    .updateOne({ clan_abbr: teamAbbr }, { $set: listing });
+    .updateOne({ clan_abbr: clanAbbrResolved }, { $set: listing });
 
   /*
   let description = '';
@@ -1636,5 +1645,5 @@ async function editMyChannel(client, interaction) {
   await client.channels.cache.get(iLogCh.id).send({ embeds: [embed] });
   */
 
-  await functions.sendClanInfo(interaction, client, teamAbbr);
+  await functions.sendClanInfo(interaction, client, clanAbbrResolved);
 }
