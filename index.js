@@ -228,34 +228,6 @@ class ClashOfClans {
   }
 }
 
-/** 通知用 scPlayer: PollingClient.getPlayer の legendStatistics をプレーン化 */
-function legendStatisticsForNotify(playerStats, mongoAcc = null) {
-  const ls = playerStats?.legendStatistics;
-  const mongoCs =
-    mongoAcc?.legendStatistics?.currentSeason ?? mongoAcc?.legend?.current ?? null;
-  if (!ls && !mongoCs) return undefined;
-
-  const cs = ls?.currentSeason;
-  const rank = cs?.rank ?? mongoCs?.rank ?? null;
-  const trophies = cs?.trophies ?? mongoCs?.trophies ?? null;
-  const id = cs?.id ?? mongoCs?.id ?? null;
-  const currentSeason =
-    rank != null || trophies != null || id != null
-      ? { rank, trophies, id }
-      : null;
-
-  if (!ls) {
-    return currentSeason ? { currentSeason } : undefined;
-  }
-
-  return {
-    legendTrophies: ls.legendTrophies,
-    currentSeason,
-    previousSeason: ls.previousSeason ?? null,
-    bestSeason: ls.bestSeason ?? null,
-  };
-}
-
 // ===== PollingSystem =====
 class PollingSystem {
   constructor(dcClient, config, functionsLib, fLegendLib) {
@@ -493,11 +465,18 @@ class PollingSystem {
     });
     const beforeSlim = {
       ...pick(beforePlayerStats),
-      legendStatistics: legendStatisticsForNotify(beforePlayerStats),
+      legendStatistics: await fLegend.buildLegendStatisticsForNotify(
+        this.client?.clientCoc,
+        beforePlayerStats,
+      ),
     };
     const afterSlim = {
       ...pick(afterPlayerStats),
-      legendStatistics: legendStatisticsForNotify(afterPlayerStats, mongoAcc),
+      legendStatistics: await fLegend.buildLegendStatisticsForNotify(
+        this.client?.clientCoc,
+        afterPlayerStats,
+        mongoAcc,
+      ),
     };
     this.playerUpdateLocks.add(tagPlayer);
     try {
