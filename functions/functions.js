@@ -674,6 +674,32 @@ async function getAccInfoDescriptionSuperTroops(scPlayer, formatLength) {
 }
 export { getAccInfoDescriptionSuperTroops };
 
+function isLegendLeagueTierId(leagueTierId) {
+  return (
+    leagueTierId === config_coc.leagueId.legend
+    || leagueTierId === config_coc.leagueId.legend2
+    || leagueTierId === config_coc.leagueId.legend3
+  );
+}
+
+function getRankedLeagueTierLabel(scPlayer) {
+  const leagueTierId = scPlayer?.leagueTier?.id;
+  if (leagueTierId === config_coc.leagueId.legend) {
+    return 'Legend League I';
+  }
+  if (leagueTierId === config_coc.leagueId.legend2) {
+    return 'Legend League II';
+  }
+  if (leagueTierId === config_coc.leagueId.legend3) {
+    return 'Legend League III';
+  }
+  const leagueTierConfig = config_coc.leagueTiers.find(
+    (tier) => tier.id === leagueTierId,
+  );
+  return leagueTierConfig?.name ?? scPlayer?.leagueTier?.name ?? 'Unknown League';
+}
+export { getRankedLeagueTierLabel };
+
 async function getAccInfoDescriptionRankedBattles(
   scPlayer,
   mongoAcc,
@@ -704,10 +730,11 @@ async function getAccInfoDescriptionRankedBattles(
     description += `:trophy: ${scPlayer.trophies} ${config.emote.sword} **${scPlayer.attackWins}**/${nBattles}`;
   }
 
-  if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
-    description += ` ${leagueEmote} **${scPlayer.leagueTier.name}**`;
+  const leagueLabel = getRankedLeagueTierLabel(scPlayer);
+  if (isLegendLeagueTierId(scPlayer.leagueTier.id)) {
+    description += ` ${leagueEmote} **${leagueLabel}**`;
   } else {
-    description += ` ${leagueEmote} ${scPlayer.leagueTier.name}`;
+    description += ` ${leagueEmote} ${leagueLabel}`;
   }
 
   description += `\n`;
@@ -756,11 +783,6 @@ async function getAccInfoDescriptionAccData(mongoAcc, formatLength) {
   let description = '';
 
   if (formatLength == 'long') {
-    description += `* **TROPHIES / ATTACK WINS / DEFENSE WINS**\n`;
-    description += `:trophy: ${mongoAcc.trophies}`;
-    description += `  ${config.emote.sword} ${mongoAcc.attackWins}`;
-    description += `  ${config.emote.shield} ${mongoAcc.defenseWins}\n`;
-    description += `\n`;
     description += `* **LEVELS SUMMARY**\n`;
   }
 

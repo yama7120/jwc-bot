@@ -1,22 +1,59 @@
 import { EmbedBuilder } from 'discord.js';
 
 import config from '../config/config.js';
+import config_coc from '../config/config_coc.js';
 import * as functions from './functions.js';
 import * as fMongo from './fMongo.js';
 
+const leagueTierRankById = new Map(
+  config_coc.leagueTiers.map((tier, index) => [tier.id, index]),
+);
 
-async function roster(interaction, client, iLeague, iTeamAbbr) {
+function sortRosterAccounts(accs, sortOrder) {
+  if (sortOrder !== 'league_tier') {
+    return accs;
+  }
+  return [...accs].sort((a, b) => {
+    const rankA = leagueTierRankById.get(a.leagueTier?.id) ?? -1;
+    const rankB = leagueTierRankById.get(b.leagueTier?.id) ?? -1;
+    if (rankB !== rankA) {
+      return rankB - rankA;
+    }
+    return (b.trophies ?? 0) - (a.trophies ?? 0);
+  });
+}
+
+async function roster(interaction, client, iLeague, iTeamAbbr, sortOrder = 'default') {
   let mongoTeam = await client.clientMongo.db('jwc').collection('clans').findOne(
     { clan_abbr: iTeamAbbr },
     { projection: { team_name: 1, clan_abbr: 1, logo_url: 1, clan_tag: 1, _id: 0 } }
   );
 
   const query = { [`homeClanAbbr.${config.leagueM[iLeague]}`]: iTeamAbbr, status: true };
-  const options = { projection: { _id: 0, tag: 1, name: 1, townHallLevel: 1, homeClanAbbr: 1, attacks: 1, pilotDC: 1, pilotName: 1 } };
-  const sort = { townHallLevel: -1, [`pilotName.${config.leagueM[iLeague]}`]: 1 };
-  const cursor = client.clientMongo.db('jwc').collection('accounts').find(query, options).sort(sort);
-  const accs = await cursor.toArray();
+  const projection = {
+    _id: 0,
+    tag: 1,
+    name: 1,
+    townHallLevel: 1,
+    homeClanAbbr: 1,
+    attacks: 1,
+    pilotDC: 1,
+    pilotName: 1,
+    trophies: 1,
+    'leagueTier.id': 1,
+  };
+  const sort =
+    sortOrder === 'league_tier'
+      ? {}
+      : { townHallLevel: -1, [`pilotName.${config.leagueM[iLeague]}`]: 1 };
+  const cursor = client.clientMongo
+    .db('jwc')
+    .collection('accounts')
+    .find(query, { projection })
+    .sort(sort);
+  let accs = await cursor.toArray();
   await cursor.close();
+  accs = sortRosterAccounts(accs, sortOrder);
 
   if (accs.length == 0) {
     let title = `**ROSTER**`;
@@ -39,17 +76,24 @@ async function roster(interaction, client, iLeague, iTeamAbbr) {
   
   await fMongo.teamList(client.clientMongo, iLeague);
 
-  await rosterMain(interaction, client, mongoTeam, accs, iLeague);
+  await rosterMain(interaction, client, mongoTeam, accs, iLeague, sortOrder);
 };
 export { roster };
 
-async function rosterMain(interaction, client, mongoTeam, accs, iLeague) {
+async function rosterMain(
+  interaction,
+  client,
+  mongoTeam,
+  accs,
+  iLeague,
+  sortOrder = 'default',
+) {
   let embed = new EmbedBuilder();
 
   let title = `**ROSTER**`;
 
   let arrDescription = [];
-  await Promise.all(accs.map(async (acc, index) => {
+  accs.forEach((acc, index) => {
     arrDescription[index] = '';
     arrDescription[index] += index + 1;
     arrDescription[index] += '.';
@@ -72,46 +116,26 @@ async function rosterMain(interaction, client, mongoTeam, accs, iLeague) {
     };
     arrDescription[index] += `\n`;
 
-    // clan
-    try {
-      const scPlayer = await client.clientCoc.getPlayer(acc.tag);
-
-      if (scPlayer.clan != null) {
-        if (scPlayer.clan.tag == mongoTeam.clan_tag) {
-          arrDescription[index] += `${scPlayer.clan.name} :ballot_box_with_check:`;
-        }
-        else {
-          arrDescription[index] += `${scPlayer.clan.name}`;
-        };
-      }
-      else {
-        arrDescription[index] += `_Not in any clans_`;
-      };
+    if (sortOrder === 'league_tier') {
+      const leagueTierId = acc.leagueTier?.id;
+      const leagueTierConfig = config_coc.leagueTiers.find(
+        (tier) => tier.id === leagueTierId,
+      );
+      const leagueEmote = leagueTierConfig?.emote ?? ':question:';
+      const leagueLabel = functions.getRankedLeagueTierLabel({
+        leagueTier: { id: leagueTierId },
+      });
+      arrDescription[index] += `${leagueEmote} ${leagueLabel} :trophy: ${acc.trophies ?? 0}`;
+      arrDescription[index] += `\n`;
     }
-    catch (error) {
-      if (error.reason === 'inMaintenance') {
-        arrDescription[index] += `:wrench: _inMaintenance_`;
-      }
-      else if (error.reason === 'notFound') {
-        arrDescription[index] += `:x: _notFound_`;
-      }
-      else if (error.reason === 'requestThrottled') {
-        arrDescription[index] += `:x: _requestThrottled_`;
-      }
-      else {
-        arrDescription[index] += `:x: _ERROR: ${error.reason}_`;
-      }
-    };
-    arrDescription[index] += `\n`;
 
-    // pilot
     arrDescription[index] += `:bust_in_silhouette: ${acc.pilotName[config.leagueM[iLeague]]}`;
     if (acc.pilotDC != 'no discord acc' && acc.pilotDC != null && acc.pilotDC != '') {
       arrDescription[index] += ` <@!${acc.pilotDC.id}>`;
     };
 
     arrDescription[index] += `\n\n`;
-  }));
+  });
 
   let nAccPerPage = 15;
 

@@ -209,6 +209,15 @@ let data = new SlashCommandBuilder()
               .setRequired(true)
               .setAutocomplete(true)
           )
+          .addStringOption(option =>
+            option
+              .setName('sort')
+              .setDescription('DISPLAY ORDER')
+              .addChoices(
+                { name: 'TH / pilot name (default)', value: 'default' },
+                { name: 'League tier / trophies', value: 'league_tier' },
+              )
+          )
       )
       .addSubcommand(subcommand =>
         subcommand
@@ -512,7 +521,15 @@ export default {
       const iLeague = await interaction.options.getString('league');
       const iTeamAbbr = await interaction.options.getString('team');
       if (subcommand == 'team') {
-        await fRoster.roster(interaction, client, iLeague, iTeamAbbr);
+        const sortOrder =
+          interaction.options.getString('sort') ?? 'default';
+        await fRoster.roster(
+          interaction,
+          client,
+          iLeague,
+          iTeamAbbr,
+          sortOrder,
+        );
       }
       else if (subcommand == 'league') {
         await fRoster.rosterLeague(interaction, client, iLeague);
