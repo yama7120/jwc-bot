@@ -624,6 +624,7 @@ async function handleBattleLog(
         return await createLogLegendAttack(
           client,
           scPlayer,
+          mongoAcc,
           eventData,
           nEvents,
           i,
@@ -638,6 +639,7 @@ async function handleBattleLog(
         return await createLogLegendDefense(
           client,
           scPlayer,
+          mongoAcc,
           eventData,
           nEvents,
           i,
@@ -652,6 +654,7 @@ async function handleBattleLog(
         return await createLogLegendDefense(
           client,
           scPlayer,
+          mongoAcc,
           eventData,
           nEvents,
           i,
@@ -1388,6 +1391,7 @@ async function sendToDM(client, mongoAcc, myEmbed) {
 async function createLogLegendAttack(
   client,
   scPlayer,
+  mongoAcc,
   eventData,
   nEvents,
   i,
@@ -1431,7 +1435,7 @@ async function createLogLegendAttack(
 
   if (isLegendLeagueTierId(eventData.leagueId)) {
     if (eventData.includeRanking !== false) {
-      const rankingDisplay = await getRankingDisplay(client, scPlayer);
+      const rankingDisplay = await getRankingDisplay(client, scPlayer, mongoAcc);
       if (rankingDisplay) {
         description += rankingDisplay;
       }
@@ -1453,6 +1457,7 @@ async function createLogLegendAttack(
 async function createLogLegendDefense(
   client,
   scPlayer,
+  mongoAcc,
   eventData,
   nEvents,
   i,
@@ -1495,7 +1500,7 @@ async function createLogLegendDefense(
 
   if (isLegendLeagueTierId(eventData.leagueId)) {
     if (eventData.includeRanking !== false) {
-      const rankingDisplay = await getRankingDisplay(client, scPlayer);
+      const rankingDisplay = await getRankingDisplay(client, scPlayer, mongoAcc);
       if (rankingDisplay) {
         description += rankingDisplay;
       }
@@ -1514,11 +1519,58 @@ async function createLogLegendDefense(
   return myEmbed;
 }
 
-// ランキング表示用の共通関数
-async function getRankingDisplay(client, scPlayer) {
+function parsePositiveRank(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** グローバル順位（ポーリング payload に legendStatistics が無いことが多い） */
+async function resolveGlobalLegendRank(client, scPlayer, mongoAcc) {
+  const fromPolling = parsePositiveRank(
+    scPlayer?.legendStatistics?.currentSeason?.rank,
+  );
+  if (fromPolling != null) return fromPolling;
+
+  const fromMongo = parsePositiveRank(
+    mongoAcc?.legend?.current?.rank
+    ?? mongoAcc?.legendStatistics?.currentSeason?.rank,
+  );
+  if (fromMongo != null) return fromMongo;
+
+  if (typeof client?.clientCoc?.getPlayer === 'function' && scPlayer?.tag) {
+    try {
+      const fresh = await client.clientCoc.getPlayer(scPlayer.tag);
+      const fromFresh = parsePositiveRank(
+        fresh?.legendStatistics?.currentSeason?.rank,
+      );
+      if (fromFresh != null) return fromFresh;
+    } catch (e) {
+      console.warn(
+        `[legend] getPlayer for global rank failed (${scPlayer.tag}):`,
+        e?.message ?? e,
+      );
+    }
+  }
+
   try {
-    // グローバル順位は /players/{playerTag} の legendStatistics に含まれる
-    const globalRankValue = scPlayer?.legendStatistics?.currentSeason?.rank ?? null;
+    const legends200 = await client.clientMongo
+      .db('jwc')
+      .collection('ranking')
+      .findOne({ name: 'legends200' }, { projection: { _id: 0, global: 1 } });
+    const hit = legends200?.global?.find((p) => p?.tag === scPlayer?.tag);
+    const fromTop200 = parsePositiveRank(hit?.rank);
+    if (fromTop200 != null) return fromTop200;
+  } catch (e) {
+    console.warn('[legend] legends200 global rank lookup failed:', e?.message ?? e);
+  }
+
+  return null;
+}
+
+// ランキング表示用の共通関数
+async function getRankingDisplay(client, scPlayer, mongoAcc = null) {
+  try {
+    const globalRankValue = await resolveGlobalLegendRank(client, scPlayer, mongoAcc);
 
     let japanRank = null;
     try {
@@ -1534,8 +1586,8 @@ async function getRankingDisplay(client, scPlayer) {
     if (japanRank) {
       rankingText += `:flag_jp: No. **${japanRank.rank}** in JAPAN\n`;
     }
-    if (Number.isFinite(Number(globalRankValue)) && Number(globalRankValue) > 0) {
-      rankingText += `:earth_asia: No. **${Number(globalRankValue)}** in GLOBAL\n`;
+    if (globalRankValue != null) {
+      rankingText += `:earth_asia: No. **${globalRankValue}** in GLOBAL\n`;
     }
 
     return rankingText;
