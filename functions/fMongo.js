@@ -3,6 +3,7 @@ import { EmbedBuilder } from 'discord.js';
 import config from '../config/config.js';
 import config_coc from '../config/config_coc.js';
 import * as functions from './functions.js';
+import { fetchGlobalRankFromPlayerApiRaw } from './fLegend.js';
 import { setWeekNowLeague } from './weekNow.js';
 
 async function fetchPlayerLeagueHistory(clientCoc, playerTag) {
@@ -236,7 +237,25 @@ async function updateAcc(client, tagAccount) {
     listing.legendStatistics = {
       currentSeason: scPlayer.legendStatistics.currentSeason ?? null,
     };
-  } else if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
+  }
+  const rawGlobalRank = await fetchGlobalRankFromPlayerApiRaw(
+    client.clientCoc,
+    tagAccount,
+  );
+  if (rawGlobalRank != null) {
+    listing.legend.current = {
+      ...(listing.legend.current ?? {}),
+      rank: rawGlobalRank,
+    };
+    listing.legendStatistics = {
+      ...(listing.legendStatistics ?? {}),
+      currentSeason: {
+        ...(listing.legendStatistics?.currentSeason ?? {}),
+        rank: rawGlobalRank,
+      },
+    };
+  }
+  if (!scPlayer.legendStatistics && scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     // TH低いとlegendなのにlegendStatisticsがない
     if (mongoAcc?.legend?.current) {
       listing.legend.current = {

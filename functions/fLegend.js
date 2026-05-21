@@ -1524,8 +1524,44 @@ function parsePositiveRank(value) {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+/**
+ * /players API の生 JSON から rank を取得。
+ * clashofclans.js は currentSeason.rank が falsy だと currentSeason 自体を null にするため、
+ * getPlayer() 経由では順位が取れないことがある。
+ */
+export async function fetchGlobalRankFromPlayerApiRaw(clientCoc, playerTag) {
+  if (
+    typeof clientCoc?.rest?.requestHandler?.request !== 'function'
+    || !playerTag
+  ) {
+    return null;
+  }
+  const tag = playerTag.startsWith('#') ? playerTag : `#${playerTag}`;
+  try {
+    const res = await clientCoc.rest.requestHandler.request(
+      `/players/${encodeURIComponent(tag)}`,
+    );
+    return parsePositiveRank(res?.body?.legendStatistics?.currentSeason?.rank);
+  } catch (e) {
+    console.warn(
+      `[legend] raw player API for global rank failed (${tag}):`,
+      e?.message ?? e,
+    );
+    return null;
+  }
+}
+
 /** グローバル順位（ポーリング payload に legendStatistics が無いことが多い） */
 async function resolveGlobalLegendRank(client, scPlayer, mongoAcc) {
+  const tag = scPlayer?.tag ?? mongoAcc?.tag;
+  if (!tag) return null;
+
+  const fromRawApi = await fetchGlobalRankFromPlayerApiRaw(
+    client?.clientCoc,
+    tag,
+  );
+  if (fromRawApi != null) return fromRawApi;
+
   const fromPolling = parsePositiveRank(
     scPlayer?.legendStatistics?.currentSeason?.rank,
   );
@@ -1537,40 +1573,59 @@ async function resolveGlobalLegendRank(client, scPlayer, mongoAcc) {
   );
   if (fromMongo != null) return fromMongo;
 
-  if (typeof client?.clientCoc?.getPlayer === 'function' && scPlayer?.tag) {
-    try {
-      const fresh = await client.clientCoc.getPlayer(scPlayer.tag);
-      const fromFresh = parsePositiveRank(
-        fresh?.legendStatistics?.currentSeason?.rank,
-      );
-      if (fromFresh != null) return fromFresh;
-    } catch (e) {
-      console.warn(
-        `[legend] getPlayer for global rank failed (${scPlayer.tag}):`,
-        e?.message ?? e,
-      );
-    }
-  }
-
   try {
     const legends200 = await client.clientMongo
       .db('jwc')
       .collection('ranking')
       .findOne({ name: 'legends200' }, { projection: { _id: 0, global: 1 } });
-    const hit = legends200?.global?.find((p) => p?.tag === scPlayer?.tag);
+    const hit = legends200?.global?.find((p) => p?.tag === tag);
     const fromTop200 = parsePositiveRank(hit?.rank);
     if (fromTop200 != null) return fromTop200;
   } catch (e) {
     console.warn('[legend] legends200 global rank lookup failed:', e?.message ?? e);
   }
 
+  if (typeof client?.clientCoc?.getPlayerRanks === 'function') {
+    try {
+      const globalBoard = await client.clientCoc.getPlayerRanks('global');
+      const hit = globalBoard.find((p) => p?.tag === tag);
+      const fromBoard = parsePositiveRank(hit?.rank);
+      if (fromBoard != null) return fromBoard;
+    } catch (e) {
+      console.warn('[legend] getPlayerRanks(global) failed:', e?.message ?? e);
+    }
+  }
+
   return null;
+}
+
+async function cacheLegendCurrentRank(client, mongoAcc, rank) {
+  if (!mongoAcc?.tag || rank == null) return;
+  try {
+    await client.clientMongo
+      .db('jwc')
+      .collection('accounts')
+      .updateOne(
+        { tag: mongoAcc.tag },
+        {
+          $set: {
+            'legend.current.rank': rank,
+            'legendStatistics.currentSeason.rank': rank,
+          },
+        },
+      );
+  } catch (e) {
+    console.warn(`[legend] cache legend.current.rank failed (${mongoAcc.tag}):`, e?.message ?? e);
+  }
 }
 
 // ランキング表示用の共通関数
 async function getRankingDisplay(client, scPlayer, mongoAcc = null) {
   try {
     const globalRankValue = await resolveGlobalLegendRank(client, scPlayer, mongoAcc);
+    if (globalRankValue != null && mongoAcc?.tag) {
+      void cacheLegendCurrentRank(client, mongoAcc, globalRankValue);
+    }
 
     let japanRank = null;
     try {
