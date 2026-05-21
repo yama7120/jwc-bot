@@ -465,18 +465,11 @@ class PollingSystem {
     });
     const beforeSlim = {
       ...pick(beforePlayerStats),
-      legendStatistics: await fLegend.buildLegendStatisticsForNotify(
-        this.client?.clientCoc,
-        beforePlayerStats,
-      ),
+      legendStatistics: fLegend.legendStatisticsForNotify(beforePlayerStats),
     };
     const afterSlim = {
       ...pick(afterPlayerStats),
-      legendStatistics: await fLegend.buildLegendStatisticsForNotify(
-        this.client?.clientCoc,
-        afterPlayerStats,
-        mongoAcc,
-      ),
+      legendStatistics: fLegend.legendStatisticsForNotify(afterPlayerStats),
     };
     this.playerUpdateLocks.add(tagPlayer);
     try {

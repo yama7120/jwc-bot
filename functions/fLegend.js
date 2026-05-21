@@ -297,11 +297,7 @@ async function autoUpdateLegend(
 
   return;
 }
-export {
-  autoUpdateLegend,
-  buildLegendStatisticsForNotify,
-  fetchGlobalRankFromPlayerApiRaw,
-};
+export { autoUpdateLegend };
 
 // (stats inference helpers removed)
 
@@ -1532,115 +1528,30 @@ function globalRankFromScPlayer(scPlayer) {
   return parsePositiveRank(scPlayer?.legendStatistics?.currentSeason?.rank);
 }
 
-/** /players 生 JSON の legendStatistics.currentSeason.rank（ライブラリが currentSeason を null にする対策） */
-export async function fetchGlobalRankFromPlayerApiRaw(clientCoc, playerTag) {
-  if (
-    typeof clientCoc?.rest?.requestHandler?.request !== 'function'
-    || !playerTag
-  ) {
-    return null;
-  }
-  const tag = playerTag.startsWith('#') ? playerTag : `#${playerTag}`;
-  try {
-    const res = await clientCoc.rest.requestHandler.request(
-      `/players/${encodeURIComponent(tag)}`,
-    );
-    return parsePositiveRank(res?.body?.legendStatistics?.currentSeason?.rank);
-  } catch (e) {
-    console.warn(
-      `[legend] raw player API for global rank failed (${tag}):`,
-      e?.message ?? e,
-    );
-    return null;
-  }
-}
-
-function legendStatisticsFromPlayerAndMongo(playerStats, mongoAcc = null) {
+/** 通知用: ポーリング getPlayer の legendStatistics をそのままプレーン化（補完なし） */
+export function legendStatisticsForNotify(playerStats) {
   const ls = playerStats?.legendStatistics;
-  const mongoCs =
-    mongoAcc?.legendStatistics?.currentSeason ?? mongoAcc?.legend?.current ?? null;
-  if (!ls && !mongoCs) return undefined;
+  if (!ls) return undefined;
 
-  const cs = ls?.currentSeason;
-  const rank = cs?.rank ?? mongoCs?.rank ?? null;
-  const trophies = cs?.trophies ?? mongoCs?.trophies ?? null;
-  const id = cs?.id ?? mongoCs?.id ?? null;
-  const currentSeason =
-    rank != null || trophies != null || id != null
-      ? { rank, trophies, id }
-      : null;
-
-  if (!ls) {
-    return currentSeason ? { currentSeason } : undefined;
-  }
-
+  const cs = ls.currentSeason;
   return {
     legendTrophies: ls.legendTrophies,
-    currentSeason,
+    currentSeason: cs
+      ? {
+          rank: cs.rank,
+          trophies: cs.trophies,
+          id: cs.id,
+        }
+      : null,
     previousSeason: ls.previousSeason ?? null,
     bestSeason: ls.bestSeason ?? null,
-  };
-}
-
-/** 通知用 scPlayer.legendStatistics（rank 欠落時は生 API で currentSeason.rank を埋める） */
-async function buildLegendStatisticsForNotify(clientCoc, playerStats, mongoAcc = null) {
-  let stats = legendStatisticsFromPlayerAndMongo(playerStats, mongoAcc);
-  if (globalRankFromScPlayer({ legendStatistics: stats }) != null) {
-    return stats;
-  }
-
-  const tag = playerStats?.tag ?? mongoAcc?.tag;
-  const rawRank = await fetchGlobalRankFromPlayerApiRaw(clientCoc, tag);
-  if (rawRank == null) {
-    return stats;
-  }
-
-  stats = stats ?? {};
-  stats.currentSeason = {
-    ...(stats.currentSeason ?? {}),
-    rank: rawRank,
-    trophies:
-      stats.currentSeason?.trophies
-      ?? playerStats?.trophies
-      ?? mongoAcc?.legend?.current?.trophies
-      ?? null,
-    id: stats.currentSeason?.id ?? null,
-  };
-  return stats;
-}
-
-async function hydrateScPlayerLegendRank(client, scPlayer, mongoAcc = null) {
-  if (globalRankFromScPlayer(scPlayer) != null) return;
-
-  const tag = scPlayer?.tag ?? mongoAcc?.tag;
-  const rawRank = await fetchGlobalRankFromPlayerApiRaw(client?.clientCoc, tag);
-  if (rawRank == null) return;
-
-  scPlayer.legendStatistics = {
-    ...(scPlayer.legendStatistics ?? {}),
-    currentSeason: {
-      ...(scPlayer.legendStatistics?.currentSeason ?? {}),
-      rank: rawRank,
-      trophies:
-        scPlayer.legendStatistics?.currentSeason?.trophies ?? scPlayer.trophies ?? null,
-    },
   };
 }
 
 // ランキング表示用の共通関数
 async function getRankingDisplay(client, scPlayer, mongoAcc = null) {
   try {
-    await hydrateScPlayerLegendRank(client, scPlayer, mongoAcc);
     const globalRankValue = globalRankFromScPlayer(scPlayer);
-    if (
-      globalRankValue == null
-      && isLegendLeagueTierId(scPlayer?.leagueTier?.id)
-    ) {
-      console.warn(
-        `[legend] global rank missing on notify scPlayer (${scPlayer?.tag})`,
-        scPlayer?.legendStatistics?.currentSeason ?? null,
-      );
-    }
 
     let japanRank = null;
     try {
