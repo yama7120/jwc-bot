@@ -547,6 +547,17 @@ function aggregateDaysFromEvents(events) {
   });
 }
 
+async function saveAccountTrophies(client, tag, trophies) {
+  const value = Number(trophies);
+  if (!Number.isFinite(value)) {
+    return;
+  }
+  await client.clientMongo.db('jwc').collection('accounts').updateOne(
+    { tag },
+    { $set: { trophies: value } },
+  );
+}
+
 async function sendLogLegendMain(
   client,
   scPlayer,
@@ -587,6 +598,9 @@ async function sendLogLegendMain(
   // 送信
   if (embed) {
     await sendLogEmbed(client, mongoAcc, embed);
+    if (legendEventType === 'attack' || legendEventType === 'defense') {
+      await saveAccountTrophies(client, mongoAcc.tag, scPlayer.trophies);
+    }
   } else {
     //await sendSimpleLogToChannel(client, mongoAcc, eventData, seasonData);
   }

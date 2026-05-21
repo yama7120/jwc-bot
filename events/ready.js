@@ -72,12 +72,10 @@ export default {
       console.log('END: fCron.cronUpdate2am');
     });
 
-    // 毎週火曜 02:30 JST (= 月曜 17:30 UTC)
-    // 週次リセット (JST 火 02:00) 直後の leagueTier をスナップショット。
-    // 同時刻の cronUpdate2am と CoC API レート制限が競合しないよう 30 分後にずらす。
-    scheduleCronWithGuard('rankedBattles', '00 30 17 * * 1', async () => {
-      await fCron.rankedBattles(client);
-      console.log('END: fCron.rankedBattles');
+    // 毎週月曜 15:00 JST (= 月曜 06:00 UTC) — leaguehistory を一括取得
+    scheduleCronWithGuard('syncLeagueHistory', '00 00 06 * * 1', async () => {
+      await fMongo.syncLeagueHistoryAll(client);
+      console.log('END: fMongo.syncLeagueHistoryAll');
     });
 
     // legend reset day

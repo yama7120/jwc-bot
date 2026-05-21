@@ -5,6 +5,32 @@ import config_coc from '../config/config_coc.js';
 import * as functions from './functions.js';
 import { setWeekNowLeague } from './weekNow.js';
 
+async function fetchPlayerLeagueHistory(clientCoc, playerTag) {
+  try {
+    if (typeof clientCoc?.getPlayerLeagueHistory === 'function') {
+      const res = await clientCoc.getPlayerLeagueHistory(playerTag);
+      if (Array.isArray(res?.items)) {
+        return res.items;
+      }
+      return Array.isArray(res) ? res : [];
+    }
+
+    if (typeof clientCoc?.rest?.requestHandler?.request === 'function') {
+      const response = await clientCoc.rest.requestHandler.request(
+        `/players/${encodeURIComponent(playerTag)}/leaguehistory`,
+      );
+      return Array.isArray(response?.body?.items) ? response.body.items : [];
+    }
+
+    return [];
+  } catch (error) {
+    if (error?.reason === 'notFound') {
+      return [];
+    }
+    throw error;
+  }
+}
+
 async function registerAcc(
   client,
   playerTag,
@@ -190,49 +216,43 @@ async function updateAcc(client, tagAccount) {
 
   // レジェンドリーグの情報を処理
   listing.legend = mongoAcc?.legend ?? {};
-  if (scPlayer.legendStatistics) {
-    if (mongoAcc?.legend?.current) {
-      listing.legend.difference =
-        scPlayer.trophies - mongoAcc.legend.current.trophies;
-      listing.legend.previousDay = {
-        trophies: mongoAcc.legend.current.trophies,
-        rank: mongoAcc.legend.current.rank ?? null,
-        id: mongoAcc.legend.current.id ?? null,
-      };
-    } else {
-      listing.legend.difference = 0;
-      listing.legend.previousDay = null;
-    }
+  if (mongoAcc?.legend?.current?.trophies != null) {
+    listing.legend.difference =
+      scPlayer.trophies - mongoAcc.legend.current.trophies;
+    listing.legend.previousDay = {
+      trophies: mongoAcc.legend.current.trophies,
+      rank: mongoAcc.legend.current.rank ?? null,
+      id: mongoAcc.legend.current.id ?? null,
+    };
+  } else {
+    listing.legend.difference = 0;
+    listing.legend.previousDay = null;
+  }
 
-    // 基本情報を更新
+  if (scPlayer.legendStatistics) {
     listing.legend.legendTrophies = scPlayer.legendStatistics.legendTrophies;
-    listing.legend.current = scPlayer.legendStatistics.currentSeason ?? null;
     listing.legend.previous = scPlayer.legendStatistics.previousSeason ?? null;
+    listing.legend.current = scPlayer.legendStatistics.currentSeason ?? null;
+    listing.legendStatistics = {
+      currentSeason: scPlayer.legendStatistics.currentSeason ?? null,
+    };
   } else if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     // TH低いとlegendなのにlegendStatisticsがない
-    listing.legend = mongoAcc?.legend ?? {};
-
     if (mongoAcc?.legend?.current) {
-      listing.legend.difference =
-        scPlayer.trophies - mongoAcc.legend.current.trophies;
-      listing.legend.previousDay = {
-        trophies: mongoAcc.legend.current.trophies,
-        rank: mongoAcc.legend.current.rank ?? null,
-        id: mongoAcc.legend.current.id ?? null,
+      listing.legend.current = {
+        ...mongoAcc.legend.current,
+        trophies: scPlayer.trophies,
       };
-      listing.legend.current.trophies = scPlayer.trophies;
     } else {
       listing.legend.current = {
         trophies: scPlayer.trophies,
       };
-      listing.legend.difference = 0;
-      listing.legend.previousDay = null;
     }
   }
 
   listing.leagueTier = {
     ...scPlayer.leagueTier,
-    history: mongoAcc?.leagueTier?.history || []
+    history: mongoAcc?.leagueTier?.history ?? [],
   };
 
   // トロフィー履歴の更新
@@ -482,7 +502,70 @@ async function updateAcc(client, tagAccount) {
 
   return;
 }
-export { updateAcc };
+async function syncLeagueHistoryAll(client) {
+  console.log('start: syncLeagueHistoryAll');
+
+  try {
+    const query = { status: true };
+    const options = {
+      projection: { _id: 0, tag: 1, name: 1 },
+    };
+    const cursor = client.clientMongo
+      .db('jwc')
+      .collection('accounts')
+      .find(query, options);
+    const mongoAccs = await cursor.toArray();
+    await cursor.close();
+
+    console.log(`処理対象アカウント数: ${mongoAccs.length}`);
+
+    for (let i = 0; i < mongoAccs.length; i++) {
+      const mongoAcc = mongoAccs[i];
+
+      try {
+        const leagueHistoryItems = await fetchPlayerLeagueHistory(
+          client.clientCoc,
+          mongoAcc.tag,
+        );
+
+        await client.clientMongo.db('jwc').collection('accounts').updateOne(
+          { tag: mongoAcc.tag },
+          { $set: { 'leagueTier.history': leagueHistoryItems } },
+        );
+      } catch (error) {
+        if (error.reason === 'inMaintenance') {
+          console.log(
+            `[${i + 1}/${mongoAccs.length}] メンテナンス中: ${mongoAcc.name} (${mongoAcc.tag})`,
+          );
+        } else if (error.reason === 'notFound') {
+          console.log(
+            `[${i + 1}/${mongoAccs.length}] アカウントが見つかりません: ${mongoAcc.name} (${mongoAcc.tag})`,
+          );
+        } else if (error.reason === 'requestThrottled') {
+          console.log(
+            `[${i + 1}/${mongoAccs.length}] リクエスト制限: ${mongoAcc.name} (${mongoAcc.tag})`,
+          );
+        } else {
+          console.error(
+            `[${i + 1}/${mongoAccs.length}] エラー: ${mongoAcc.name} (${mongoAcc.tag}) - ${error.reason ?? error.message}`,
+          );
+        }
+      }
+
+      if ((i + 1) % 100 === 0) {
+        console.log(`進捗: ${i + 1}/${mongoAccs.length} アカウント処理完了`);
+      }
+
+      await functions.sleep(100);
+    }
+
+    console.log('end: syncLeagueHistoryAll');
+  } catch (error) {
+    console.error('syncLeagueHistoryAll エラー:', error);
+  }
+}
+
+export { updateAcc, syncLeagueHistoryAll };
 
 async function deleteRoster(clientMongo, league, playerTag) {
   let mongoAcc = await clientMongo

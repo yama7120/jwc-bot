@@ -507,22 +507,26 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
   let hasHeroes = false;
   let hasHeroEquipments = false;
 
+  const homeHeroNames = new Set(config_coc.heroes.map((hero) => hero.name));
+
   let arrEqName = [];
   scPlayer.heroes.map((hero) => {
-    if (hero.village == 'home') {
+    const isHomeHero =
+      hero.village == 'home' || homeHeroNames.has(hero.name);
+    if (isHomeHero) {
       //console.log(hero.name, hero.isLoaded);
 
       hasHeroes = true;
-      const foundEquipment = config_coc.heroes.find(
+      const foundHero = config_coc.heroes.find(
         (hero_config) => hero_config.name == hero.name,
       );
-      if (!foundEquipment) {
+      if (!foundHero) {
         console.warn(`[getAccInfoDescriptionHeroes] unknown hero: ${hero.name}`);
         description += `[${hero.name}] `;
         return;
       }
-      description += foundEquipment.emote;
-      let hallMaxLevel = hero.hallMaxLevel;
+      description += foundHero.emote;
+      let hallMaxLevel = hero.hallMaxLevel ?? hero.maxLevel;
       if (hero.name == 'Minion Prince') {
         hallMaxLevel =
           config_coc.maxLevel.heroes.minionPrince[
@@ -533,7 +537,7 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
         hallMaxLevel =
           config_coc.maxLevel.heroes.dragonDuke[
             `th${scPlayer.townHallLevel}`
-          ] ?? hero.hallMaxLevel;
+          ] ?? hallMaxLevel;
       }
       if (hero.level == hallMaxLevel) {
         description += ` **${hero.level}/${hallMaxLevel}**`;
@@ -542,31 +546,29 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
       }
       description += ` `;
 
-      if (hero.equipment) {
-        hero.equipment.map((equipment) => {
-          const foundEquipment = config_coc.heroEquipments.find(
+      if (Array.isArray(hero.equipment)) {
+        hero.equipment.forEach((equipment) => {
+          const foundEquip = config_coc.heroEquipments.find(
             (equipment_config) => equipment_config.name == equipment.name,
           );
-          let hallMaxLevel = 99;
+          let equipMaxLevel = 99;
           let emote = ':question:';
-          if (foundEquipment) {
-            hallMaxLevel =
+          if (foundEquip) {
+            equipMaxLevel =
+              equipment.maxLevel ??
               equipment.hallMaxLevel ??
-              config_coc.maxLevel.heroEquipments[foundEquipment.type][
+              config_coc.maxLevel.heroEquipments[foundEquip.type][
                 `th${scPlayer.townHallLevel}`
               ];
-            emote = foundEquipment.emote;
-            /*if (foundEquipment.type == 'epic') {
-              numEpic += 1;
-            }*/
+            emote = foundEquip.emote;
           } else {
             logUnknownEquipment(equipment.name, hero.name);
           }
           description += ` ${emote}`;
-          if (equipment.level == hallMaxLevel) {
-            description += ` **${equipment.level}/${hallMaxLevel}**`;
+          if (equipment.level == equipMaxLevel) {
+            description += ` **${equipment.level}/${equipMaxLevel}**`;
           } else {
-            description += ` ${equipment.level}/${hallMaxLevel}`;
+            description += ` ${equipment.level}/${equipMaxLevel}`;
           }
           arrEqName.push(equipment.name);
         });
@@ -603,6 +605,7 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
       let heroName = 'Unknown';
       if (foundEquipment) {
         hallMaxLevel =
+          equipment.maxLevel ??
           equipment.hallMaxLevel ??
           config_coc.maxLevel.heroEquipments[foundEquipment.type][
             `th${scPlayer.townHallLevel}`
@@ -853,10 +856,46 @@ async function getAccInfoDescriptionJWC(mongoAcc) {
 }
 export { getAccInfoDescriptionJWC };
 
+async function patchHeroEquipmentFromApi(clientCoc, playerTag, scPlayer) {
+  if (!scPlayer?.heroes) {
+    return;
+  }
+  const needsPatch = scPlayer.heroes.some(
+    (hero) =>
+      hero.village == 'home' &&
+      !(Array.isArray(hero.equipment) && hero.equipment.length > 0),
+  );
+  if (!needsPatch || typeof clientCoc?.rest?.requestHandler?.request !== 'function') {
+    return;
+  }
+
+  const response = await clientCoc.rest.requestHandler.request(
+    `/players/${encodeURIComponent(playerTag)}`,
+  );
+  const rawHeroes = response?.body?.heroes;
+  if (!Array.isArray(rawHeroes)) {
+    return;
+  }
+
+  const equipmentByHeroName = new Map(
+    rawHeroes.map((hero) => [hero.name, hero.equipment]),
+  );
+  scPlayer.heroes.forEach((hero) => {
+    if (Array.isArray(hero.equipment) && hero.equipment.length > 0) {
+      return;
+    }
+    const rawEquipment = equipmentByHeroName.get(hero.name);
+    if (Array.isArray(rawEquipment) && rawEquipment.length > 0) {
+      hero.equipment = rawEquipment;
+    }
+  });
+}
+
 async function scanAcc(clientCoc, playerTag) {
   let result = {};
   try {
     let scPlayer = await clientCoc.getPlayer(playerTag);
+    await patchHeroEquipmentFromApi(clientCoc, playerTag, scPlayer);
     //console.dir(scPlayer);
     result.status = 'ok';
     result.scPlayer = scPlayer;
