@@ -3779,25 +3779,31 @@ async function scanClan(interaction, client) {
       .collection('clans')
       .findOne(query);
 
-    let clanTag = mongoClan.clan_tag;
-    let clanLink =
-      'https://link.clashofclans.com/?action=OpenClanProfile&tag=' +
-      clanTag.replace('#', '');
-    let clan = await client.clientCoc.getClan(clanTag);
-    if (clan.location == null) {
-      description = `${mongoClan.team_name}\n`;
-    } else if (clan.location.name == 'Japan') {
-      description = `:flag_jp: ${mongoClan.team_name}\n`;
+    if (mongoClan == null) {
+      description = `チーム \`${iTeam}\` が見つかりません。\n`;
+    } else if (mongoClan.clan_tag == null) {
+      description = `${mongoClan.team_name ?? iTeam}\n:question: クランタグ未登録\n`;
     } else {
-      description = `[${clan.location.name}] ${mongoClan.team_name}\n`;
+      let clanTag = mongoClan.clan_tag;
+      let clanLink =
+        'https://link.clashofclans.com/?action=OpenClanProfile&tag=' +
+        clanTag.replace('#', '');
+      let clan = await client.clientCoc.getClan(clanTag);
+      if (clan.location == null) {
+        description = `${mongoClan.team_name}\n`;
+      } else if (clan.location.name == 'Japan') {
+        description = `:flag_jp: ${mongoClan.team_name}\n`;
+      } else {
+        description = `[${clan.location.name}] ${mongoClan.team_name}\n`;
+      }
+      description += `[__**${clanTag}**__](${clanLink}) ${clan.name}`;
+      if (clan.isWarLogPublic == true) {
+        description += ` :ballot_box_with_check:\n`;
+      } else {
+        description += ` :x: War Log is NOT Public\n`;
+      }
+      description += `\n`;
     }
-    description += `[__**${clanTag}**__](${clanLink}) ${clan.name}`;
-    if (clan.isWarLogPublic == true) {
-      description += ` :ballot_box_with_check:\n`;
-    } else {
-      description += ` :x: War Log is NOT Public\n`;
-    }
-    description += `\n`;
   } else {
     title = `CLANS | ${config.league[iLeague]}`;
 
@@ -3809,6 +3815,11 @@ async function scanClan(interaction, client) {
     let arrDescription = [];
     await Promise.all(
       mongoClans.map(async (mongoClan, index) => {
+        if (mongoClan.clan_tag == null) {
+          arrDescription[index] =
+            `${mongoClan.team_name ?? mongoClan.clan_abbr}\n:question: クランタグ未登録\n\n`;
+          return;
+        }
         let clanTag = mongoClan.clan_tag;
         let clanLink =
           'https://link.clashofclans.com/?action=OpenClanProfile&tag=' +
