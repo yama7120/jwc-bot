@@ -878,7 +878,10 @@ export default {
         if (mongoTeam) {
           await interaction.respond([
             {
-              name: `${mongoTeam.clan_abbr.toUpperCase()}: ${mongoTeam.team_name}`,
+              name: functions.formatTeamAutocompleteName(
+                mongoTeam.clan_abbr,
+                mongoTeam.team_name,
+              ),
               value: mongoTeam.clan_abbr,
             },
           ]);

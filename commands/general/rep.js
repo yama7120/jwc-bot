@@ -451,7 +451,10 @@ export default {
         if (mongoTeam) {
           await interaction.respond([
             {
-              name: `${mongoTeam.clan_abbr.toUpperCase()}: ${mongoTeam.team_name}`,
+              name: functions.formatTeamAutocompleteName(
+                mongoTeam.clan_abbr,
+                mongoTeam.team_name,
+              ),
               value: mongoTeam.clan_abbr,
             },
           ]);
@@ -488,7 +491,10 @@ export default {
       if (mongoClans.length > 0) {
         await interaction.respond(
           mongoClans.map((team) => ({
-            name: `${team.clan_abbr.toUpperCase()}: ${team.team_name}`,
+            name: functions.formatTeamAutocompleteName(
+              team.clan_abbr,
+              team.team_name,
+            ),
             value: team.clan_abbr,
           })),
         );
@@ -564,7 +570,7 @@ export default {
       }
     } else if (subcommandGroup == 'edit') {
       if (subcommand == 'team_information') {
-        editTeamInformation(client, interaction);
+        await editTeamInformation(client, interaction);
       } else if (subcommand == 'my_channel') {
         editMyChannel(client, interaction);
       }
@@ -857,9 +863,9 @@ async function myTeamInformation(client, interaction) {
     .findOne({ 'log.main.channel_id': interaction.channel.id });
 
   if (mongoTeam) {
-    functions.sendClanInfo(interaction, client, mongoTeam.clan_abbr);
+    await functions.sendClanInfo(interaction, client, mongoTeam.clan_abbr);
   } else if (mongoTeam2) {
-    functions.sendClanInfo(interaction, client, mongoTeam2.clan_abbr);
+    await functions.sendClanInfo(interaction, client, mongoTeam2.clan_abbr);
   } else {
     await interaction.followUp({ content: '*Error*', ephemeral: true });
     return;
@@ -1249,8 +1255,28 @@ async function editTeamInformation(client, interaction) {
 
   const league = mongoTeam.league;
 
+  const channelAbbr = mongoTeam.clan_abbr;
+  let teamAbbr = channelAbbr;
+  const iSenderId = interaction.user.id;
+  const isAdmin = Object.values(config.adminId).includes(iSenderId);
   const iTeam = await interaction.options.getString('team');
-  const teamAbbr = String(iTeam).toLowerCase();
+  const parsedTeam = functions.normalizeTeamAbbrFromOption(iTeam);
+
+  if (isAdmin && parsedTeam && parsedTeam !== channelAbbr) {
+    const mongoTarget = await client.clientMongo
+      .db('jwc')
+      .collection('clans')
+      .findOne({ clan_abbr: parsedTeam });
+    if (!mongoTarget) {
+      await interaction.followUp({
+        content: `:exclamation: *Team "${parsedTeam.toUpperCase()}" not found.*`,
+        ephemeral: true,
+      });
+      return;
+    }
+    teamAbbr = parsedTeam;
+  }
+
   const iClanTag = await interaction.options.getString('clan_tag');
   const iTeamName = await interaction.options.getString('team_name');
   //let league = interaction.options.getString('league');
@@ -1264,32 +1290,39 @@ async function editTeamInformation(client, interaction) {
   const iStatus = await interaction.options.getString('status');
   const flagRemove = await interaction.options.getString('remove');
 
-  const iSenderId = interaction.user.id;
-
   if (iDivision) {
-    if (Object.values(config.adminId).includes(iSenderId) == false) {
-      interaction.followUp(`:exclamation: *Only admins can set division.*`);
+    if (!isAdmin) {
+      await interaction.followUp({
+        content: `:exclamation: *Only admins can set division.*`,
+        ephemeral: true,
+      });
       return;
     }
   }
   if (iRep1st || iRep2nd || iRep3rd) {
-    if (Object.values(config.adminId).includes(iSenderId) == false) {
-      interaction.followUp(`:exclamation: *Only admins can change reps.*`);
+    if (!isAdmin) {
+      await interaction.followUp({
+        content: `:exclamation: *Only admins can change reps.*`,
+        ephemeral: true,
+      });
       return;
     }
   }
 
   if (flagRemove == 'all') {
-    if (Object.values(config.adminId).includes(iSenderId) == false) {
-      interaction.followUp(`:exclamation: *Only admins can remove the data.*`);
+    if (!isAdmin) {
+      await interaction.followUp({
+        content: `:exclamation: *Only admins can remove the data.*`,
+        ephemeral: true,
+      });
       return;
     }
     await client.clientMongo
       .db('jwc')
       .collection('clans')
       .deleteOne({ clan_abbr: teamAbbr });
-    interaction.followUp(`removed: ${teamAbbr}`);
-    fMongo.teamList(clientMongo);
+    await interaction.followUp(`removed: ${teamAbbr}`);
+    await fMongo.teamList(client.clientMongo, league);
     return;
   }
 
@@ -1319,10 +1352,11 @@ async function editTeamInformation(client, interaction) {
     iSenderId != rep2ndNowId &&
     iSenderId != rep3rdNowId
   ) {
-    if (Object.values(config.adminId).includes(iSenderId) == false) {
-      interaction.followUp(
-        `:exclamation: *Only reps can change clan information.*`,
-      );
+    if (!isAdmin) {
+      await interaction.followUp({
+        content: `:exclamation: *Only reps can change clan information.*`,
+        ephemeral: true,
+      });
       return;
     }
   }
@@ -1334,8 +1368,15 @@ async function editTeamInformation(client, interaction) {
   }
 
   if (iClanTag) {
-    listing.clan_tag = iClanTag;
     const scClan = await client.clientCoc.getClan(iClanTag);
+    if (!scClan) {
+      await interaction.followUp({
+        content: `:exclamation: *Clan tag not found: ${iClanTag}*`,
+        ephemeral: true,
+      });
+      return;
+    }
+    listing.clan_tag = iClanTag;
     listing.clan_name = scClan.name;
     if (!iTeamName && !mongoTeam.team_name) {
       listing.team_name = scClan.name;
@@ -1514,7 +1555,7 @@ async function editRole(
 
 async function editMyChannel(client, interaction) {
   const iTeam = await interaction.options.getString('team');
-  const teamAbbr = String(iTeam).toLowerCase();
+  const teamAbbr = functions.normalizeTeamAbbrFromOption(iTeam);
   const iLog0 = interaction.options.getString('main');
   const iLog1 = interaction.options.getString('deal');
   const iLog2 = interaction.options.getString('start');

@@ -237,6 +237,31 @@ function tagReplacer(tag) {
 }
 export { tagReplacer };
 
+/** Discord autocomplete label (team_name 未設定時に "ABBR: null" にならない). */
+function formatTeamAutocompleteName(clanAbbr, teamName) {
+  const abbr = String(clanAbbr ?? '').toUpperCase();
+  if (!abbr) return '—';
+  const name =
+    teamName != null && String(teamName).trim() !== ''
+      ? String(teamName).trim()
+      : null;
+  if (!name) return abbr;
+  return `${abbr}: ${name}`;
+}
+export { formatTeamAutocompleteName };
+
+/** team オプションの値を clan_abbr に正規化（表示ラベル誤入力対策）. */
+function normalizeTeamAbbrFromOption(raw) {
+  if (raw == null || raw === '') return '';
+  let s = String(raw).trim();
+  const colon = s.indexOf(':');
+  if (colon > 0) {
+    s = s.slice(0, colon).trim();
+  }
+  return s.toLowerCase();
+}
+export { normalizeTeamAbbrFromOption };
+
 function nameReplacer(name) {
   let nameNew = String(name)
     .replace(/\*/g, '\\*')
@@ -1429,6 +1454,14 @@ async function sendClanInfo(interaction, client, clanAbbr) {
     .db(config.mongo.nameDatabase)
     .collection(nameCollection);
   const mongoClan = await myColl.findOne(query, options);
+
+  if (!mongoClan) {
+    await interaction.followUp({
+      content: `:exclamation: *Team "${clanAbbr.toUpperCase()}" not found in database.*`,
+      ephemeral: true,
+    });
+    return;
+  }
 
   let clanLink = '';
   if (mongoClan.clan_tag) {
