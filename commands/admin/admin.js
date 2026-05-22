@@ -3762,6 +3762,47 @@ async function sendEndMessage(interaction, client) {
   return;
 }
 
+function getScanClanTag(mongoClan) {
+  const tag = mongoClan?.clan_tag;
+  if (typeof tag !== 'string' || tag.length === 0 || tag === 'non-registered') {
+    return null;
+  }
+  return tag;
+}
+
+async function buildScanClanDescription(client, mongoClan, fallbackLabel) {
+  const label =
+    mongoClan?.team_name ?? mongoClan?.clan_abbr ?? fallbackLabel ?? '?';
+  const clanTag = getScanClanTag(mongoClan);
+  if (clanTag == null) {
+    return `${label}\n:question: クランタグ未登録\n\n`;
+  }
+  try {
+    const clanLink =
+      'https://link.clashofclans.com/?action=OpenClanProfile&tag=' +
+      clanTag.replace('#', '');
+    const clan = await client.clientCoc.getClan(clanTag);
+    let desc = '';
+    if (clan.location == null) {
+      desc = `${label}\n`;
+    } else if (clan.location.name == 'Japan') {
+      desc = `:flag_jp: ${label}\n`;
+    } else {
+      desc = `[${clan.location.name}] ${label}\n`;
+    }
+    desc += `[__**${clanTag}**__](${clanLink}) ${clan.name}`;
+    if (clan.isWarLogPublic == true) {
+      desc += ` :ballot_box_with_check:\n`;
+    } else {
+      desc += ` :x: War Log is NOT Public\n`;
+    }
+    return desc + `\n`;
+  } catch (e) {
+    console.error('buildScanClanDescription:', clanTag, e);
+    return `${label}\n:x: API取得失敗 (${clanTag})\n\n`;
+  }
+}
+
 async function scanClan(interaction, client) {
   const iLeague = await interaction.options.getString('league');
   const iTeam = await interaction.options.getString('team');
@@ -3781,28 +3822,8 @@ async function scanClan(interaction, client) {
 
     if (mongoClan == null) {
       description = `チーム \`${iTeam}\` が見つかりません。\n`;
-    } else if (mongoClan.clan_tag == null) {
-      description = `${mongoClan.team_name ?? iTeam}\n:question: クランタグ未登録\n`;
     } else {
-      let clanTag = mongoClan.clan_tag;
-      let clanLink =
-        'https://link.clashofclans.com/?action=OpenClanProfile&tag=' +
-        clanTag.replace('#', '');
-      let clan = await client.clientCoc.getClan(clanTag);
-      if (clan.location == null) {
-        description = `${mongoClan.team_name}\n`;
-      } else if (clan.location.name == 'Japan') {
-        description = `:flag_jp: ${mongoClan.team_name}\n`;
-      } else {
-        description = `[${clan.location.name}] ${mongoClan.team_name}\n`;
-      }
-      description += `[__**${clanTag}**__](${clanLink}) ${clan.name}`;
-      if (clan.isWarLogPublic == true) {
-        description += ` :ballot_box_with_check:\n`;
-      } else {
-        description += ` :x: War Log is NOT Public\n`;
-      }
-      description += `\n`;
+      description = await buildScanClanDescription(client, mongoClan, iTeam);
     }
   } else {
     title = `CLANS | ${config.league[iLeague]}`;
@@ -3815,36 +3836,16 @@ async function scanClan(interaction, client) {
     let arrDescription = [];
     await Promise.all(
       mongoClans.map(async (mongoClan, index) => {
-        if (mongoClan.clan_tag == null) {
-          arrDescription[index] =
-            `${mongoClan.team_name ?? mongoClan.clan_abbr}\n:question: クランタグ未登録\n\n`;
-          return;
-        }
-        let clanTag = mongoClan.clan_tag;
-        let clanLink =
-          'https://link.clashofclans.com/?action=OpenClanProfile&tag=' +
-          clanTag.replace('#', '');
-        let clan = await client.clientCoc.getClan(clanTag);
-        if (clan.location == null) {
-          arrDescription[index] = `${mongoClan.team_name}\n`;
-        } else if (clan.location.name == 'Japan') {
-          arrDescription[index] = `:flag_jp: ${mongoClan.team_name}\n`;
-        } else {
-          arrDescription[index] =
-            `[${clan.location.name}] ${mongoClan.team_name}\n`;
-        }
-        arrDescription[index] +=
-          `[__**${clanTag}**__](${clanLink}) ${clan.name}`;
-        if (clan.isWarLogPublic == true) {
-          arrDescription[index] += ` :ballot_box_with_check:\n`;
-        } else {
-          arrDescription[index] += ` :x: War Log is NOT Public\n`;
-        }
-        arrDescription[index] += `\n`;
+        if (mongoClan == null) return;
+        arrDescription[index] = await buildScanClanDescription(
+          client,
+          mongoClan,
+        );
       }),
     );
 
     arrDescription.forEach(function (value, index) {
+      if (value == null) return;
       if (index <= 12) {
         description += value;
       } else {
