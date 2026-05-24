@@ -632,28 +632,30 @@ async function addRoster(client, interaction, subcommand) {
 
   if (mongoAcc) {
     const pilotDCInfo = mongoAcc.pilotDC;
-    if (
-      pilotDCInfo &&
-      pilotDCInfo !== 'no discord acc' &&
-      pilotDCInfo.username
-    ) {
+    if (isPilotDCLinked(pilotDCInfo)) {
       // Discordユーザーが登録済み
       description += `:bust_in_silhouette: ${iPilotName} <@!${pilotDCInfo.id}>\n`;
       nameDiscord = pilotDCInfo.globalName ?? pilotDCInfo.username;
       avatarUrl = pilotDCInfo.avatar
         ? `https://cdn.discordapp.com/avatars/${pilotDCInfo.id}/${pilotDCInfo.avatar}.png`
-        : config.urlImage.discord;
+        : (pilotDCInfo.avatarUrl ?? config.urlImage.discord);
       pilotDC = pilotDCInfo;
+    } else if (iPilotDC) {
+      // DB登録済みだが未連携：オプションでDiscordアカウントを指定
+      pilotDC = buildPilotDCFromUser(iPilotDC);
+      description += `:bust_in_silhouette: ${iPilotName} <@!${iPilotDC.id}>\n`;
+      nameDiscord = iPilotDC.globalName ?? iPilotDC.username;
+      avatarUrl = pilotDC.avatarUrl ?? config.urlImage.discord;
     } else {
       // Discordユーザー未登録
       description += `:bust_in_silhouette: ${iPilotName}\n`;
     }
   } else if (iPilotDC) {
     // 新規Discordユーザー登録
+    pilotDC = buildPilotDCFromUser(iPilotDC);
     description += `:bust_in_silhouette: ${iPilotName} <@!${iPilotDC.id}>\n`;
     nameDiscord = iPilotDC.globalName ?? iPilotDC.username;
-    avatarUrl = iPilotDC.avatarURL() ?? config.urlImage.discord;
-    pilotDC = iPilotDC;
+    avatarUrl = pilotDC.avatarUrl ?? config.urlImage.discord;
   } else {
     // Discordユーザー未登録
     description += `:bust_in_silhouette: ${iPilotName}\n`;
@@ -775,6 +777,26 @@ async function addRoster(client, interaction, subcommand) {
   if (flagNG == 0) {
     await fMongo.teamList(client.clientMongo, league);
   }
+}
+
+function isPilotDCLinked(pilotDCInfo) {
+  return (
+    pilotDCInfo &&
+    pilotDCInfo !== 'no discord acc' &&
+    pilotDCInfo !== '' &&
+    pilotDCInfo.id
+  );
+}
+
+function buildPilotDCFromUser(user) {
+  const pilotDC = user;
+  if (pilotDC.avatar == null) {
+    pilotDC.avatarUrl =
+      'https://cdn.discordapp.com/attachments/1143171140508991500/1318442274002309170/discord-round-black-icon.png';
+  } else {
+    pilotDC.avatarUrl = `https://cdn.discordapp.com/avatars/${pilotDC.id}/${pilotDC.avatar}.png`;
+  }
+  return pilotDC;
 }
 
 function validatePilotName(str) {
