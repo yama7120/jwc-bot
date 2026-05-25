@@ -81,6 +81,43 @@ function isLegendLeagueSeasonTrophyReset(beforePlayerStats, afterPlayerStats) {
   return diffTrophies <= -100;
 }
 
+function getStoredRankedSeasonId(playerStats, seasonData) {
+  if (playerStats?.leagueTier?.id === config_coc.leagueId.legend) {
+    return String(seasonData.seasonId);
+  }
+  const currentLeagueSeasonId = Number(playerStats?.currentLeagueSeasonId);
+  if (Number.isFinite(currentLeagueSeasonId) && currentLeagueSeasonId > 0) {
+    return `ranked:${currentLeagueSeasonId}`;
+  }
+  return String(seasonData.seasonId);
+}
+
+function isNonLegendLeagueReset(beforePlayerStats, afterPlayerStats) {
+  if (afterPlayerStats?.leagueTier?.id === config_coc.leagueId.legend) {
+    return false;
+  }
+
+  const beforeTrophies = Number(beforePlayerStats?.trophies ?? 0);
+  const afterTrophies = Number(afterPlayerStats?.trophies ?? 0);
+  const beforeAttackWins = Number(beforePlayerStats?.attackWins ?? 0);
+  const afterAttackWins = Number(afterPlayerStats?.attackWins ?? 0);
+  const beforeDefenseWins = Number(beforePlayerStats?.defenseWins ?? 0);
+  const afterDefenseWins = Number(afterPlayerStats?.defenseWins ?? 0);
+  const beforeLeagueSeasonId = beforePlayerStats?.currentLeagueSeasonId;
+  const afterLeagueSeasonId = afterPlayerStats?.currentLeagueSeasonId;
+
+  const droppedToZero = afterTrophies === 0 && beforeTrophies > 0;
+  const winsReset =
+    (afterAttackWins === 0 && beforeAttackWins > 0)
+    || (afterDefenseWins === 0 && beforeDefenseWins > 0);
+  const leagueSeasonChanged =
+    beforeLeagueSeasonId != null
+    && afterLeagueSeasonId != null
+    && String(beforeLeagueSeasonId) !== String(afterLeagueSeasonId);
+
+  return droppedToZero || (afterTrophies === 0 && (winsReset || leagueSeasonChanged));
+}
+
 /** Legend I 以外のランク戦シーズン切り替え（前シーズンの battle log が一括で「新規」扱いされるのを防ぐ） */
 function isNonLegendRankedSeasonStart(
   beforePlayerStats,
@@ -93,10 +130,11 @@ function isNonLegendRankedSeasonStart(
   }
 
   const storedSeason = mongoAcc?.legend?.lastRankedSeasonId;
+  const currentSeason = getStoredRankedSeasonId(afterPlayerStats, seasonData);
   if (
     typeof storedSeason === 'string'
     && storedSeason.length > 0
-    && storedSeason !== seasonData.seasonId
+    && storedSeason !== currentSeason
   ) {
     return true;
   }
@@ -131,6 +169,65 @@ function getLeagueTierDisplayName(scPlayer) {
   );
   const leagueName = leagueTierConfig?.name ?? scPlayer?.leagueTier?.name ?? 'Unknown League';
   return leagueName.toUpperCase();
+}
+
+function getLeagueTierSortOrder(leagueTierId) {
+  return config_coc.leagueTiers.findIndex((tier) => tier.id === leagueTierId);
+}
+
+function getLeagueResetSummaryLine(beforePlayerStats, afterPlayerStats) {
+  const beforeTierId = beforePlayerStats?.leagueTier?.id ?? null;
+  const afterTierId = afterPlayerStats?.leagueTier?.id ?? null;
+  const beforeLabel = getLeagueTierDisplayName(beforePlayerStats);
+  const afterLabel = getLeagueTierDisplayName(afterPlayerStats);
+  const beforeOrder = getLeagueTierSortOrder(beforeTierId);
+  const afterOrder = getLeagueTierSortOrder(afterTierId);
+
+  if (beforeOrder >= 0 && afterOrder >= 0) {
+    if (afterOrder > beforeOrder) {
+      return `${config.emote.up} Promoted to **${afterLabel}** from **${beforeLabel}**.`;
+    }
+    if (afterOrder < beforeOrder) {
+      return `${config.emote.down} Demoted to **${afterLabel}** from **${beforeLabel}**.`;
+    }
+    return `:white_small_square: Stayed in **${afterLabel}**.`;
+  }
+
+  if (beforeTierId != null && afterTierId != null && beforeTierId === afterTierId) {
+    return `:white_small_square: Stayed in **${afterLabel}**.`;
+  }
+
+  return `:exclamation: Ranked league reset: **${beforeLabel}** -> **${afterLabel}**`;
+}
+
+function getNextTournamentStartUnixFromReset(resetUnixSeconds, seasonData) {
+  if (Number.isFinite(resetUnixSeconds) && resetUnixSeconds > 0) {
+    const resetUtcMs = resetUnixSeconds * 1000;
+    const jstDate = new Date(resetUtcMs + (9 * 60 * 60 * 1000));
+    const jstDay = jstDate.getUTCDay(); // 0=Sun, 1=Mon, 2=Tue, ...
+    const daysUntilTuesday = (2 - jstDay + 7) % 7;
+
+    let tuesday2amJstUtcMs = Date.UTC(
+      jstDate.getUTCFullYear(),
+      jstDate.getUTCMonth(),
+      jstDate.getUTCDate() + daysUntilTuesday,
+      -7,
+      0,
+      0,
+      0,
+    );
+
+    if (tuesday2amJstUtcMs <= resetUtcMs) {
+      tuesday2amJstUtcMs += 7 * 24 * 60 * 60 * 1000;
+    }
+
+    return Math.floor(tuesday2amJstUtcMs / 1000);
+  }
+
+  const fallbackUnix = Math.floor(
+    new Date(seasonData?.tournamentWindow?.startTime ?? 0).getTime() / 1000,
+  );
+  return Number.isFinite(fallbackUnix) && fallbackUnix > 0 ? fallbackUnix : null;
 }
 
 function getRankedBattlesCapForTier(leagueTierId) {
@@ -194,6 +291,56 @@ async function createLogLegendNewSeason(
   return myEmbed;
 }
 
+async function createLogReset(
+  beforePlayerStats,
+  afterPlayerStats,
+  eventData,
+  seasonData,
+) {
+  const myEmbed = new EmbedBuilder();
+  myEmbed.setTitle('**⚔️ LEAGUE RESET!**');
+  const footer = `${getLeagueTierDisplayName(afterPlayerStats)}${leagueFooterCapSuffix(afterPlayerStats)}`;
+  myEmbed.setFooter({
+    text: footer,
+    iconURL: getRankedBattleLogFooterIconUrl(afterPlayerStats),
+  });
+  myEmbed.setColor(config.color.main);
+  myEmbed.setTimestamp();
+
+  const tournamentStartUnix = getNextTournamentStartUnixFromReset(
+    eventData?.unixTimeSeconds,
+    seasonData,
+  );
+
+  let description = '';
+  description += `<t:${eventData.unixTimeSeconds}:t> :trophy: **${eventData.trophiesCurrent}** `;
+  description += `${config.emote.thn[afterPlayerStats.townHallLevel]} **${afterPlayerStats.name}**\n\n`;
+  description += `${getLeagueResetSummaryLine(beforePlayerStats, afterPlayerStats)}\n`;
+  description += `Registration is now open for the next tournament.\n`;
+  if (Number.isFinite(tournamentStartUnix) && tournamentStartUnix > 0) {
+    description += `Next tournament starts: <t:${tournamentStartUnix}:F> (<t:${tournamentStartUnix}:R>)\n`;
+  }
+  myEmbed.setDescription(description);
+
+  return myEmbed;
+}
+
+async function markRankedSeasonTransition(client, mongoAcc, rankedSeasonId) {
+  await client.clientMongo
+    .db('jwc')
+    .collection('accounts')
+    .updateOne(
+      { tag: mongoAcc.tag },
+      {
+        $set: {
+          'legend.lastRankedSeasonId': rankedSeasonId,
+          'legend.rankedEventsSeeded': false,
+        },
+        $unset: { 'legend.rankedBattleLog': '' },
+      },
+    );
+}
+
 async function autoUpdateLegend(
   client,
   mongoAcc,
@@ -210,6 +357,7 @@ async function autoUpdateLegend(
   //console.dir(afterPlayerStats);
 
   const unixTimeSeconds = Math.floor(Date.now() / 1000);
+  const rankedSeasonId = getStoredRankedSeasonId(afterPlayerStats, seasonData);
 
   // 基本的なeventDataオブジェクトを作成（リセット通知用）
   const baseEventData = {
@@ -243,6 +391,18 @@ async function autoUpdateLegend(
     return;
   }
 
+  if (isNonLegendLeagueReset(beforePlayerStats, afterPlayerStats)) {
+    const embed = await createLogReset(
+      beforePlayerStats,
+      afterPlayerStats,
+      baseEventData,
+      seasonData,
+    );
+    await sendLogEmbed(client, mongoAcc, embed);
+    await markRankedSeasonTransition(client, mongoAcc, rankedSeasonId);
+    return;
+  }
+
   // Legend I 以外: シーズン切り替え時は新シーズン通知のみ（前シーズン分の防衛/攻撃は通知しない）
   if (
     isNonLegendRankedSeasonStart(
@@ -268,13 +428,7 @@ async function autoUpdateLegend(
         seasonData,
       );
     } else {
-      await client.clientMongo
-        .db('jwc')
-        .collection('accounts')
-        .updateOne(
-          { tag: mongoAcc.tag },
-          { $set: { 'legend.lastRankedSeasonId': seasonData.seasonId } },
-        );
+      await markRankedSeasonTransition(client, mongoAcc, rankedSeasonId);
     }
     return;
   }
@@ -911,6 +1065,7 @@ async function bootstrapLegendRankedEvents(
 ) {
   const capped = rankedItems.length > 120 ? rankedItems.slice(-120) : rankedItems;
   let mongoAccMut = { ...mongoAcc };
+  const rankedSeasonId = getStoredRankedSeasonId(afterPlayerStats, seasonData);
 
   for (const item of capped) {
     const opp = item?.opponentPlayerTag ?? '';
@@ -964,7 +1119,7 @@ async function bootstrapLegendRankedEvents(
       {
         $set: {
           'legend.rankedEventsSeeded': true,
-          'legend.lastRankedSeasonId': seasonData.seasonId,
+          'legend.lastRankedSeasonId': rankedSeasonId,
         },
         $unset: { 'legend.rankedBattleLog': '' },
       },
@@ -982,6 +1137,7 @@ async function ingestLegendRankedBattleLogSilent(
 ) {
   const capped = rankedItems.length > 120 ? rankedItems.slice(-120) : rankedItems;
   let mongoAccMut = { ...mongoAcc };
+  const rankedSeasonId = getStoredRankedSeasonId(afterPlayerStats, seasonData);
 
   for (const item of capped) {
     const opp = item?.opponentPlayerTag ?? '';
@@ -1035,7 +1191,7 @@ async function ingestLegendRankedBattleLogSilent(
       {
         $set: {
           'legend.rankedEventsSeeded': true,
-          'legend.lastRankedSeasonId': seasonData.seasonId,
+          'legend.lastRankedSeasonId': rankedSeasonId,
         },
         $unset: { 'legend.rankedBattleLog': '' },
       },
@@ -1056,6 +1212,7 @@ async function processLegendRankedBattleLog(
   seasonData,
 ) {
   await reloadMongoAccLegendProjection(client, mongoAcc);
+  const rankedSeasonId = getStoredRankedSeasonId(afterPlayerStats, seasonData);
 
   const ranked = filterRankedBattleItems(battleLogItems);
 
@@ -1181,7 +1338,7 @@ async function processLegendRankedBattleLog(
       {
         $set: {
           'legend.rankedEventsSeeded': true,
-          'legend.lastRankedSeasonId': seasonData.seasonId,
+          'legend.lastRankedSeasonId': rankedSeasonId,
         },
         $unset: { 'legend.rankedBattleLog': '' },
       },

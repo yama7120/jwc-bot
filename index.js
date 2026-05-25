@@ -351,7 +351,10 @@ class PollingSystem {
         filter: (before, after) =>
           before.trophies !== after.trophies ||
           before.attackWins !== after.attackWins ||
-          before.defenseWins !== after.defenseWins,
+          before.defenseWins !== after.defenseWins ||
+          before.leagueTier?.id !== after.leagueTier?.id ||
+          before.currentLeagueSeasonId !== after.currentLeagueSeasonId ||
+          before.currentLeagueGroupTag !== after.currentLeagueGroupTag,
       });
       console.log('🔧 Registered playerStatsChange event filter');
       return this.pollingClientTrophies;
@@ -384,6 +387,7 @@ class PollingSystem {
           'legend.events': 1,
           'legend.weeks': 1,
           'legend.current': 1,
+          'legend.lastRankedSeasonId': 1,
           legendStatistics: 1,
           'leagueTier.id': 1,
           'pilotDC.id': 1,
@@ -454,6 +458,10 @@ class PollingSystem {
       attackWins,
       defenseWins,
       leagueTier,
+      currentLeagueSeasonId,
+      previousLeagueSeasonId,
+      currentLeagueGroupTag,
+      previousLeagueGroupTag,
     }) => ({
       tag,
       name,
@@ -462,6 +470,10 @@ class PollingSystem {
       attackWins,
       defenseWins,
       leagueTier,
+      currentLeagueSeasonId,
+      previousLeagueSeasonId,
+      currentLeagueGroupTag,
+      previousLeagueGroupTag,
     });
     const beforeSlim = {
       ...pick(beforePlayerStats),
