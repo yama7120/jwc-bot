@@ -506,9 +506,25 @@ export default {
           .collection('clans')
           .findOne({ rep_channel: interaction.channel.id });
 
+        if (!mongoTeam) {
+          await interaction.respond([]);
+          console.error(
+            `rep autocomplete: no team found for channel ${interaction.channel.id}`,
+          );
+          return;
+        }
+
+        const leagueM = config.leagueM[mongoTeam.league];
+        if (!leagueM) {
+          await interaction.respond([]);
+          console.error(
+            `rep autocomplete: invalid league "${mongoTeam.league}" for team ${mongoTeam.clan_abbr}`,
+          );
+          return;
+        }
+
         const query = {
-          [`homeClanAbbr.${config.leagueM[mongoTeam.league]}`]:
-            mongoTeam.clan_abbr,
+          [`homeClanAbbr.${leagueM}`]: mongoTeam.clan_abbr,
           status: true,
         };
         const projection = {
@@ -541,7 +557,7 @@ export default {
         if (accs.length > 0) {
           await interaction.respond(
             accs.map((acc) => ({
-              name: `${acc.tag} [TH${acc.townHallLevel}] ${acc.pilotName[config.leagueM[mongoTeam.league]]} | ${acc.name}`,
+              name: `${acc.tag} [TH${acc.townHallLevel}] ${acc.pilotName?.[leagueM] ?? '-'} | ${acc.name}`,
               value: acc.tag,
             })),
           );
@@ -810,6 +826,20 @@ async function deleteRoster(client, interaction) {
     .collection('clans')
     .findOne({ rep_channel: interaction.channel.id });
 
+  if (!mongoTeam) {
+    await interaction.followUp({ content: '*ERROR: No Team*', ephemeral: true });
+    return;
+  }
+
+  const leagueM = config.leagueM[mongoTeam.league];
+  if (!leagueM) {
+    await interaction.followUp({
+      content: '*ERROR: Invalid Team League*',
+      ephemeral: true,
+    });
+    return;
+  }
+
   const iPlayerTag = await interaction.options.getString('account');
 
   const mongoAcc = await client.clientMongo
@@ -824,7 +854,7 @@ async function deleteRoster(client, interaction) {
   
   let listingUpdate = {};
   listingUpdate.homeClanAbbr = mongoAcc.homeClanAbbr;
-  listingUpdate.homeClanAbbr[config.leagueM[mongoTeam.league]] = '';
+  listingUpdate.homeClanAbbr[leagueM] = '';
   await client.clientMongo
     .db('jwc')
     .collection('accounts')
