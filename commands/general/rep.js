@@ -571,24 +571,24 @@ export default {
     const subcommand = interaction.options.getSubcommand();
 
     if (subcommand == 'deal_war') {
-      dealWar(client, interaction);
+      await dealWar(client, interaction);
     } else if (subcommand == 'deal_war_5v') {
-      dealWar5v(client, interaction);
+      await dealWar5v(client, interaction);
     } else if (subcommand == 'my_roster') {
-      myRoster(client, interaction);
+      await myRoster(client, interaction);
     } else if (subcommand == 'my_team_information') {
-      myTeamInformation(client, interaction);
+      await myTeamInformation(client, interaction);
     } else if (subcommandGroup == 'roster') {
       if (subcommand == 'new' || subcommand == 'new_5v') {
-        addRoster(client, interaction, subcommand);
+        await addRoster(client, interaction, subcommand);
       } else if (subcommand == 'delete') {
-        deleteRoster(client, interaction);
+        await deleteRoster(client, interaction);
       }
     } else if (subcommandGroup == 'edit') {
       if (subcommand == 'team_information') {
         await editTeamInformation(client, interaction);
       } else if (subcommand == 'my_channel') {
-        editMyChannel(client, interaction);
+        await editMyChannel(client, interaction);
       }
     }
 
@@ -685,13 +685,11 @@ async function addRoster(client, interaction, subcommand) {
     title = await functions.getAccInfoTitle(mongoAcc, 'long');
     description += await functions.getAccInfoDescriptionMain(mongoAcc, 'long');
     townHallLevel = mongoAcc.townHallLevel;
+    const registeredClanAbbr = mongoAcc.homeClanAbbr?.[leagueM];
 
-    if (
-      mongoAcc.homeClanAbbr[leagueM] != '' &&
-      mongoAcc.homeClanAbbr[leagueM] != null
-    ) {
+    if (registeredClanAbbr != '' && registeredClanAbbr != null) {
       // チーム登録済みかチェックする
-      description += `\n:exclamation: *Already Registered:* **${String(mongoAcc.homeClanAbbr[leagueM]).toUpperCase()}**`;
+      description += `\n:exclamation: *Already Registered:* **${String(registeredClanAbbr).toUpperCase()}**`;
       flagNG = 1;
     }
   } else {
@@ -743,9 +741,9 @@ async function addRoster(client, interaction, subcommand) {
     // OK -> mongoDB に登録
     if (mongoAcc) {
       let listingUpdate = {
-        league: mongoAcc.league,
-        homeClanAbbr: mongoAcc.homeClanAbbr,
-        pilotName: mongoAcc.pilotName,
+        league: { ...(mongoAcc.league ?? {}) },
+        homeClanAbbr: { ...(mongoAcc.homeClanAbbr ?? {}) },
+        pilotName: { ...(mongoAcc.pilotName ?? {}) },
         pilotDC: mongoAcc.pilotDC,
       };
       listingUpdate.league[leagueM] = league;
@@ -786,9 +784,16 @@ async function addRoster(client, interaction, subcommand) {
 
   await interaction.followUp({ embeds: [embed] });
 
-  await client.channels.cache
-    .get(config.logch.playerRegistration[league])
-    .send({ embeds: [embed] });
+  const registrationLogChannel = client.channels.cache.get(
+    config.logch.playerRegistration[league],
+  );
+  if (registrationLogChannel) {
+    await registrationLogChannel.send({ embeds: [embed] });
+  } else {
+    console.error(
+      `playerRegistration log channel not found for league ${league}`,
+    );
+  }
 
   if (flagNG == 0) {
     await fMongo.teamList(client.clientMongo, league);
@@ -853,7 +858,7 @@ async function deleteRoster(client, interaction) {
   }
   
   let listingUpdate = {};
-  listingUpdate.homeClanAbbr = mongoAcc.homeClanAbbr;
+  listingUpdate.homeClanAbbr = { ...(mongoAcc.homeClanAbbr ?? {}) };
   listingUpdate.homeClanAbbr[leagueM] = '';
   await client.clientMongo
     .db('jwc')
@@ -877,9 +882,16 @@ async function deleteRoster(client, interaction) {
 
   await interaction.followUp({ embeds: [embed] });
 
-  await client.channels.cache
-    .get(config.logch.playerRegistration[mongoTeam.league])
-    .send({ embeds: [embed] });
+  const registrationLogChannel = client.channels.cache.get(
+    config.logch.playerRegistration[mongoTeam.league],
+  );
+  if (registrationLogChannel) {
+    await registrationLogChannel.send({ embeds: [embed] });
+  } else {
+    console.error(
+      `playerRegistration log channel not found for league ${mongoTeam.league}`,
+    );
+  }
 
   await fMongo.teamList(client.clientMongo, mongoTeam.league);
 }
@@ -895,9 +907,9 @@ async function myRoster(client, interaction) {
     .findOne({ 'log.main.channel_id': interaction.channel.id });
 
   if (mongoTeam) {
-    fRoster.roster(interaction, client, mongoTeam.league, mongoTeam.clan_abbr);
+    await fRoster.roster(interaction, client, mongoTeam.league, mongoTeam.clan_abbr);
   } else if (mongoTeam2) {
-    fRoster.roster(interaction, client, mongoTeam2.league, mongoTeam2.clan_abbr);
+    await fRoster.roster(interaction, client, mongoTeam2.league, mongoTeam2.clan_abbr);
   } else {
     await interaction.followUp({ content: '*Error*', ephemeral: true });
     return;
@@ -951,6 +963,15 @@ async function dealWar5v(client, interaction) {
     .db('jwc')
     .collection('wars')
     .findOne({ nego_channel: iChId });
+
+  if (!mongoWar) {
+    await interaction.followUp({
+      content: '*ERROR: No War*',
+      ephemeral: true,
+    });
+    return;
+  }
+
   let league = mongoWar.league;
   let week = mongoWar.week;
   let match = mongoWar.match;
@@ -978,7 +999,18 @@ async function dealWar5v(client, interaction) {
     message += `* iTimeMatch: ${iTimeMatch}\n`;
     message += `* iTimePrep: ${iTimePrep}\n`;
     message += `* iTimeBattle: ${iTimeBattle}\n`;
-    interaction.followUp({ content: message });
+    await interaction.followUp({ content: message });
+    return;
+  }
+
+  if (!mongoClanA || !mongoClanB) {
+    await interaction.followUp({
+      content: '*ERROR: Team data not found*',
+      ephemeral: true,
+    });
+    console.error(
+      `dealWar5v: clan data not found (${clanAbbrA}, ${clanAbbrB})`,
+    );
     return;
   }
 
@@ -986,6 +1018,18 @@ async function dealWar5v(client, interaction) {
   const clanNameB = mongoClanB.clan_name;
   const clanTagA = mongoClanA.clan_tag;
   const clanTagB = mongoClanB.clan_tag;
+
+  if (!clanTagA || !clanTagB) {
+    await interaction.followUp({
+      content: '*ERROR: Clan tag not found*',
+      ephemeral: true,
+    });
+    console.error(
+      `dealWar5v: clan tag not found (${clanAbbrA}, ${clanAbbrB})`,
+    );
+    return;
+  }
+
   const clanLinkA =
     'https://link.clashofclans.com/?action=OpenClanProfile&tag=' +
     clanTagA.slice(1);
@@ -1018,11 +1062,11 @@ async function dealWar5v(client, interaction) {
   embed.setDescription(description);
   embed.setColor(config.color[league]);
   embed.setFooter({ text: footer, iconURL: config.urlImage.jwc });
-  interaction.followUp({ embeds: [embed] });
+  await interaction.followUp({ embeds: [embed] });
 
   if (mongoClanA.log?.deal?.switch == 'on') {
     try {
-      client.channels.cache
+      await client.channels.cache
         .get(mongoClanA.log.deal.channel_id)
         .send({ embeds: [embed] });
     } catch (error) {
@@ -1031,7 +1075,7 @@ async function dealWar5v(client, interaction) {
   }
   if (mongoClanB.log?.deal?.switch == 'on') {
     try {
-      client.channels.cache
+      await client.channels.cache
         .get(mongoClanB.log.deal.channel_id)
         .send({ embeds: [embed] });
     } catch (error) {
@@ -1040,15 +1084,20 @@ async function dealWar5v(client, interaction) {
   }
 
   // check
-  const oldCh = await interaction.guild.channels.fetch(iChId);
-  let newChName = oldCh.name.replace('✅', '');
-  newChName = '✅' + newChName;
-  await interaction.guild.channels.edit(interaction.channelId, {
-    name: newChName,
-  });
+  try {
+    const oldCh = await interaction.guild.channels.fetch(iChId);
+    let newChName = oldCh.name.replace('✅', '');
+    newChName = '✅' + newChName;
+    await interaction.guild.channels.edit(interaction.channelId, {
+      name: newChName,
+    });
+  } catch (error) {
+    console.error(`dealWar5v: failed to update channel name ${iChId}`);
+    console.error(error);
+  }
 
   //db update
-  query = { nego_channel: iChId };
+  let query = { nego_channel: iChId };
   let deal = {};
   deal.date = dateJstLong;
   deal.time = iTimeMatch;
@@ -1064,7 +1113,7 @@ async function dealWar5v(client, interaction) {
     .updateOne(query, { $set: updatedListing });
 
   //auto-updating
-  functions.updateWarInfo(client, league, week);
+  await functions.updateWarInfo(client, league, week);
 
   let json = {};
   json.league = config.league[league];
@@ -1076,7 +1125,7 @@ async function dealWar5v(client, interaction) {
   json.unixTime = dealTimeUnixLong;
 
   // delete pre-deal calendar event if needed
-  if (mongoWar.deal != '') {
+  if (mongoWar.deal && mongoWar.deal != '') {
     json.type = 'delete_calendar_event';
     json.unixTimeOld = mongoWar.deal.unixTime;
     await editCalendarEvent(json);
@@ -1120,6 +1169,15 @@ async function dealWar(client, interaction) {
     .db('jwc')
     .collection('wars')
     .findOne({ nego_channel: iChId });
+
+  if (!mongoWar) {
+    await interaction.followUp({
+      content: '*ERROR: No War*',
+      ephemeral: true,
+    });
+    return;
+  }
+
   let league = mongoWar.league;
   let week = mongoWar.week;
   let match = mongoWar.match;
@@ -1143,6 +1201,14 @@ async function dealWar(client, interaction) {
     clanAbbrB = clanAbbr;
   }
 
+  if (!clanAbbrA || !clanAbbrB) {
+    await interaction.followUp({
+      content: '*ERROR: Invalid send team*',
+      ephemeral: true,
+    });
+    return;
+  }
+
   let mongoClanA = {};
   let mongoClanB = {};
   try {
@@ -1163,7 +1229,18 @@ async function dealWar(client, interaction) {
     message += `* iTimeBattle: ${iTimeBattle}\n`;
     message += `* iClanAbbrSend: ${iClanAbbrSend}\n`;
     message += `* iSize: ${iSize}\n`;
-    interaction.followUp({ content: message });
+    await interaction.followUp({ content: message });
+    return;
+  }
+
+  if (!mongoClanA || !mongoClanB) {
+    await interaction.followUp({
+      content: '*ERROR: Team data not found*',
+      ephemeral: true,
+    });
+    console.error(
+      `dealWar: clan data not found (${clanAbbrA}, ${clanAbbrB})`,
+    );
     return;
   }
 
@@ -1171,6 +1248,18 @@ async function dealWar(client, interaction) {
   const clanNameB = mongoClanB.clan_name;
   const clanTagA = mongoClanA.clan_tag;
   const clanTagB = mongoClanB.clan_tag;
+
+  if (!clanTagA || !clanTagB) {
+    await interaction.followUp({
+      content: '*ERROR: Clan tag not found*',
+      ephemeral: true,
+    });
+    console.error(
+      `dealWar: clan tag not found (${clanAbbrA}, ${clanAbbrB})`,
+    );
+    return;
+  }
+
   const clanLinkA =
     'https://link.clashofclans.com/?action=OpenClanProfile&tag=' +
     clanTagA.slice(1);
@@ -1201,11 +1290,11 @@ async function dealWar(client, interaction) {
   embed.setDescription(description);
   embed.setColor(config.color[league]);
   embed.setFooter({ text: footer, iconURL: config.urlImage.jwc });
-  interaction.followUp({ embeds: [embed] });
+  await interaction.followUp({ embeds: [embed] });
 
   if (mongoClanA.log?.deal?.switch == 'on') {
     try {
-      client.channels.cache
+      await client.channels.cache
         .get(mongoClanA.log.deal.channel_id)
         .send({ embeds: [embed] });
     } catch (error) {
@@ -1214,7 +1303,7 @@ async function dealWar(client, interaction) {
   }
   if (mongoClanB.log?.deal?.switch == 'on') {
     try {
-      client.channels.cache
+      await client.channels.cache
         .get(mongoClanB.log.deal.channel_id)
         .send({ embeds: [embed] });
     } catch (error) {
@@ -1223,12 +1312,17 @@ async function dealWar(client, interaction) {
   }
 
   // check
-  const oldCh = await interaction.guild.channels.fetch(iChId);
-  let newChName = oldCh.name.replace('✅', '');
-  newChName = '✅' + newChName;
-  await interaction.guild.channels.edit(interaction.channelId, {
-    name: newChName,
-  });
+  try {
+    const oldCh = await interaction.guild.channels.fetch(iChId);
+    let newChName = oldCh.name.replace('✅', '');
+    newChName = '✅' + newChName;
+    await interaction.guild.channels.edit(interaction.channelId, {
+      name: newChName,
+    });
+  } catch (error) {
+    console.error(`dealWar: failed to update channel name ${iChId}`);
+    console.error(error);
+  }
 
   //db update
   let query = { nego_channel: iChId };
@@ -1247,7 +1341,7 @@ async function dealWar(client, interaction) {
     .updateOne(query, { $set: updatedListing });
 
   //auto-updating
-  functions.updateWarInfo(client, league, week);
+  await functions.updateWarInfo(client, league, week);
 
   let json = {};
   json.league = league;
@@ -1259,7 +1353,7 @@ async function dealWar(client, interaction) {
   json.unixTime = dealTimeUnixLong;
 
   // delete pre-deal calendar event if needed
-  if (mongoWar.deal != '') {
+  if (mongoWar.deal && mongoWar.deal != '') {
     json.type = 'delete_calendar_event';
     json.unixTimeOld = mongoWar.deal.unixTime;
     await editCalendarEvent(json);
@@ -1649,7 +1743,7 @@ async function editMyChannel(client, interaction) {
     interaction.user.id != mongoTeam.rep_3rd?.id
   ) {
     if (Object.values(config.adminId).includes(interaction.user.id) == false) {
-      interaction.followUp(
+      await interaction.followUp(
         `:exclamation: *Only reps can change clan information.*`,
       );
       return;

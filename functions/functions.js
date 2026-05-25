@@ -982,11 +982,15 @@ async function updateWarInfo(client, league, weekStr) {
     .findOne(query);
 
   if (dbValueSch != null) {
-    const message = await client.channels.cache
-      .get(config.leagueCh[league])
-      .messages.fetch(dbValueSch.message_id);
+    const warInfoChannel = client.channels.cache.get(config.leagueCh[league]);
+    if (!warInfoChannel) {
+      console.error(`updateWarInfo: channel not found for league ${league}`);
+      return;
+    }
+
+    const message = await warInfoChannel.messages.fetch(dbValueSch.message_id);
     if (message != null) {
-      message.edit({ embeds: [embed] });
+      await message.edit({ embeds: [embed] });
     }
   }
 
