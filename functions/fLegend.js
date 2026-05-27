@@ -644,57 +644,84 @@ export { writeLogLegendR2 };
 function aggregateDaysFromEvents(events) {
   const daysMap = new Map(); // key: 'season-day'
 
-  events.forEach((event) => {
+  const safeEvents = Array.isArray(events) ? events : [];
+  safeEvents.forEach((event) => {
     const key = `${event.season}-${event.day}`;
-
     if (!daysMap.has(key)) {
-      // 新しい日の初期化
       daysMap.set(key, {
         season: event.season,
         day: event.day,
         trophies: event.trophies,
         diffTrophies: 0,
-        attackTrophies: 0, // 攻撃で増加したトロフィー数
-        defenseTrophies: 0, // 防衛で減少したトロフィー数
+        attackTrophies: 0,
+        defenseTrophies: 0,
         attacks: 0,
         defenses: 0,
         triples: 0,
         defTriples: 0,
-          globalRank: null,
-          japanRank: null,
+        globalRank: null,
+        japanRank: null,
+        _attackEvents: [],
+        _defenseEvents: [],
+        _latestUnix: null,
       });
     }
 
     const dayEntry = daysMap.get(key);
-
-    // カウンター更新（ランク戦ログ由来は leagueId 付き。action が attack/defense のみ集計）
-    switch (event.action) {
-      case 'attack':
-        dayEntry.attacks++;
-        if (event.diffTrophies === 40) {
-          dayEntry.triples++;
-        }
-        dayEntry.attackTrophies += event.diffTrophies ?? 0;
-        break;
-      case 'defense':
-        dayEntry.defenses++;
-        if (event.diffTrophies === -40) {
-          dayEntry.defTriples++;
-        }
-        dayEntry.defenseTrophies += event.diffTrophies ?? 0;
-        break;
-      default:
-        break;
+    const unix = typeof event?.unixTime === 'number' ? event.unixTime : null;
+    if (unix != null && (dayEntry._latestUnix == null || unix > dayEntry._latestUnix)) {
+      dayEntry._latestUnix = unix;
+      dayEntry.trophies = event.trophies;
     }
 
-    // トロフィー累計
-    dayEntry.diffTrophies += event.diffTrophies;
+    // action が attack/defense のみ集計（それ以外は diffTrophies だけ加算）
+    if (event.action === 'attack') {
+      dayEntry._attackEvents.push(event);
+    } else if (event.action === 'defense') {
+      dayEntry._defenseEvents.push(event);
+    }
 
-    // 最新のトロフィー数を保持
-    dayEntry.trophies = event.trophies;
+    dayEntry.diffTrophies += event.diffTrophies;
   });
 
-  // Mapを配列に変換してソート
+  // Legend League は 1 日 8 回上限。表示/集計は最新 8 件に丸める。
+  const CAP = 8;
+  daysMap.forEach((dayEntry) => {
+    const sortDesc = (a, b) => (Number(b?.unixTime ?? 0) - Number(a?.unixTime ?? 0));
+
+    const attacksSorted = dayEntry._attackEvents.sort(sortDesc);
+    const defensesSorted = dayEntry._defenseEvents.sort(sortDesc);
+
+    const attacksCapped = attacksSorted.slice(0, CAP);
+    const defensesCapped = defensesSorted.slice(0, CAP);
+
+    dayEntry.attacks = attacksCapped.length;
+    dayEntry.defenses = defensesCapped.length;
+
+    dayEntry.attackTrophies = attacksCapped.reduce(
+      (sum, e) => sum + (Number(e?.diffTrophies) || 0),
+      0,
+    );
+    dayEntry.defenseTrophies = defensesCapped.reduce(
+      (sum, e) => sum + (Number(e?.diffTrophies) || 0),
+      0,
+    );
+
+    dayEntry.triples = attacksCapped.reduce(
+      (n, e) => n + (Number(e?.diffTrophies) === 40 ? 1 : 0),
+      0,
+    );
+    dayEntry.defTriples = defensesCapped.reduce(
+      (n, e) => n + (Number(e?.diffTrophies) === -40 ? 1 : 0),
+      0,
+    );
+
+    // internal
+    delete dayEntry._attackEvents;
+    delete dayEntry._defenseEvents;
+    delete dayEntry._latestUnix;
+  });
+
   return Array.from(daysMap.values()).sort((a, b) => {
     if (a.season !== b.season) return b.season - a.season;
     return b.day - a.day;
@@ -938,6 +965,76 @@ function calcDefenseTrophies(stars, destruction) {
   return 40 - attacker;
 }
 
+/**
+ * CoC battleTime ("YYYYMMDDTHHMMSS.SSSZ") を unix seconds に変換。
+ * パースできない場合は null.
+ */
+function battleTimeToUnixSeconds(battleTimeRaw) {
+  if (typeof battleTimeRaw !== 'string') return null;
+  const s = battleTimeRaw.trim();
+  // Example: "20260527T165501.000Z"
+  const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(?:\.(\d{1,3}))?Z$/.exec(s);
+  if (!m) return null;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  const hour = Number(m[4]);
+  const minute = Number(m[5]);
+  const second = Number(m[6]);
+  const ms = m[7] != null ? Number(String(m[7]).padEnd(3, '0')) : 0;
+  if (
+    !Number.isFinite(year)
+    || !Number.isFinite(month)
+    || !Number.isFinite(day)
+    || !Number.isFinite(hour)
+    || !Number.isFinite(minute)
+    || !Number.isFinite(second)
+    || !Number.isFinite(ms)
+  ) {
+    return null;
+  }
+  const utcMs = Date.UTC(year, month - 1, day, hour, minute, second, ms);
+  if (!Number.isFinite(utcMs)) return null;
+  return Math.floor(utcMs / 1000);
+}
+
+/** Legend / Ranked の「日」境界: JST 02:00 (= UTC 17:00) にスナップ */
+function rankedDayStartUtcMs(timestampMs) {
+  const d = new Date(timestampMs);
+  let boundaryMs = Date.UTC(
+    d.getUTCFullYear(),
+    d.getUTCMonth(),
+    d.getUTCDate(),
+    17,
+    0,
+    0,
+    0,
+  );
+  if (timestampMs < boundaryMs) {
+    boundaryMs -= 24 * 60 * 60 * 1000;
+  }
+  return boundaryMs;
+}
+
+function getLegendGraceSeasonData(seasonData, latestStoredEventDay, nowMs = Date.now()) {
+  // battlelog に実時刻が無い前提の緩和策:
+  // 「日付切替直後」かつ「まだ当日の events が無い」場合、取り込み分を前日扱いに寄せる。
+  const GRACE_MS = 20 * 60 * 1000; // 20 minutes after JST 02:00
+  const dayStart = rankedDayStartUtcMs(nowMs);
+  const withinGrace = nowMs - dayStart >= 0 && nowMs - dayStart < GRACE_MS;
+  if (!withinGrace) return seasonData;
+  const cur = Number(seasonData?.daysNow);
+  const prev = cur - 1;
+  if (!Number.isFinite(cur) || prev < 1) return seasonData;
+  if (latestStoredEventDay == null) return seasonData;
+  if (Number(latestStoredEventDay) >= cur) return seasonData;
+  // only shift when the latest stored day is behind the computed day
+  if (Number(latestStoredEventDay) === prev) {
+    return { ...seasonData, daysNow: prev };
+  }
+  return seasonData;
+}
+
 /** battle log 1行から、プレイヤー視点のトロフィー増減（Ranked Battles ルール） */
 function rankedBattleTrophyDeltaFromBattleLog(
   isOurAttack,
@@ -1066,6 +1163,10 @@ async function bootstrapLegendRankedEvents(
   const capped = rankedItems.length > 120 ? rankedItems.slice(-120) : rankedItems;
   let mongoAccMut = { ...mongoAcc };
   const rankedSeasonId = getStoredRankedSeasonId(afterPlayerStats, seasonData);
+  const latestStoredDay = Array.isArray(mongoAccMut?.legend?.events) && mongoAccMut.legend.events.length > 0
+    ? mongoAccMut.legend.events[0]?.day
+    : null;
+  const seasonDataGrace = getLegendGraceSeasonData(seasonData, latestStoredDay);
 
   for (const item of capped) {
     const opp = item?.opponentPlayerTag ?? '';
@@ -1088,13 +1189,17 @@ async function bootstrapLegendRankedEvents(
       item?.destructionPercentage,
       afterPlayerStats.leagueTier.id,
     );
+    const battleUnix = battleTimeToUnixSeconds(item?.battleTime);
+    const seasonDataAtBattle = battleUnix
+      ? functions.calculateSeasonValues(client, new Date(battleUnix * 1000))
+      : seasonDataGrace;
     const eventData = buildRankedEventDataFromBattleLogItem(
       item,
       afterPlayerStats,
-      seasonData,
+      seasonDataAtBattle,
       afterPlayerStats.trophies,
       diffT,
-      Math.floor(Date.now() / 1000),
+      battleUnix ?? Math.floor(Date.now() / 1000),
       false,
     );
 
@@ -1138,6 +1243,10 @@ async function ingestLegendRankedBattleLogSilent(
   const capped = rankedItems.length > 120 ? rankedItems.slice(-120) : rankedItems;
   let mongoAccMut = { ...mongoAcc };
   const rankedSeasonId = getStoredRankedSeasonId(afterPlayerStats, seasonData);
+  const latestStoredDay = Array.isArray(mongoAccMut?.legend?.events) && mongoAccMut.legend.events.length > 0
+    ? mongoAccMut.legend.events[0]?.day
+    : null;
+  const seasonDataGrace = getLegendGraceSeasonData(seasonData, latestStoredDay);
 
   for (const item of capped) {
     const opp = item?.opponentPlayerTag ?? '';
@@ -1160,13 +1269,17 @@ async function ingestLegendRankedBattleLogSilent(
       item?.destructionPercentage,
       afterPlayerStats.leagueTier.id,
     );
+    const battleUnix = battleTimeToUnixSeconds(item?.battleTime);
+    const seasonDataAtBattle = battleUnix
+      ? functions.calculateSeasonValues(client, new Date(battleUnix * 1000))
+      : seasonDataGrace;
     const eventData = buildRankedEventDataFromBattleLogItem(
       item,
       afterPlayerStats,
-      seasonData,
+      seasonDataAtBattle,
       afterPlayerStats.trophies,
       diffT,
-      Math.floor(Date.now() / 1000),
+      battleUnix ?? Math.floor(Date.now() / 1000),
       false,
     );
 
@@ -1264,6 +1377,10 @@ async function processLegendRankedBattleLog(
   let lastResult = null;
   const baseUnixTimeSeconds = Math.floor(Date.now() / 1000);
   const spacedStepSeconds = 120;
+  const latestStoredDay = Array.isArray(mongoAccMut?.legend?.events) && mongoAccMut.legend.events.length > 0
+    ? mongoAccMut.legend.events[0]?.day
+    : null;
+  const seasonDataGrace = getLegendGraceSeasonData(seasonData, latestStoredDay);
   const diffsChronological = chronological.map((item) => {
     const isAttack = item?.attack === true;
     return rankedBattleTrophyDeltaFromBattleLog(
@@ -1282,12 +1399,17 @@ async function processLegendRankedBattleLog(
     const legendEventType = isAttack ? 'attack' : 'defense';
     const diffT = diffsChronological[idx];
     runningTrophies += diffT;
-    const unixTimeSeconds = baseUnixTimeSeconds + (idx * spacedStepSeconds);
+    const battleUnix = battleTimeToUnixSeconds(item?.battleTime);
+    const unixTimeSeconds =
+      battleUnix ?? (baseUnixTimeSeconds + (idx * spacedStepSeconds));
+    const seasonDataAtBattle = battleUnix
+      ? functions.calculateSeasonValues(client, new Date(battleUnix * 1000))
+      : seasonDataGrace;
     const includeRanking = true;
     const eventData = buildRankedEventDataFromBattleLogItem(
       item,
       afterPlayerStats,
-      seasonData,
+      seasonDataAtBattle,
       runningTrophies,
       diffT,
       unixTimeSeconds,
