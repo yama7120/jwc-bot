@@ -204,8 +204,9 @@ async function cronUpdate2pmLegend1(client) {
   // Legend I の日境界: JST 14:00 (= UTC 05:00)
   const seasonData = functions.calculateSeasonValues(client, currentDate, 5);
 
-  // Legend I に必要な範囲だけ更新（全アカウント更新は重いので避ける）
-  const nAccs = await autoUpdateAccLegend1(client);
+  // 14:00 に全体更新・ランキング更新も集約する
+  const nAccs = await autoUpdateAcc(client);
+  await fRanking.rankingMain(client.clientMongo);
 
   // Legend I の日次サマリ（TOP10 / day start / result / day entry）
   await sendLogUpdated(client, nAccs, seasonData);

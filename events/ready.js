@@ -66,12 +66,6 @@ export default {
       console.log('END: fMongo.legends200');
     });
 
-    // 2am (JST)
-    scheduleCronWithGuard('cronUpdate2am', '00 00 17 * * *', async () => {
-      await fCron.cronUpdate2am(client);
-      console.log('END: fCron.cronUpdate2am');
-    });
-
     // 2pm (JST) - Legend I day boundary
     scheduleCronWithGuard('cronUpdate2pmLegend1', '00 00 05 * * *', async () => {
       await fCron.cronUpdate2pmLegend1(client);
