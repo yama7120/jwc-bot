@@ -436,9 +436,13 @@ class PollingSystem {
       return;
     }
     const currentDate = new Date();
+    // Legend I は JST 14:00 (= UTC 05:00) 切替、その他は JST 02:00 (= UTC 17:00)
+    const boundaryUtcHour =
+      afterPlayerStats?.leagueTier?.id === config_coc.leagueId.legend ? 5 : 17;
     const seasonData = this.functions.calculateSeasonValues(
       this.client,
       currentDate,
+      boundaryUtcHour,
     );
     if (this.playerUpdateLocks.has(tagPlayer)) {
       return;

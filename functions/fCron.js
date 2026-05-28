@@ -189,23 +189,34 @@ async function sendReminder(client, channelId, mongoWar, mongoClanA, mongoClanB)
 async function cronUpdate2am(client) {
   const startedAt = Date.now();
   const currentDate = new Date();
-  const seasonData = functions.calculateSeasonValues(client, currentDate, true);
+  // cronUpdate2am は「JST 02:00 切替」側の処理（Legend I 以外）
+  const seasonData = functions.calculateSeasonValues(client, currentDate, 17);
   const nAccs = await autoUpdateAcc(client);
 
-  await sendLogUpdated(client, nAccs, seasonData);
-
   await fRanking.rankingMain(client.clientMongo);
-
-  await sendLogLegendDay(client, seasonData);
-
-  await sendLegendResult(client, seasonData);
-
-  await functions.updateStatusInfoLegend(client, seasonData);
-
-  await addNewDayToLegendAccounts(client, seasonData);
   console.log(`[cronUpdate2am] elapsed=${Date.now() - startedAt}ms accounts=${nAccs}`);
 }
 export { cronUpdate2am };
+
+async function cronUpdate2pmLegend1(client) {
+  const startedAt = Date.now();
+  const currentDate = new Date();
+  // Legend I の日境界: JST 14:00 (= UTC 05:00)
+  const seasonData = functions.calculateSeasonValues(client, currentDate, 5);
+
+  // Legend I に必要な範囲だけ更新（全アカウント更新は重いので避ける）
+  const nAccs = await autoUpdateAccLegend1(client);
+
+  // Legend I の日次サマリ（TOP10 / day start / result / day entry）
+  await sendLogUpdated(client, nAccs, seasonData);
+  await sendLogLegendDay(client, seasonData);
+  await sendLegendResult(client, seasonData);
+  await functions.updateStatusInfoLegend(client, seasonData);
+  await addNewDayToLegendAccounts(client, seasonData);
+
+  console.log(`[cronUpdate2pmLegend1] elapsed=${Date.now() - startedAt}ms accounts=${nAccs}`);
+}
+export { cronUpdate2pmLegend1 };
 
 async function addNewDayToLegendAccounts(client, seasonData) {
   try {
@@ -320,6 +331,43 @@ async function autoUpdateAcc(client) {
   const accountsAll = await cursor.toArray();
   await cursor.close();
   console.log(`accountsAll: ${accountsAll.length}`);
+
+  const nAccPerLoop = 30;
+  const nLoop = Math.ceil(accountsAll.length / nAccPerLoop);
+
+  for (let i = 0; i < nLoop; i++) {
+    const min = nAccPerLoop * i;
+    const max = Math.min(nAccPerLoop * (i + 1), accountsAll.length);
+    const accs = accountsAll.slice(min, max);
+
+    await Promise.all(accs.map(acc =>
+      fMongo.updateAcc(client, acc.tag).catch(error => console.error(error))
+    ));
+
+    console.log(`${max} / ${accountsAll.length}`);
+    await functions.sleep(1000);
+  }
+
+  return accountsAll.length;
+}
+
+async function autoUpdateAccLegend1(client) {
+  console.log(`start: autoUpdateAccLegend1`);
+
+  const query = {
+    status: true,
+    'leagueTier.id': config_coc.leagueId.legend,
+  };
+  const options = { projection: { _id: 0, tag: 1 } };
+  const sort = { trophies: -1 };
+  const cursor = client.clientMongo
+    .db('jwc')
+    .collection('accounts')
+    .find(query, options)
+    .sort(sort);
+  const accountsAll = await cursor.toArray();
+  await cursor.close();
+  console.log(`accountsLegend1: ${accountsAll.length}`);
 
   const nAccPerLoop = 30;
   const nLoop = Math.ceil(accountsAll.length / nAccPerLoop);

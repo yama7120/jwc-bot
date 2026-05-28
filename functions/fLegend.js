@@ -999,13 +999,13 @@ function battleTimeToUnixSeconds(battleTimeRaw) {
 }
 
 /** Legend / Ranked の「日」境界: JST 02:00 (= UTC 17:00) にスナップ */
-function rankedDayStartUtcMs(timestampMs) {
+function rankedDayStartUtcMs(timestampMs, boundaryUtcHour = 17) {
   const d = new Date(timestampMs);
   let boundaryMs = Date.UTC(
     d.getUTCFullYear(),
     d.getUTCMonth(),
     d.getUTCDate(),
-    17,
+    boundaryUtcHour,
     0,
     0,
     0,
@@ -1020,7 +1020,11 @@ function getLegendGraceSeasonData(seasonData, latestStoredEventDay, nowMs = Date
   // battlelog に実時刻が無い前提の緩和策:
   // 「日付切替直後」かつ「まだ当日の events が無い」場合、取り込み分を前日扱いに寄せる。
   const GRACE_MS = 20 * 60 * 1000; // 20 minutes after JST 02:00
-  const dayStart = rankedDayStartUtcMs(nowMs);
+  const boundaryUtcHour = Number(seasonData?.dayBoundaryUtcHour);
+  const dayStart = rankedDayStartUtcMs(
+    nowMs,
+    Number.isFinite(boundaryUtcHour) ? boundaryUtcHour : 17,
+  );
   const withinGrace = nowMs - dayStart >= 0 && nowMs - dayStart < GRACE_MS;
   if (!withinGrace) return seasonData;
   const cur = Number(seasonData?.daysNow);

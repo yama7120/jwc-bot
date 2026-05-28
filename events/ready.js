@@ -72,6 +72,12 @@ export default {
       console.log('END: fCron.cronUpdate2am');
     });
 
+    // 2pm (JST) - Legend I day boundary
+    scheduleCronWithGuard('cronUpdate2pmLegend1', '00 00 05 * * *', async () => {
+      await fCron.cronUpdate2pmLegend1(client);
+      console.log('END: fCron.cronUpdate2pmLegend1');
+    });
+
     // 毎週月曜 15:00 JST (= 月曜 06:00 UTC) — leaguehistory を一括取得
     scheduleCronWithGuard('syncLeagueHistory', '00 00 06 * * 1', async () => {
       await fMongo.syncLeagueHistoryAll(client);

@@ -1946,14 +1946,19 @@ function seasonToString(seasonValue) {
 }
 export { seasonToString };
 
-/** Legend / ランク戦の「1日」境界: JST 02:00 (= UTC 17:00)。cron・週次集計と同じ。 */
-function snapToRankedBattleDayStartMs(timestampMs) {
+/**
+ * Legend / ランク戦の「1日」境界にスナップする。
+ *
+ * - Legend I: JST 14:00 切替 (= UTC 05:00)
+ * - Legend I 以外: JST 02:00 切替 (= UTC 17:00)
+ */
+function snapToSeasonDayStartMs(timestampMs, boundaryUtcHour = 17) {
   const d = new Date(timestampMs);
   let boundaryMs = Date.UTC(
     d.getUTCFullYear(),
     d.getUTCMonth(),
     d.getUTCDate(),
-    17,
+    boundaryUtcHour,
     0,
     0,
     0,
@@ -1964,21 +1969,41 @@ function snapToRankedBattleDayStartMs(timestampMs) {
   return boundaryMs;
 }
 
-function calculateSeasonValues(client, now = new Date()) {
+/** 互換: 既存コード用（デフォルトは JST 02:00 切替） */
+function snapToRankedBattleDayStartMs(timestampMs) {
+  return snapToSeasonDayStartMs(timestampMs, 17);
+}
+
+/**
+ * `daysNow`/`daysEnd` を計算する。
+ *
+ * 第3引数は互換のため柔軟に解釈する:
+ * - number: boundaryUtcHour として扱う
+ * - object: { boundaryUtcHour }
+ * - other (e.g. boolean): 無視してデフォルト境界を使う
+ */
+function calculateSeasonValues(client, now = new Date(), opts = undefined) {
   const season = client.utilCoc.getSeason();
   const seasonEnd = season.endTime;
   const seasonId = season.seasonId;
 
   const tournamentWindow = client.utilCoc.getTournamentWindow();
 
+  const boundaryUtcHour =
+    typeof opts === 'number'
+      ? opts
+      : (opts && typeof opts === 'object' && typeof opts.boundaryUtcHour === 'number'
+        ? opts.boundaryUtcHour
+        : 17);
+
   const MS = 24 * 60 * 60 * 1000;
   const nowMs = now.getTime();
-  const seasonDayStartMs = snapToRankedBattleDayStartMs(season.startTime.getTime());
-  const nowDayStartMs = snapToRankedBattleDayStartMs(nowMs);
-  const seasonEndDayStartMs = snapToRankedBattleDayStartMs(seasonEnd.getTime());
+  const seasonDayStartMs = snapToSeasonDayStartMs(season.startTime.getTime(), boundaryUtcHour);
+  const nowDayStartMs = snapToSeasonDayStartMs(nowMs, boundaryUtcHour);
+  const seasonEndDayStartMs = snapToSeasonDayStartMs(seasonEnd.getTime(), boundaryUtcHour);
 
-  // clashofclans.js の season.startTime は UTC 05:00 等のことがあるが、
-  // CoC の League Day / 本 bot の cron は JST 02:00 (UTC 17:00) 境界。
+  // clashofclans.js の season.startTime は UTC 05:00 等のことがある。
+  // 境界はリーグ別に bot 側で統一して扱う。
   const seasonStart = new Date(seasonDayStartMs);
 
   const daysNow = Math.max(
@@ -1990,6 +2015,15 @@ function calculateSeasonValues(client, now = new Date()) {
     Math.floor((seasonEndDayStartMs - nowDayStartMs) / MS) + 1,
   );
 
-  return { seasonStart, seasonEnd, seasonId, daysNow, daysEnd, tournamentWindow };
+  return {
+    seasonStart,
+    seasonEnd,
+    seasonId,
+    daysNow,
+    daysEnd,
+    tournamentWindow,
+    dayBoundaryUtcHour: boundaryUtcHour,
+  };
 }
 export { calculateSeasonValues };
+export { snapToRankedBattleDayStartMs };

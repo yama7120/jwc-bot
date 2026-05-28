@@ -360,7 +360,10 @@ async function settings(interaction, client) {
   if (!mongoAcc.legend.logSettings) {
     let unixTime = Math.round(Date.now() / 1000);
     const currentDate = new Date();
-    const seasonData = functions.calculateSeasonValues(client, currentDate, true);
+    // Legend I は JST 14:00 (= UTC 05:00) 切替、その他は JST 02:00 (= UTC 17:00)
+    const boundaryUtcHour =
+      resultScan?.scPlayer?.leagueTier?.id === config_coc.leagueId.legend ? 5 : 17;
+    const seasonData = functions.calculateSeasonValues(client, currentDate, boundaryUtcHour);
     const eventData = {
       season: seasonData.seasonId,
       day: seasonData.daysNow,
