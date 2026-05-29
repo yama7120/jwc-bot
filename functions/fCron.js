@@ -510,6 +510,80 @@ async function sendLogUpdated(client, nAccs, seasonData) {
   await client.channels.cache.get(config.logch.freeBotRoom).send({ embeds: [myEmbed] });
 }
 
+function legendAccountHasBattleNotifications(logSettings) {
+  if (!logSettings) return false;
+  const attacksOn = logSettings.attacks === 'all';
+  const defensesOn =
+    logSettings.defenses === 'all' || logSettings.defenses === 'non-tripled';
+  return attacksOn || defensesOn;
+}
+
+async function sendLegendDayEmbedToAccount(client, mongoAcc, embed) {
+  const logSettings = mongoAcc?.legend?.logSettings;
+  if (!logSettings || logSettings.post === 'NA') return;
+  if (!legendAccountHasBattleNotifications(logSettings)) return;
+
+  try {
+    if (logSettings.post === 'channel') {
+      let channel = client.channels.cache.get(logSettings.channel);
+      if (!channel) {
+        channel = await client.channels.fetch(logSettings.channel).catch(() => null);
+      }
+      if (channel?.isTextBased()) {
+        await channel.send({ embeds: [embed] });
+      } else {
+        console.error(
+          'Day start: channel not found or not text-based',
+          mongoAcc.name,
+          mongoAcc.tag,
+        );
+      }
+    } else if (logSettings.post === 'dm') {
+      const pilotId = extractPilotId(mongoAcc);
+      if (!pilotId) {
+        console.warn('Day start: pilotDC.id missing', mongoAcc.tag);
+        return;
+      }
+      const pilot = await client.users.fetch(pilotId);
+      await pilot.send({ embeds: [embed] });
+    }
+  } catch (error) {
+    console.error('Day start notification failed:', mongoAcc.name, mongoAcc.tag, error);
+  }
+}
+
+async function sendLogLegendDayToMonitoredLegend1(client, embed) {
+  const query = {
+    status: true,
+    'leagueTier.id': config_coc.leagueId.legend,
+    'legend.logSettings.post': { $in: ['channel', 'dm'] },
+    $or: [
+      { 'legend.logSettings.attacks': 'all' },
+      { 'legend.logSettings.defenses': 'all' },
+      { 'legend.logSettings.defenses': 'non-tripled' },
+    ],
+  };
+  const projection = {
+    _id: 0,
+    tag: 1,
+    name: 1,
+    pilotDC: 1,
+    legend: 1,
+  };
+  const accounts = await client.clientMongo
+    .db('jwc')
+    .collection('accounts')
+    .find(query, { projection })
+    .toArray();
+
+  console.log(`sendLogLegendDayToMonitoredLegend1: ${accounts.length} accounts`);
+
+  for (const acc of accounts) {
+    await sendLegendDayEmbedToAccount(client, acc, embed);
+    await functions.sleep(200);
+  }
+}
+
 async function sendLogLegendDay(client, seasonData) {
   const myEmbed = new EmbedBuilder();
   const title = `:white_check_mark: **UPDATED**`;
@@ -527,7 +601,15 @@ async function sendLogLegendDay(client, seasonData) {
   myEmbed.setDescription(description);
   myEmbed.setColor(config.color.legend);
   myEmbed.setFooter({ text: footer, iconURL: config.urlImage.legend });
-  await client.channels.cache.get(config.logch.freeBotRoom).send({ embeds: [myEmbed] });
+
+  const freeCh = client.channels.cache.get(config.logch.freeBotRoom);
+  if (freeCh?.isTextBased()) {
+    await freeCh.send({ embeds: [myEmbed] });
+  } else {
+    console.error('freeBotRoom not found or not text-based');
+  }
+
+  await sendLogLegendDayToMonitoredLegend1(client, myEmbed);
 }
 
 
