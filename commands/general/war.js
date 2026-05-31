@@ -253,14 +253,16 @@ async function warSummary(interaction, client) {
 
 async function warLive(interaction, client) {
   const liveLeagues = ['j1', 'j2'];
+  const leagueConditions = await Promise.all(
+    liveLeagues.map(async (league) => ({
+      league,
+      season: config.season[league],
+      week: await functions.getWeekNow(league),
+    })),
+  );
   const query = {
     $and: [
-      {
-        $or: liveLeagues.map((league) => ({
-          league,
-          season: config.season[league],
-        })),
-      },
+      { $or: leagueConditions },
       {
         $or: [
           { 'clan_war.state': 'inWar' },
