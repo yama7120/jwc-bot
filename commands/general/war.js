@@ -252,7 +252,23 @@ async function warSummary(interaction, client) {
 
 
 async function warLive(interaction, client) {
-  const query = { season: config.season.j1, $or: [{ 'clan_war.state': 'inWar' }, { 'result.state': 'inWar' }] };
+  const liveLeagues = ['j1', 'j2'];
+  const query = {
+    $and: [
+      {
+        $or: liveLeagues.map((league) => ({
+          league,
+          season: config.season[league],
+        })),
+      },
+      {
+        $or: [
+          { 'clan_war.state': 'inWar' },
+          { 'result.state': 'inWar' },
+        ],
+      },
+    ],
+  };
   const options = { projection: { _id: 0, league: 1, week: 1, match: 1, result: 1, clan_abbr: 1, opponent_abbr: 1, name_match: 1, clan_war: 1 } };
   const sort = { 'league': 1, 'week': 1, 'match': 1 };
   const cursor = client.clientMongo.db('jwc').collection('wars').find(query, options).sort(sort);
