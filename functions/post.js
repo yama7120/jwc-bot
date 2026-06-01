@@ -61,12 +61,22 @@ async function post(req, res, client, data) {
 export { post };
 
 
+function parseArrWars(arrWars) {
+  if (Array.isArray(arrWars)) {
+    return arrWars;
+  }
+  if (typeof arrWars === 'string') {
+    return JSON.parse(arrWars);
+  }
+  throw new Error('arrWars must be an array or a JSON string');
+}
+
 async function scheduleWar(client, dataObject) {
   let description = '';
   let league = '';
   let week = '';
 
-  let arrWars = JSON.parse(dataObject.arrWars);
+  let arrWars = parseArrWars(dataObject.arrWars);
   await Promise.all(arrWars.map(async (war) => {
     league = war.league;
     week = war.week;
