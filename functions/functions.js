@@ -1433,14 +1433,17 @@ async function getDescriptionNego(
     myDescription += `攻撃回数： **${config.nHit[league]}** 回\n`;
     myDescription += `対戦モード： **${config.mode[league]}**:fire:\n`;
     myDescription += `\n`;
+    const weekKey = `w${week}`;
+    const dateDef =
+      league == 'cup' ? schedule.dateDefCup : schedule.dateDef[league];
     myDescription += `基準日：\n`;
-    myDescription += `:calendar: ${schedule.dateDef[league].day[`w${week}`].toLocaleDateString('ja-JP', options)}\n`;
-    myDescription += `:alarm_clock: 11:00 ポチ\n`;
+    myDescription += `:calendar: ${dateDef.day[weekKey].toLocaleDateString('ja-JP', options)}\n`;
+    myDescription += `:alarm_clock: ${league == 'cup' ? dateDef.time[weekKey] : '11:00'} ポチ\n`;
     myDescription += `:hourglass_flowing_sand: ${schedule.timePrep[league]} 時間 / :crossed_swords: ${schedule.timeBattle[league]} 時間\n`;
     myDescription += `\n`;
     myDescription += `基準期間：\n`;
-    myDescription += `${schedule.dateDef[league].start[`w${week}`].toLocaleDateString('ja-JP', options)} ～ `;
-    myDescription += `${schedule.dateDef[league].end[`w${week}`].toLocaleDateString('ja-JP', options)}\n`;
+    myDescription += `${dateDef.start[weekKey].toLocaleDateString('ja-JP', options)} ～ `;
+    myDescription += `${dateDef.end[weekKey].toLocaleDateString('ja-JP', options)}\n`;
   }
 
   objReturn.content = myContent;
