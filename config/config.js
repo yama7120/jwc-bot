@@ -7,7 +7,7 @@ export default {
   lvTHmix: [18, 17, 16, 15, 14],
   rangeLvTH: { min: 12, max: 18 },
   cronWarStatus: { j1: 'on', j2: 'on', swiss: 'off', mix: 'off', five: 'off', cup: 'off' }, // on / off
-  season: { j1: 20, j2: 19, j: 19, swiss: 20, mix: 20, five: 3, cup: 1 },
+  season: { j1: 20, j2: 20, j: 20, swiss: 20, mix: 20, five: 3, cup: 1 },
   seasonNext: { j1: 20, j2: 20, swiss: 20, mix: 20, five: 4, cup: 1 }, // 応募受付時の表示、ロール付与時
   seasonLast: { j1: 19, j2: 19, swiss: 19, mix: 19, five: 3, cup: 1 },
   league: {
@@ -37,12 +37,12 @@ export default {
     five: 'eSport Mode',
     cup: 'eSport Mode',
   },
-  minSize: { j1: 15, j2: 15, j1j2: 15, swiss: 10, mix: 10, five: 5, cup: 5 },
+  minSize: { j1: 15, j2: 15, j1j2: 15, swiss: 10, mix: 5, five: 5, cup: 5 },
   bd: {
     j1: 15,
     j2: 15,
     swiss: 10,
-    mix: { th18: 3, th17: 1, th16: 2, th15: 2, th14: 2 },
+    mix: { th18: 1, th17: 2, th16: 2 },
     five: 5,
     cup: 5,
   },
