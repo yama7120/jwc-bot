@@ -1333,6 +1333,35 @@ async function createNegoChMain(interaction, client) {
   return;
 }
 
+function getRepDiscordId(rep) {
+  if (rep == null || rep === 'non-registered') {
+    return null;
+  }
+  return rep.id ?? null;
+}
+
+async function grantRepChannelAccess(client, channel, repId) {
+  if (!repId) {
+    return;
+  }
+  await client.users.fetch(repId);
+  await channel.permissionOverwrites.edit(repId, { ViewChannel: true });
+}
+
+function formatRepMentions(rep1stId, rep2ndId, rep3rdId) {
+  let mentions = '';
+  if (rep1stId) {
+    mentions += `<@!${rep1stId}> `;
+  }
+  if (rep2ndId) {
+    mentions += `<@!${rep2ndId}> `;
+  }
+  if (rep3rdId) {
+    mentions += `<@!${rep3rdId}> `;
+  }
+  return mentions.trim();
+}
+
 async function createNegoCh5v(interaction, client, league, week, mongoWar) {
   const clanAbbr = mongoWar.clan_abbr;
   const clanAbbrOpp = mongoWar.opponent_abbr;
@@ -1491,17 +1520,36 @@ async function createNegoCh(interaction, client, league, week, mongoWar) {
     .db('jwc')
     .collection('clans')
     .findOne({ clan_abbr: clanAbbr });
-  const rep1stId1 = mongoClan.rep_1st.id;
-  const rep2ndId1 = mongoClan.rep_2nd.id;
-  let rep3rdId1 = 0;
 
   const mongoClanOpp = await client.clientMongo
     .db('jwc')
     .collection('clans')
     .findOne({ clan_abbr: clanAbbrOpp });
-  const rep1stId2 = mongoClanOpp.rep_1st.id;
-  const rep2ndId2 = mongoClanOpp.rep_2nd.id;
-  let rep3rdId2 = 0;
+
+  if (!mongoClan) {
+    return `:x: **${clanAbbr}**: team not found\n`;
+  }
+  if (!mongoClanOpp) {
+    return `:x: **${clanAbbrOpp}**: team not found\n`;
+  }
+
+  const rep1stId1 = getRepDiscordId(mongoClan.rep_1st);
+  const rep2ndId1 = getRepDiscordId(mongoClan.rep_2nd);
+  const rep1stId2 = getRepDiscordId(mongoClanOpp.rep_1st);
+  const rep2ndId2 = getRepDiscordId(mongoClanOpp.rep_2nd);
+
+  if (!rep1stId1) {
+    return `:x: **${clanAbbr}**: rep_1st not set\n`;
+  }
+  if (!rep1stId2) {
+    return `:x: **${clanAbbrOpp}**: rep_1st not set\n`;
+  }
+  if (league != 'cup' && (!rep2ndId1 || !rep2ndId2)) {
+    return `:x: **${clanAbbr}** / **${clanAbbrOpp}**: rep_2nd required\n`;
+  }
+
+  let rep3rdId1 = getRepDiscordId(mongoClan.rep_3rd);
+  let rep3rdId2 = getRepDiscordId(mongoClanOpp.rep_3rd);
 
   let clanAbbr1 = clanAbbr.replace(/s-/g, '').replace(/m-/g, '').replace(/c-/g, '');
   let clanAbbr2 = clanAbbrOpp.replace(/s-/g, '').replace(/m-/g, '').replace(/c-/g, '');
@@ -1524,28 +1572,12 @@ async function createNegoCh(interaction, client, league, week, mongoWar) {
   });
   ch.permissionOverwrites.edit(adminId, { ViewChannel: true });
   ch.permissionOverwrites.edit(botId, { ViewChannel: true });
-  await client.users.fetch(rep1stId1);
-  await client.users.fetch(rep2ndId1);
-  await client.users.fetch(rep1stId2);
-  await client.users.fetch(rep2ndId2);
-  ch.permissionOverwrites.edit(rep1stId1, { ViewChannel: true });
-  ch.permissionOverwrites.edit(rep2ndId1, { ViewChannel: true });
-  ch.permissionOverwrites.edit(rep1stId2, { ViewChannel: true });
-  ch.permissionOverwrites.edit(rep2ndId2, { ViewChannel: true });
-
-  if (mongoClan.rep_3rd != null && mongoClan.rep_3rd != 'non-registered') {
-    rep3rdId1 = await mongoClan.rep_3rd.id;
-    await client.users.fetch(rep3rdId1);
-    ch.permissionOverwrites.edit(rep3rdId1, { ViewChannel: true });
-  }
-  if (
-    mongoClanOpp.rep_3rd != null &&
-    mongoClanOpp.rep_3rd != 'non-registered'
-  ) {
-    rep3rdId2 = await mongoClanOpp.rep_3rd.id;
-    await client.users.fetch(rep3rdId2);
-    ch.permissionOverwrites.edit(rep3rdId2, { ViewChannel: true });
-  }
+  await grantRepChannelAccess(client, ch, rep1stId1);
+  await grantRepChannelAccess(client, ch, rep2ndId1);
+  await grantRepChannelAccess(client, ch, rep1stId2);
+  await grantRepChannelAccess(client, ch, rep2ndId2);
+  await grantRepChannelAccess(client, ch, rep3rdId1);
+  await grantRepChannelAccess(client, ch, rep3rdId2);
 
   let nameMatch = '';
   if (mongoWar.name_match == '') {
@@ -1565,19 +1597,8 @@ async function createNegoCh(interaction, client, league, week, mongoWar) {
   );
 
   let myContent = ``;
-  myContent += `<@!${rep1stId1}> <@!${rep2ndId1}>`;
-  if (mongoClan.rep_3rd != null && mongoClan.rep_3rd != 'non-registered') {
-    myContent += ` <@!${rep3rdId1}>`;
-  }
-  myContent += `\n`;
-  myContent += `<@!${rep1stId2}> <@!${rep2ndId2}>`;
-  if (
-    mongoClanOpp.rep_3rd != null &&
-    mongoClanOpp.rep_3rd != 'non-registered'
-  ) {
-    myContent += ` <@!${rep3rdId2}>`;
-  }
-  myContent += `\n`;
+  myContent += `${formatRepMentions(rep1stId1, rep2ndId1, rep3rdId1)}\n`;
+  myContent += `${formatRepMentions(rep1stId2, rep2ndId2, rep3rdId2)}\n`;
   myContent += result.content;
 
   let myDescription = '';
