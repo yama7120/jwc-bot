@@ -4,7 +4,7 @@ export default {
   mongo: { nameDatabase: 'jwc' },
   footer: 'JWC',
   lvTH: 18,
-  lvTHmix: [18, 17, 16, 15, 14],
+  lvTHmix: [18, 17, 16],
   rangeLvTH: { min: 12, max: 18 },
   cronWarStatus: { j1: 'on', j2: 'on', swiss: 'off', mix: 'off', five: 'off', cup: 'off' }, // on / off
   season: { j1: 20, j2: 20, j: 20, swiss: 20, mix: 20, five: 3, cup: 1 },
@@ -724,12 +724,12 @@ export default {
     cup: '1505723579554074634',
   },
   rankingCh: {
-    j1: '1327254256096378930',
-    j2: '1327254226119688202',
-    swiss: '1327254185996976140',
-    mix: '1327254150563631177',
-    five: '1327193959193378816',
-    cup: '1505747019531288616',
+    j1: '999999999999',
+    j2: '999999999999',
+    swiss: '999999999999',
+    mix: '999999999999',
+    five: '999999999999',
+    cup: '999999999999',
   },
   resultCh: {
     j1: '884340990490603520',
