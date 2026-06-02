@@ -1,10 +1,19 @@
 /** ランク戦ログ行の重複検出（API に battleTime は無い想定。armyShareCode は使わない） */
+function normalizePlayerTag(tag) {
+  if (typeof tag !== 'string') return '';
+  let s = tag.trim().toUpperCase();
+  if (!s) return '';
+  if (!s.startsWith('#')) s = `#${s}`;
+  return s;
+}
+
 function fingerprintRankedBattleItem(item) {
   const battleType = item?.battleType ?? '';
   const atk = item?.attack === true ? '1' : '0';
-  const opp = item?.opponentPlayerTag ?? '';
-  const stars = Number(item?.stars ?? 0);
-  const dest = Number(item?.destructionPercentage ?? 0);
+  const opp = normalizePlayerTag(item?.opponentPlayerTag);
+  const stars = Math.min(3, Math.max(0, Number(item?.stars ?? 0)));
+  // API により 79 / "79" / 79.0 が混在し得るため整数化して比較
+  const dest = Math.round(Number(item?.destructionPercentage ?? 0));
   return `${battleType}|${atk}|${opp}|${stars}|${dest}`;
 }
 
@@ -29,34 +38,35 @@ function rankedBattleLogRowAction(row) {
   return row?.attack === true ? 'attack' : 'defense';
 }
 
+function fingerprintRankedBattleEventRow(row) {
+  const action = rankedBattleLogRowAction(row);
+  const atk = action === 'attack' ? '1' : '0';
+  const opp = normalizePlayerTag(row?.opponentPlayerTag);
+  const stars = Math.min(3, Math.max(0, Number(row?.stars ?? 0)));
+  const dest = Math.round(Number(row?.destructionPercentage ?? 0));
+  if (!opp) return null;
+  return `ranked|${atk}|${opp}|${stars}|${dest}`;
+}
+
 /** API 行が既に events / 旧 rankedBattleLog にあるか（ログ末尾走査の打ち切り用） */
 function battleLogItemMatchesStoredRankedBattle(item, events, rankedBattleLog) {
-  const action = item?.attack === true ? 'attack' : 'defense';
-  const opp = item?.opponentPlayerTag ?? '';
-  const stars = Number(item?.stars ?? 0);
-  const dest = Number(item?.destructionPercentage ?? 0);
-  if (!opp) return false;
+  const fp = fingerprintRankedBattleItem(item);
+  // opponent が空の場合は fingerprint が ...||... になりやすいので明示的に除外
+  if (!normalizePlayerTag(item?.opponentPlayerTag)) return false;
 
   const safeEvents = Array.isArray(events) ? events : [];
   for (const e of safeEvents) {
-    if (
-      e.opponentPlayerTag === opp
-      && e.action === action
-      && Number(e.stars) === stars
-      && Number(e.destructionPercentage) === dest
-    ) {
-      return true;
-    }
+    const fpe = fingerprintRankedBattleEventRow(e);
+    if (fpe && fpe === fp) return true;
   }
 
   const rbl = Array.isArray(rankedBattleLog) ? rankedBattleLog : [];
-  return rbl.some(
-    (r) =>
-      r.opponentPlayerTag === opp
-      && rankedBattleLogRowAction(r) === action
-      && Number(r.stars) === stars
-      && Number(r.destructionPercentage) === dest,
-  );
+  for (const r of rbl) {
+    const fpr = fingerprintRankedBattleEventRow(r);
+    if (fpr && fpr === fp) return true;
+  }
+
+  return false;
 }
 
 function isLegendRankedEventsSeeded(legend) {

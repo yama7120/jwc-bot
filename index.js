@@ -242,6 +242,7 @@ class PollingSystem {
     this.accountsLegend = [];
     this.playerUpdateLocks = new Set();
     this.lastLegendStatusUpdateMs = 0;
+    this.lastBattleLogSweepMsByTag = new Map();
   }
 
   // メンテナンスの処理の初期化
@@ -539,11 +540,96 @@ class PollingSystem {
     return id;
   }
 
+  // statsChange が発火しない「0変動（trophies/defenseWinsが変わらない）防衛」でも
+  // battlelog 側には記録されるため、定期的に battlelog をスイープして取りこぼしを防ぐ。
+  startBattleLogSweepInterval() {
+    const intervalMs = 60 * 1000; // 1分
+    const perTagCooldownMs = 2 * 60 * 1000; // 同一タグは2分に1回まで
+    const id = setInterval(async () => {
+      try {
+        if (!this.client?.clientCoc) return;
+        if (!Array.isArray(this.accountsLegend) || this.accountsLegend.length === 0) return;
+
+        for (const mongoAcc of this.accountsLegend) {
+          const tag = mongoAcc?.tag;
+          if (!tag) continue;
+          if (this.playerUpdateLocks.has(tag)) continue;
+
+          const last = Number(this.lastBattleLogSweepMsByTag.get(tag) ?? 0);
+          const now = Date.now();
+          if (now - last < perTagCooldownMs) continue;
+
+          this.lastBattleLogSweepMsByTag.set(tag, now);
+          this.playerUpdateLocks.add(tag);
+          try {
+            const scPlayer = await this.client.clientCoc.getPlayer(tag);
+            const boundaryUtcHour =
+              scPlayer?.leagueTier?.id === config_coc.leagueId.legend ? 5 : 17;
+            const seasonData = this.functions.calculateSeasonValues(
+              this.client,
+              new Date(),
+              boundaryUtcHour,
+            );
+            const battleLogItems = await fetchBattleLogItems(this.client.clientCoc, tag);
+
+            // 「変動が無いから before/after が無い」ケース向けに、after を両方渡して battlelog 差分だけ処理させる
+            const pick = ({
+              tag,
+              name,
+              townHallLevel,
+              trophies,
+              attackWins,
+              defenseWins,
+              leagueTier,
+              currentLeagueSeasonId,
+              previousLeagueSeasonId,
+              currentLeagueGroupTag,
+              previousLeagueGroupTag,
+            }) => ({
+              tag,
+              name,
+              townHallLevel,
+              trophies,
+              attackWins,
+              defenseWins,
+              leagueTier,
+              currentLeagueSeasonId,
+              previousLeagueSeasonId,
+              currentLeagueGroupTag,
+              previousLeagueGroupTag,
+            });
+            const afterSlim = {
+              ...pick(scPlayer),
+              legendStatistics: fLegend.legendStatisticsForNotify(scPlayer),
+            };
+
+            await this.fLegend.autoUpdateLegend(
+              this.client,
+              mongoAcc,
+              afterSlim,
+              afterSlim,
+              seasonData,
+              battleLogItems,
+            );
+          } catch (e) {
+            console.warn(`⚠️ battlelog sweep failed for ${tag}:`, e?.message ?? e);
+          } finally {
+            this.playerUpdateLocks.delete(tag);
+          }
+        }
+      } catch (e) {
+        console.warn('⚠️ battlelog sweep loop error:', e?.message ?? e);
+      }
+    }, intervalMs);
+    return id;
+  }
+
   // 初期化
   async initialize() {
     await this.updateMonitoringAccounts();
     this.setupPlayerStatsChangeListener();
     this.startAccountUpdateInterval();
+    this.startBattleLogSweepInterval();
   }
 
   // プレイヤーのステータス変化イベントのリスナー登録

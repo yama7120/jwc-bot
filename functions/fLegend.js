@@ -1057,6 +1057,7 @@ function rankedBattleTrophyDeltaFromBattleLog(
     return -calcAttackTrophies(stars, destruction);
   }
 
+  // Legend I 以外は従来ロジック（Electro 等の上限/下限も含めこちらで扱う）
   return calcDefenseTrophies(stars, destruction);
 }
 
@@ -1347,16 +1348,18 @@ async function processLegendRankedBattleLog(
   const legendEvents = mongoAcc.legend?.events ?? [];
   const legacyRankedLog = mongoAcc.legend?.rankedBattleLog;
 
-  const newRev = [];
-  for (let i = ranked.length - 1; i >= 0; i--) {
-    const item = ranked[i];
+  // NOTE: battlelog の並び順は環境/クライアント差で逆転することがあるため、
+  // 「末尾から走査して一致したら break」は誤検知しやすい。
+  // 並び順に依存せず、既存と一致しない行だけを抽出する。
+  const newItems = [];
+  for (const item of ranked) {
     if (battleLogItemMatchesStoredRankedBattle(item, legendEvents, legacyRankedLog)) {
-      break;
+      continue;
     }
-    newRev.push(item);
+    newItems.push(item);
   }
 
-  if (newRev.length === 0) {
+  if (newItems.length === 0) {
     return;
   }
 
@@ -1364,7 +1367,7 @@ async function processLegendRankedBattleLog(
   if (
     afterPlayerStats.leagueTier.id !== config_coc.leagueId.legend
     && seasonData.daysNow <= 1
-    && newRev.length >= 5
+    && newItems.length >= 5
   ) {
     await ingestLegendRankedBattleLogSilent(
       client,
@@ -1376,7 +1379,19 @@ async function processLegendRankedBattleLog(
     return;
   }
 
-  const chronological = [...newRev].reverse();
+  // battleTime が取れる場合はそれでソート。取れない場合は API の順序を保持する。
+  const mapped = newItems.map((item, idx) => ({
+    item,
+    idx,
+    unix: battleTimeToUnixSeconds(item?.battleTime),
+  }));
+  const hasAnyUnix = mapped.some((m) => typeof m.unix === 'number');
+  const chronological = hasAnyUnix
+    ? mapped
+        .slice()
+        .sort((a, b) => (Number(a.unix ?? 0) - Number(b.unix ?? 0)) || (a.idx - b.idx))
+        .map((m) => m.item)
+    : newItems;
   let mongoAccMut = { ...mongoAcc };
   let lastResult = null;
   const baseUnixTimeSeconds = Math.floor(Date.now() / 1000);
