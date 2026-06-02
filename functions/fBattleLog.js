@@ -90,9 +90,11 @@ function filterRankedBattleItems(items) {
 }
 
 async function fetchBattleLogItems(clientCoc, playerTag) {
-  if (typeof clientCoc?.getBattleLog === 'function') {
-    const items = await clientCoc.getBattleLog(playerTag);
-    return Array.isArray(items) ? items : [];
+  if (typeof clientCoc?.rest?.requestHandler?.request === 'function') {
+    const response = await clientCoc.rest.requestHandler.request(
+      `/players/${encodeURIComponent(playerTag)}/battlelog`,
+    );
+    return Array.isArray(response?.body?.items) ? response.body.items : [];
   }
 
   if (typeof clientCoc?.rest?.getBattleLog === 'function') {
@@ -100,11 +102,10 @@ async function fetchBattleLogItems(clientCoc, playerTag) {
     return Array.isArray(response?.body?.items) ? response.body.items : [];
   }
 
-  if (typeof clientCoc?.rest?.requestHandler?.request === 'function') {
-    const response = await clientCoc.rest.requestHandler.request(
-      `/players/${encodeURIComponent(playerTag)}/battlelog`,
-    );
-    return Array.isArray(response?.body?.items) ? response.body.items : [];
+  // NOTE: helper はバージョン差で返却shapeが変わることがあるため最後に使う
+  if (typeof clientCoc?.getBattleLog === 'function') {
+    const items = await clientCoc.getBattleLog(playerTag);
+    return Array.isArray(items) ? items : [];
   }
 
   throw new Error('battlelog endpoint is not available in current clashofclans.js client');

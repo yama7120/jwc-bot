@@ -455,6 +455,23 @@ export { autoUpdateLegend };
 
 // (stats inference helpers removed)
 
+function normalizePlayerTagForLegend(tag) {
+  if (typeof tag !== 'string') return '';
+  let s = tag.trim().toUpperCase();
+  if (!s) return '';
+  if (!s.startsWith('#')) s = `#${s}`;
+  return s;
+}
+
+function legendEventFingerprint(action, opponentPlayerTag, stars, destructionPercentage) {
+  const opp = normalizePlayerTagForLegend(opponentPlayerTag);
+  if (!opp) return null;
+  const st = Math.min(3, Math.max(0, Number(stars ?? 0)));
+  // 79 / "79" / 79.0 などの揺れ対策で整数化
+  const dest = Math.round(Number(destructionPercentage ?? 0));
+  return `${action}|${opp}|${st}|${dest}`;
+}
+
 async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
   // 単一イベントの場合は配列に変換
   const events = Array.isArray(eventData) ? eventData : [eventData];
@@ -479,6 +496,30 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
     ) {
       continue;
     }
+
+    // 並び順/日付判定のブレで同じ battlelog が別 day 扱いになっても重複しないよう、
+    // action+opponent+stars+dest の fingerprint でも弾く（特に 0 変動防衛で発生しやすい）
+    const fp = legendEventFingerprint(
+      legendEventType,
+      opp,
+      event.stars,
+      event.destructionPercentage,
+    );
+    if (
+      fp
+      && existingEvents.some((e) => {
+        const fpe = legendEventFingerprint(
+          e?.action,
+          e?.opponentPlayerTag,
+          e?.stars,
+          e?.destructionPercentage,
+        );
+        return fpe && fpe === fp;
+      })
+    ) {
+      continue;
+    }
+
     const row = {
       unixTime: event.unixTimeSeconds,
       season: event.season,
@@ -1353,6 +1394,12 @@ async function processLegendRankedBattleLog(
   // 並び順に依存せず、既存と一致しない行だけを抽出する。
   const newItems = [];
   for (const item of ranked) {
+    // ranked battlelog は opponentPlayerTag をキーに差分検出する設計。
+    // opponent が無い行は重複排除も一意性も担保できないため、保存・通知対象にしない。
+    const opp = typeof item?.opponentPlayerTag === 'string' ? item.opponentPlayerTag.trim() : '';
+    if (!opp) {
+      continue;
+    }
     if (battleLogItemMatchesStoredRankedBattle(item, legendEvents, legacyRankedLog)) {
       continue;
     }
