@@ -30,7 +30,7 @@ let data = new SlashCommandBuilder()
           .setAutocomplete(true),
       ),
   );
-config.choices.league5.forEach((choice) => {
+config.choices.league4.forEach((choice) => {
   data.options[0].options[0].addChoices(choice);
   data.options[1].options[0].addChoices(choice);
 });
@@ -91,9 +91,9 @@ export default {
       title = `:calendar: **SCHEDULE**`;
       footer = `${config.footer} ${config.league[iLeague]} SEASON ${config.season[iLeague]}`;
 
-      if (iLeague == 'five' || iLeague == 'cup') {
-        const dateDef = iLeague == 'five' ? schedule.dateDef5v : schedule.dateDefCup;
-        const battleUnit = iLeague == 'cup' ? '時間' : '分';
+      if (iLeague == 'cup') {
+        const dateDef = schedule.dateDefCup;
+        const battleUnit = '時間';
         Object.keys(dateDef.day).forEach((key) => {
           const week = key.slice(1);
           if (week > 0) {
@@ -117,8 +117,8 @@ export default {
         description += `\n`;
         description += `:alarm_clock: 基準日・基準時間\n`;
         description += `:hourglass_flowing_sand: 準備時間 / :crossed_swords: 対戦時間\n`;
-        description += `:calendar: ${iLeague == 'cup' ? '基準期間' : '基準期間（基準日を含めた日数）'}\n`;
-      } else if (iLeague != 'five' && iLeague != 'cup') {
+        description += `:calendar: 基準期間\n`;
+      } else {
         Object.keys(schedule.dateDef[iLeague].day).forEach((key) => {
           const week = key.slice(1);
           if (week > 0) {

@@ -60,12 +60,6 @@ const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
     );
     console.log(`[adminCommands] ${adminData4.length} 個のコマンドを読み込み完了`);
 
-    const adminData5 = await rest.put(
-      Routes.applicationGuildCommands(CLIENT_ID, config.guildId.jwc5v),
-      { body: adminCommands },
-    );
-    console.log(`[adminCommands] ${adminData5.length} 個のコマンドを読み込み完了`);
-
     const data = await rest.put(
       Routes.applicationCommands(CLIENT_ID),
       { body: commands },

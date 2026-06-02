@@ -187,7 +187,7 @@ config.choices.league.forEach(choice => {
   data.options[0].options[1].addChoices(choice);
   data.options[1].options[1].addChoices(choice);
 });
-config.choices.league5.forEach(choice => {
+config.choices.league4.forEach(choice => {
   data.options[2].options[0].options[0].addChoices(choice);
   data.options[2].options[1].options[0].addChoices(choice);
 });
@@ -257,9 +257,6 @@ export default {
         }
         else if (iLeague == 'mix') {
           teams = [{ team_abbr: 'Entire', clan_name: 'MIX', team_name: 'MIX', division: '' }].concat(teams);
-        }
-        else if (iLeague == 'five') {
-          teams = [{ team_abbr: 'Entire', clan_name: '5V', team_name: '5V', division: '' }].concat(teams);
         }
         else if (iLeague == 'cup') {
           teams = [{ team_abbr: 'Entire', clan_name: 'CUP', team_name: 'CUP', division: '' }].concat(teams);

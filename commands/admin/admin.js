@@ -44,14 +44,13 @@ let data = new SlashCommandBuilder()
           .addStringOption((option) =>
             option
               .setName('league')
-              .setDescription('リーグ (j1/j2/swiss/mix/five/cup)')
+              .setDescription('リーグ (j1/j2/swiss/mix/cup)')
               .setRequired(true)
               .addChoices(
                 { name: 'J1', value: 'j1' },
                 { name: 'J2', value: 'j2' },
                 { name: 'SWISS', value: 'swiss' },
                 { name: 'MIX', value: 'mix' },
-                { name: '5V', value: 'five' },
                 { name: 'CUP', value: 'cup' },
               ),
           )
@@ -85,14 +84,13 @@ let data = new SlashCommandBuilder()
           .addStringOption((option) =>
             option
               .setName('league')
-              .setDescription('リーグ (j1/j2/swiss/mix/five/cup)')
+              .setDescription('リーグ (j1/j2/swiss/mix/cup)')
               .setRequired(true)
               .addChoices(
                 { name: 'J1', value: 'j1' },
                 { name: 'J2', value: 'j2' },
                 { name: 'SWISS', value: 'swiss' },
                 { name: 'MIX', value: 'mix' },
-                { name: '5V', value: 'five' },
                 { name: 'CUP', value: 'cup' },
               ),
           )
@@ -724,14 +722,13 @@ let data = new SlashCommandBuilder()
           .addStringOption((option) =>
             option
               .setName('league')
-              .setDescription('リーグ (j1/j2/swiss/mix/five/cup)')
+              .setDescription('リーグ (j1/j2/swiss/mix/cup)')
               .setRequired(true)
               .addChoices(
                 { name: 'J1', value: 'j1' },
                 { name: 'J2', value: 'j2' },
                 { name: 'SWISS', value: 'swiss' },
                 { name: 'MIX', value: 'mix' },
-                { name: '5V', value: 'five' },
                 { name: 'CUP', value: 'cup' },
               ),
           )
@@ -807,7 +804,7 @@ let data = new SlashCommandBuilder()
     )*/
   );
 
-config.choices.league5.forEach((choice) => {
+config.choices.league4.forEach((choice) => {
   // create (team_channel / team_data は CUP 含む choices を定義済み)
   data.options[0].options[0].options[0].addChoices(choice);
   // update
@@ -1296,31 +1293,17 @@ async function createNegoChMain(interaction, client) {
     myContent = `:exclamation: **No Matches**`;
   } else {
     let arrStr = [];
-    if (iLeague == 'five') {
-      await Promise.all(
-        mongoWars.map(async (mongoWar, index) => {
-          arrStr[index] = await createNegoCh5v(
-            interaction,
-            client,
-            iLeague,
-            iWeek,
-            mongoWar,
-          );
-        }),
-      );
-    } else {
-      await Promise.all(
-        mongoWars.map(async (mongoWar, index) => {
-          arrStr[index] = await createNegoCh(
-            interaction,
-            client,
-            iLeague,
-            iWeek,
-            mongoWar,
-          );
-        }),
-      );
-    }
+    await Promise.all(
+      mongoWars.map(async (mongoWar, index) => {
+        arrStr[index] = await createNegoCh(
+          interaction,
+          client,
+          iLeague,
+          iWeek,
+          mongoWar,
+        );
+      }),
+    );
 
     arrStr.forEach(function (value) {
       myContent += value;
@@ -1360,154 +1343,6 @@ function formatRepMentions(rep1stId, rep2ndId, rep3rdId) {
     mentions += `<@!${rep3rdId}> `;
   }
   return mentions.trim();
-}
-
-async function createNegoCh5v(interaction, client, league, week, mongoWar) {
-  const clanAbbr = mongoWar.clan_abbr;
-  const clanAbbrOpp = mongoWar.opponent_abbr;
-  const weekStr = 'w' + week;
-  const match = mongoWar.match;
-
-  const mongoClan = await client.clientMongo
-    .db('jwc')
-    .collection('clans')
-    .findOne(
-      { clan_abbr: clanAbbr },
-      {
-        projection: {
-          rep_1st: 1,
-          rep_2nd: 1,
-          rep_3rd: 1,
-          team_name: 1,
-          _id: 0,
-        },
-      },
-    );
-  const rep1stId1 = mongoClan.rep_1st.id;
-  const rep2ndId1 = mongoClan.rep_2nd.id;
-  let rep3rdId1 = 0;
-
-  const mongoClanOpp = await client.clientMongo
-    .db('jwc')
-    .collection('clans')
-    .findOne(
-      { clan_abbr: clanAbbrOpp },
-      {
-        projection: {
-          rep_1st: 1,
-          rep_2nd: 1,
-          rep_3rd: 1,
-          team_name: 1,
-          _id: 0,
-        },
-      },
-    );
-  const rep1stId2 = mongoClanOpp.rep_1st.id;
-  const rep2ndId2 = mongoClanOpp.rep_2nd.id;
-  let rep3rdId2 = 0;
-
-  let clanAbbr1 = clanAbbr.replace(/5v-/g, '');
-  let clanAbbr2 = clanAbbrOpp.replace(/5v-/g, '');
-
-  // チャンネル作成
-  let ch = await interaction.guild.channels.create({
-    name: `5v-${clanAbbr1}-vs-${clanAbbr2}`,
-    type: ChannelType.GuildText,
-    parent: schedule.parentIdNego5v[weekStr],
-    permissionOverwrites: [
-      {
-        id: interaction.guild.roles.everyone.id, // everyone
-        deny: [PermissionsBitField.Flags.ViewChannel],
-      },
-    ],
-  });
-  ch.permissionOverwrites.edit(config.roleId.admins5v, { ViewChannel: true });
-  ch.permissionOverwrites.edit(config.roleId.bots5v, { ViewChannel: true });
-  ch.permissionOverwrites.edit(config.roleId.streamer5v, { ViewChannel: true });
-  await client.users.fetch(rep1stId1);
-  await client.users.fetch(rep2ndId1);
-  await client.users.fetch(rep1stId2);
-  await client.users.fetch(rep2ndId2);
-  ch.permissionOverwrites.edit(rep1stId1, { ViewChannel: true });
-  ch.permissionOverwrites.edit(rep2ndId1, { ViewChannel: true });
-  ch.permissionOverwrites.edit(rep1stId2, { ViewChannel: true });
-  ch.permissionOverwrites.edit(rep2ndId2, { ViewChannel: true });
-
-  if (mongoClan.rep_3rd != null && mongoClan.rep_3rd != 'non-registered') {
-    rep3rdId1 = await mongoClan.rep_3rd.id;
-    await client.users.fetch(rep3rdId1);
-    ch.permissionOverwrites.edit(rep3rdId1, { ViewChannel: true });
-  }
-  if (
-    mongoClanOpp.rep_3rd != null &&
-    mongoClanOpp.rep_3rd != 'non-registered'
-  ) {
-    rep3rdId2 = await mongoClanOpp.rep_3rd.id;
-    await client.users.fetch(rep3rdId2);
-    ch.permissionOverwrites.edit(rep3rdId2, { ViewChannel: true });
-  }
-
-  let nameMatch = '';
-  if (mongoWar.name_match == '') {
-    nameMatch = schedule.week[weekStr];
-  } else {
-    nameMatch = mongoWar.name_match;
-  }
-  let myTitle = `**${nameMatch} | ${clanAbbr1.toUpperCase()} vs ${clanAbbr2.toUpperCase()}**`;
-
-  // メッセージ文言作成
-  const result = await functions.getDescriptionNego(
-    league,
-    week,
-    mongoClan.team_name,
-    mongoClanOpp.team_name,
-    mongoWar.name_match,
-  );
-
-  let myContent = ``;
-  myContent += `<@!${rep1stId1}> <@!${rep2ndId1}>`;
-  if (mongoClan.rep_3rd != null && mongoClan.rep_3rd != 'non-registered') {
-    myContent += ` <@!${rep3rdId1}>`;
-  }
-  myContent += `\n`;
-  myContent += `<@!${rep1stId2}> <@!${rep2ndId2}>`;
-  if (
-    mongoClanOpp.rep_3rd != null &&
-    mongoClanOpp.rep_3rd != 'non-registered'
-  ) {
-    myContent += ` <@!${rep3rdId2}>`;
-  }
-  myContent += `\n`;
-  myContent += result.content;
-
-  let myDescription = '';
-  myDescription += result.description;
-
-  let textFooter = `${config.footer} ${config.league[league]} | SEASON ${config.season[league]}`;
-  const myEmbed = new EmbedBuilder()
-    .setTitle(myTitle)
-    .setDescription(myDescription)
-    .setColor(config.color[league])
-    .setFooter({ text: textFooter, iconURL: config.urlImage.jwc });
-
-  // 作成したチャンネルにメッセージ送信
-  ch.send({ content: myContent, embeds: [myEmbed] });
-
-  const query = {
-    season: config.season[league],
-    league: league,
-    week: week,
-    match: match,
-  };
-  const updatedListing = { nego_channel: ch.id };
-  await client.clientMongo
-    .db('jwc')
-    .collection('wars')
-    .updateOne(query, { $set: updatedListing });
-
-  let rtnStr = `<#${ch.id}> : ${mongoClan.team_name} :vs: ${mongoClanOpp.team_name}\n`;
-
-  return rtnStr;
 }
 
 async function createNegoCh(interaction, client, league, week, mongoWar) {
@@ -1724,15 +1559,8 @@ async function createTeamCh(
     chName = `c-` + chName;
   }
   chName = `🆕` + chName;
-  let idAdmins = '';
-  let idBots = '';
-  if (iLeague == 'five') {
-    idAdmins = config.roleId.admins5v;
-    idBots = config.roleId.bots5v;
-  } else {
-    idAdmins = config.roleId.admins;
-    idBots = config.roleId.bots;
-  }
+  const idAdmins = config.roleId.admins;
+  const idBots = config.roleId.bots;
   const permissionOverwrites = [
     {
       id: interaction.guild.roles.everyone.id, // everyone
@@ -2046,9 +1874,7 @@ async function updateLeagueStandings(interaction, client) {
   embed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
 
   await fMongo.standings(client.clientMongo, iLeague);
-  if (iLeague == 'five') {
-    await fMongo.standingsGroupStage(client.clientMongo, iLeague, 'a', 'b');
-  } else if (iLeague == 'j1') {
+  if (iLeague == 'j1') {
     await fMongo.standingsGroupStage(
       client.clientMongo,
       iLeague,
@@ -3634,8 +3460,6 @@ async function deleteNegoChs(interaction) {
 
   if (interaction.guild.id == config.guildId.jwcReps) {
     parentIdNego = schedule.parentIdNego[`w${iWeek}`];
-  } else if (interaction.guild.id == config.guildId.jwc5v) {
-    parentIdNego = schedule.parentIdNego5v[`w${iWeek}`];
   }
 
   interaction.guild.channels.cache.forEach((channel) => {

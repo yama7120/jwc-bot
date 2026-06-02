@@ -78,11 +78,6 @@ export default {
         { season: 19, year: 2026, lvTH: [18, 17, 16, 15, 14], bd: [3, 1, 2, 2, 2], hit: 1 },
         { season: 20, year: 2026, lvTH: [18, 17, 16], bd: [1, 2, 2], hit: 1 },
       ],
-      five: [
-        { season: 1, year: 2022, lvTH: 14 },
-        { season: 2, year: 2024, lvTH: 16 },
-        { season: 3, year: 2025, lvTH: 17 },
-      ],
       cup: [
         { season: 1, year: 2026, lvTH: 18, hit: 2 },
       ],
@@ -407,76 +402,6 @@ export default {
         s19: [
           { rank: 1, name: '美女＆ピノ子', note: '' },
           { rank: 2, name: 'クラクラチャンネルOMINÖS', note: '' },
-        ],
-      },
-      five: {
-        s1: [
-          {
-            rank: 1,
-            name: '群馬クラチャンしいならん',
-            note: '',
-          },
-          {
-            rank: 2,
-            name: 'きのこ帝国',
-            note: '',
-          },
-          {
-            rank: 3,
-            name: 'DE-YAM',
-            note: '',
-          },
-        ],
-        s2: [
-          {
-            rank: 1,
-            name: 'KING OF KINGS',
-            note: '',
-          },
-          {
-            rank: 2,
-            name: 'Allexceed',
-            note: '',
-          },
-          {
-            rank: 3,
-            name: 'AnotherLV',
-            note: '',
-          },
-        ],
-        s3: [
-          {
-            rank: 1,
-            name: 'KING OF KINGS',
-            note: '',
-          },
-          {
-            rank: 2,
-            name: 'Armageddon Esports',
-            note: '',
-          },
-          {
-            rank: 3,
-            name: 'Allexceed',
-            note: '',
-          },
-        ],
-        s4: [
-          {
-            rank: 1,
-            name: ':question:',
-            note: '',
-          },
-          {
-            rank: 2,
-            name: ':question:',
-            note: '',
-          },
-          {
-            rank: 3,
-            name: ':question:',
-            note: '',
-          },
         ],
       },
     },

@@ -99,7 +99,7 @@ let data = new SlashCommandBuilder()
           )
       )
   );
-config.choices.league5.forEach(choice => {
+config.choices.league4.forEach(choice => {
   data.options[0].options[0].addChoices(choice);
   data.options[1].options[0].addChoices(choice);
   data.options[2].options[0].addChoices(choice);
@@ -149,9 +149,6 @@ export default {
       }
       else if (iLeague == 'mix') {
         query = { 'homeClanAbbr.mix': clanAbbr };
-      }
-      else if (iLeague == 'five') {
-        query = { 'homeClanAbbr.five': clanAbbr };
       }
       else if (iLeague == 'cup') {
         query = { 'homeClanAbbr.cup': clanAbbr };
@@ -614,7 +611,7 @@ async function statsLeague(interaction, client) {
       description += `  ( ${stats.overkill.nTriple.total} / ${stats.overkill.nAt.total} )\n`;
     };
   }
-  else if (iLeague == 'swiss' || iLeague == 'five' || iLeague == 'cup') {
+  else if (iLeague == 'swiss' || iLeague == 'cup') {
     description += `:boom: **${Math.round(stats.allAttackTypes.hitrate.total * 10) / 10}**%`;
     description += `  ( ${stats.allAttackTypes.nTriple.total} / ${stats.allAttackTypes.nAt.total} )\n`;
   }
@@ -715,11 +712,6 @@ async function statsPlayer(interaction, client) {
     description += createDescriptionAttacks(stats, 'mix4');
     description += `\n`;
   };
-  if (stats.five.attacks.total.nAttacks > 0) {
-    description += `* **5V**  ${config.emote.thn[`th${config.lvTH}`]}\n`;
-    description += createDescriptionAttacks(stats, 'five');
-    description += `\n`;
-  };
   if (stats.cup?.attacks?.total?.nAttacks > 0) {
     description += `* **CUP**  ${config.emote.thn[`th${config.lvTH}`]}\n`;
     description += createDescriptionAttacks(stats, 'cup');
@@ -779,11 +771,6 @@ async function statsPlayer(interaction, client) {
     if (stats.mix4.defenses.total.nDefenses > 0) {
       description += `* **MIX** [TH${config.lvTHmix[3]}]  ${config.emote.thn[`th${config.lvTHmix[3]}`]}\n`;
       description += createDescriptionDefenses(stats, 'mix4');
-      description += `\n`;
-    };
-    if (stats.five.defenses.total.nDefenses > 0) {
-      description += `* **5V**  ${config.emote.thn[`th${config.lvTH}`]}\n`;
-      description += createDescriptionDefenses(stats, 'five');
       description += `\n`;
     };
     if (stats.cup?.defenses?.total?.nDefenses > 0) {

@@ -57,26 +57,6 @@ let data = new SlashCommandBuilder()
   // 1
   .addSubcommand((subcommand) =>
     subcommand
-      .setName('deal_war_5v')
-      .setDescription(config.command[nameCommand].subCommand['deal_war_5v'])
-      .addStringOption((option) =>
-        option
-          .setName('date')
-          .setDescription('マッチング日（選択）')
-          .setRequired(true)
-          .setAutocomplete(true),
-      )
-      .addStringOption((option) =>
-        option
-          .setName('time')
-          .setDescription('マッチング時刻')
-          .setRequired(true)
-          .setAutocomplete(true),
-      ),
-  )
-  // 2
-  .addSubcommand((subcommand) =>
-    subcommand
       .setName('my_roster')
       .setDescription(config.command[nameCommand].subCommand['my_roster']),
   )
@@ -283,31 +263,6 @@ let data = new SlashCommandBuilder()
       )
       .addSubcommand((subcommand) =>
         subcommand
-          .setName('new_5v')
-          .setDescription(
-            config.command[nameCommand].subCommandGroup['roster']['new_5v'],
-          )
-          .addStringOption((option) =>
-            option
-              .setName('account')
-              .setDescription('プレイヤータグ')
-              .setRequired(true),
-          )
-          .addStringOption((option) =>
-            option
-              .setName('pilot_name')
-              .setDescription('パイロット名')
-              .setRequired(true),
-          )
-          .addUserOption((option) =>
-            option
-              .setName('pilot_dc')
-              .setDescription('使用者の discord アカウント')
-              .setRequired(true),
-          ),
-      )
-      .addSubcommand((subcommand) =>
-        subcommand
           .setName('delete')
           .setDescription(
             config.command[nameCommand].subCommandGroup['roster']['delete'],
@@ -324,16 +279,14 @@ let data = new SlashCommandBuilder()
       ),
   );
 
-config.choices.league5.forEach((choice) => {
-  data.options[4].options[1].options[0].addChoices(choice);
+config.choices.league4.forEach((choice) => {
+  data.options[3].options[1].options[0].addChoices(choice);
 });
 // 日付選択肢は動的に生成するため、ここでは空の配列を初期化
 let choices_date = [];
 /*config.choices.time.forEach(choice => {
   data.options[0].options[1].addChoices(choice);
 });
-config.choices.time5v.forEach(choice => {
-  data.options[1].options[1].addChoices(choice);
 });*/
 config.choices.prep_time.forEach((choice) => {
   data.options[0].options[2].addChoices(choice);
@@ -352,7 +305,7 @@ export default {
     const subcommandGroup = interaction.options.getSubcommandGroup();
     const subcommand = interaction.options.getSubcommand();
 
-    if (subcommand == 'deal_war' || subcommand == 'deal_war_5v') {
+    if (subcommand == 'deal_war') {
       let focusedOption = interaction.options.getFocused(true);
       let focusedValue = interaction.options.getFocused();
 
@@ -377,15 +330,6 @@ export default {
         console.error(description);
         console.error('No war found');
         return;
-      }
-
-      if (subcommand == 'deal_war' && mongoWar.league == 'five') {
-        await interaction.respond([
-          {
-            name: 'このコマンドではなく、/rep deal_war_5v コマンドを実行してください。',
-            value: 'error',
-          },
-        ]);
       }
 
       let choices = [];
@@ -421,11 +365,7 @@ export default {
         
         await interaction.respond(dateChoices);
       } else if (focusedOption.name === 'time') {
-        if (subcommand == 'deal_war') {
-          choices = config.choices.time;
-        } else if (subcommand == 'deal_war_5v') {
-          choices = config.choices.time5v;
-        }
+        choices = config.choices.time;
         await interaction.respond(
           choices.map((choice) => ({ name: choice.name, value: choice.value })),
         );
@@ -572,15 +512,13 @@ export default {
 
     if (subcommand == 'deal_war') {
       await dealWar(client, interaction);
-    } else if (subcommand == 'deal_war_5v') {
-      await dealWar5v(client, interaction);
     } else if (subcommand == 'my_roster') {
       await myRoster(client, interaction);
     } else if (subcommand == 'my_team_information') {
       await myTeamInformation(client, interaction);
     } else if (subcommandGroup == 'roster') {
-      if (subcommand == 'new' || subcommand == 'new_5v') {
-        await addRoster(client, interaction, subcommand);
+      if (subcommand == 'new') {
+        await addRoster(client, interaction);
       } else if (subcommand == 'delete') {
         await deleteRoster(client, interaction);
       }
@@ -596,7 +534,7 @@ export default {
   },
 };
 
-async function addRoster(client, interaction, subcommand) {
+async function addRoster(client, interaction) {
   const mongoTeam = await client.clientMongo
     .db('jwc')
     .collection('clans')
@@ -727,13 +665,6 @@ async function addRoster(client, interaction, subcommand) {
     description += '\n';
     description += `*Invalid pilot name was inputted.*\n`;
     description += `*Please check here:* https://discord.com/channels/919210540436443146/1318018108446871644/1318926046413852714\n`;
-    flagNG = 1;
-  }
-
-  if (subcommand == 'new' && league == 'five' && pilotDC == null) {
-    description += '\n';
-    description += `*Please use the command below instead.*\n`;
-    description += `${config.emote.discord} </rep roster new_5v:1229035726549680191>\n`;
     flagNG = 1;
   }
 
@@ -934,209 +865,6 @@ async function myTeamInformation(client, interaction) {
     await interaction.followUp({ content: '*Error*', ephemeral: true });
     return;
   }
-}
-
-async function dealWar5v(client, interaction) {
-  const iDateTimeUnix = await interaction.options.getString('date');
-  const iTimeMatch = await interaction.options.getString('time');
-  const iTimePrep = '5m';
-  const iTimeBattle = '45m';
-  const iSize = '5v5';
-
-  let day_arr = ['日', '月', '火', '水', '木', '金', '土'];
-  let date = new Date(iDateTimeUnix * 1000);
-  let dateJstLong = `${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日 （${day_arr[date.getDay()]}）`;
-
-  const hour = Number(iTimeMatch.split(':')[0]) - 9;
-  const min = Number(iTimeMatch.split(':')[1]);
-  const dateFull = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-    hour,
-    min,
-  );
-  const dealTimeUnixLong = dateFull.getTime() / 1000;
-
-  const iChId = await interaction.channel.id;
-  const mongoWar = await client.clientMongo
-    .db('jwc')
-    .collection('wars')
-    .findOne({ nego_channel: iChId });
-
-  if (!mongoWar) {
-    await interaction.followUp({
-      content: '*ERROR: No War*',
-      ephemeral: true,
-    });
-    return;
-  }
-
-  let league = mongoWar.league;
-  let week = mongoWar.week;
-  let match = mongoWar.match;
-  let clanAbbr = mongoWar.clan_abbr;
-  let opponentAbbr = mongoWar.opponent_abbr;
-
-  let clanAbbrA = clanAbbr;
-  let clanAbbrB = opponentAbbr;
-
-  let mongoClanA = {};
-  let mongoClanB = {};
-  try {
-    mongoClanA = await client.clientMongo
-      .db('jwc')
-      .collection('clans')
-      .findOne({ clan_abbr: clanAbbrA });
-    mongoClanB = await client.clientMongo
-      .db('jwc')
-      .collection('clans')
-      .findOne({ clan_abbr: clanAbbrB });
-  } catch (error) {
-    console.error(error);
-    let message = '_ERROR: please try again lator._\n';
-    message += `* iDateTimeUnix: ${iDateTimeUnix}\n`;
-    message += `* iTimeMatch: ${iTimeMatch}\n`;
-    message += `* iTimePrep: ${iTimePrep}\n`;
-    message += `* iTimeBattle: ${iTimeBattle}\n`;
-    await interaction.followUp({ content: message });
-    return;
-  }
-
-  if (!mongoClanA || !mongoClanB) {
-    await interaction.followUp({
-      content: '*ERROR: Team data not found*',
-      ephemeral: true,
-    });
-    console.error(
-      `dealWar5v: clan data not found (${clanAbbrA}, ${clanAbbrB})`,
-    );
-    return;
-  }
-
-  const clanNameA = mongoClanA.clan_name;
-  const clanNameB = mongoClanB.clan_name;
-  const clanTagA = mongoClanA.clan_tag;
-  const clanTagB = mongoClanB.clan_tag;
-
-  if (!clanTagA || !clanTagB) {
-    await interaction.followUp({
-      content: '*ERROR: Clan tag not found*',
-      ephemeral: true,
-    });
-    console.error(
-      `dealWar5v: clan tag not found (${clanAbbrA}, ${clanAbbrB})`,
-    );
-    return;
-  }
-
-  const clanLinkA =
-    'https://link.clashofclans.com/?action=OpenClanProfile&tag=' +
-    clanTagA.slice(1);
-  const clanLinkB =
-    'https://link.clashofclans.com/?action=OpenClanProfile&tag=' +
-    clanTagB.slice(1);
-
-  let title = ':white_check_mark: **DEAL!**';
-  let description = '';
-  description += `${config.leaguePlusEmote[league]}\n`;
-  description += `_${mongoWar.name_match}_\n`;
-  description += `\n`;
-  description += `**HOME: ${mongoClanA.team_name}**\n`;
-  description += `**AWAY: ${mongoClanB.team_name}**\n`;
-  description += `\n`;
-  description += `:calendar: <t:${dealTimeUnixLong}:F> (<t:${dealTimeUnixLong}:R>)\n`;
-  description += `:hourglass_flowing_sand:  ${iTimePrep}  /  :crossed_swords:  ${iTimeBattle}\n`;
-  if (iSize != null) {
-    description += `_${iSize}_\n`;
-  }
-  description += `\n`;
-  description += `[__**${clanTagA}**__](${clanLinkA}) ${clanNameA}\n`;
-  description += `:arrow_down:\n`;
-  description += `[__**${clanTagB}**__](${clanLinkB}) ${clanNameB}\n`;
-
-  const footer = `${config.footer} ${config.league[league]} SEASON ${config.season[league]}`;
-
-  let embed = new EmbedBuilder();
-  embed.setTitle(title);
-  embed.setDescription(description);
-  embed.setColor(config.color[league]);
-  embed.setFooter({ text: footer, iconURL: config.urlImage.jwc });
-  await interaction.followUp({ embeds: [embed] });
-
-  if (mongoClanA.log?.deal?.switch == 'on') {
-    try {
-      await client.channels.cache
-        .get(mongoClanA.log.deal.channel_id)
-        .send({ embeds: [embed] });
-    } catch (error) {
-      console.error(error);
-    }
-  }
-  if (mongoClanB.log?.deal?.switch == 'on') {
-    try {
-      await client.channels.cache
-        .get(mongoClanB.log.deal.channel_id)
-        .send({ embeds: [embed] });
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
-  // check
-  try {
-    const oldCh = await interaction.guild.channels.fetch(iChId);
-    let newChName = oldCh.name.replace('✅', '');
-    newChName = '✅' + newChName;
-    await interaction.guild.channels.edit(interaction.channelId, {
-      name: newChName,
-    });
-  } catch (error) {
-    console.error(`dealWar5v: failed to update channel name ${iChId}`);
-    console.error(error);
-  }
-
-  //db update
-  let query = { nego_channel: iChId };
-  let deal = {};
-  deal.date = dateJstLong;
-  deal.time = iTimeMatch;
-  deal.prep_time = iTimePrep;
-  deal.battle_time = iTimeBattle;
-  deal.send = clanAbbr;
-  deal.size = iSize;
-  deal.unixTime = dealTimeUnixLong;
-  let updatedListing = { deal: deal };
-  await client.clientMongo
-    .db('jwc')
-    .collection('wars')
-    .updateOne(query, { $set: updatedListing });
-
-  //auto-updating
-  await functions.updateWarInfo(client, league, week);
-
-  let json = {};
-  json.league = config.league[league];
-  json.week = week;
-  json.teamA = clanAbbrA;
-  json.teamB = clanAbbrB;
-  json.prep = iTimePrep;
-  json.battle = iTimeBattle;
-  json.unixTime = dealTimeUnixLong;
-
-  // delete pre-deal calendar event if needed
-  if (mongoWar.deal && mongoWar.deal != '') {
-    json.type = 'delete_calendar_event';
-    json.unixTimeOld = mongoWar.deal.unixTime;
-    await editCalendarEvent(json);
-  }
-
-  //create calendar event
-  json.type = 'create_calendar_event';
-  await editCalendarEvent(json);
-
-  //await fCreateJSON.currentWeek(client.clientMongo, league);
-  //console.dir(`end: fCreateJSON.currentWeek [${league}]`);
 }
 
 async function dealWar(client, interaction) {
@@ -1553,17 +1281,13 @@ async function editTeamInformation(client, interaction) {
     ) {
       const repRemove = interaction.guild.members.cache.get(rep2ndNow.id);
       if (repRemove !== undefined) {
-        if (league == 'five') {
-          await functions.editRoleMain5v(interaction, repRemove, 'remove', 0);
-        } else {
-          await functions.editRoleMain(
-            interaction,
-            repRemove,
-            'remove',
-            league,
-            0,
-          );
-        }
+        await functions.editRoleMain(
+          interaction,
+          repRemove,
+          'remove',
+          league,
+          0,
+        );
       }
     }
   } else if (flagRemove == 'rep3rd') {
@@ -1670,30 +1394,17 @@ async function editRole(
         // 前任者が辞める場合
         let rep_remove = interaction.guild.members.cache.get(repNow.id);
         if (rep_remove !== undefined) {
-          if (league == 'five') {
-            await functions.editRoleMain5v(
-              interaction,
-              rep_remove,
-              'remove',
-              0,
-            ); // 前任者のロール削除
-          } else {
-            await functions.editRoleMain(
-              interaction,
-              rep_remove,
-              'remove',
-              league,
-              0,
-            ); // 前任者のロール削除
-          }
+          await functions.editRoleMain(
+            interaction,
+            rep_remove,
+            'remove',
+            league,
+            0,
+          ); // 前任者のロール削除
         }
       }
     }
-    if (league == 'five') {
-      await functions.editRoleMain5v(interaction, repNew, 'add', 0); // ロール追加（ついてなければ）
-    } else {
-      await functions.editRoleMain(interaction, repNew, 'add', league, 0); // ロール追加（ついてなければ）
-    }
+    await functions.editRoleMain(interaction, repNew, 'add', league, 0); // ロール追加（ついてなければ）
     rtnRep = repNew;
   }
   return rtnRep;

@@ -177,15 +177,6 @@ let data = new SlashCommandBuilder()
           .setDescription('LEAGUE')
           .setRequired(true)
       )
-      .addStringOption(option =>
-        option
-          .setName('round')
-          .setDescription('IF 5v, SELECT ROUND')
-          .addChoices(
-            { name: 'QUALIFIER', value: 'qualifier' },
-            { name: 'GROUP_STAGE', value: 'group_stage' },
-          )
-      )
   )
   // options[3]
   .addSubcommandGroup(subcommandgroup =>
@@ -329,7 +320,7 @@ let data = new SlashCommandBuilder()
           .setDescription('DISCORD ACCOUNT (IF YOU ARE THE OWNER, INPUT NOTHING)')
       )
   );
-config.choices.league5.forEach(choice => {
+config.choices.league4.forEach(choice => {
   // account
   data.options[0].options[1].options[0].addChoices(choice);
   // team
@@ -424,9 +415,6 @@ export default {
         }
         else if (iLeague == 'mix') {
           query = { 'homeClanAbbr.mix': clanAbbr };
-        }
-        else if (iLeague == 'five') {
-          query = { 'homeClanAbbr.five': clanAbbr };
         }
         else if (iLeague == 'cup') {
           query = { 'homeClanAbbr.cup': clanAbbr };
@@ -965,7 +953,6 @@ async function teamSingle(interaction, client) {
 
 async function leagueStandings(interaction, client) {
   let iLeague = await interaction.options.getString('league');
-  let iRound = await interaction.options.getString('round');
 
   let embed = new EmbedBuilder();
   embed.setColor(config.color[iLeague]);
@@ -977,60 +964,16 @@ async function leagueStandings(interaction, client) {
     { projection: { standings: 1, standings_gs: 1, _id: 0 } }
   );
 
-  let strRound = '';
-  if (iLeague == 'five') {
-    if (iRound == 'qualifier') {
-      strRound = 'QUALIFIER';
-    }
-    else if (iRound == 'group_stage') {
-      strRound = 'GROUP STAGE';
-    }
-    else if (!iRound) {
-      const weekNow = await functions.getWeekNow('five');
-      if (weekNow <= 5) {
-        strRound = 'QUALIFIER';
-      }
-      else {
-        strRound = 'GROUP STAGE';
-      };
-    };
-  };
-
-  let title = '';
-  if (iLeague != 'five') {
-    const weekNow = await functions.getWeekNow(iLeague);
-    title = `**STANDINGS** ${config.leaguePlusEmote[iLeague]}`;
-    if (weekNow <= config.weeksQ[iLeague]) {
-      title += ` | WEEK ${weekNow}`;
-    };
-  }
-  else if (iLeague == 'five') {
-    if (strRound == 'QUALIFIER') {
-      const weekNow = await functions.getWeekNow(iLeague);
-      title = `**QUALIFIER STANDINGS** ${config.leaguePlusEmote[iLeague]}`;
-      if (weekNow <= config.weeksQ[iLeague]) {
-        title += ` | WEEK ${weekNow}`;
-      };
-    }
-    else if (strRound == 'GROUP STAGE') {
-      title = `**GROUP STAGE STANDINGS** ${config.leaguePlusEmote[iLeague]}`;
-    };
+  const weekNow = await functions.getWeekNow(iLeague);
+  let title = `**STANDINGS** ${config.leaguePlusEmote[iLeague]}`;
+  if (weekNow <= config.weeksQ[iLeague]) {
+    title += ` | WEEK ${weekNow}`;
   };
   embed.setTitle(title);
 
   let description = '';
   try {
-    if (iLeague != 'five') {
-      description = await setDescriptionStandings(iLeague, mongoLeagueStats.standings);
-    }
-    else if (iLeague == 'five') {
-      if (strRound == 'QUALIFIER') {
-        description = await setDescriptionStandings(iLeague, mongoLeagueStats.standings);
-      }
-      else if (strRound == 'GROUP STAGE') {
-        description = await setDescriptionStandingsGroupStage(mongoLeagueStats.standings_gs);
-      };
-    };
+    description = await setDescriptionStandings(iLeague, mongoLeagueStats.standings);
   }
   catch (error) {
     console.error(error);
@@ -1041,19 +984,7 @@ async function leagueStandings(interaction, client) {
   await interaction.followUp({ embeds: [embed] });
 
   // 画像
-  if (iLeague == 'five') {
-    if (strRound == 'QUALIFIER') {
-      const attachment = await fCanvas.standings(iLeague, mongoLeagueStats.standings, mongoLeagueStats);
-      await interaction.followUp({ files: [attachment] });
-      const attachment2 = await fCanvas.standingsLandscape(iLeague, mongoLeagueStats.standings, mongoLeagueStats, strRound);
-      await interaction.followUp({ files: [attachment2] });
-    }
-    else if (strRound == 'GROUP STAGE') {
-      const attachment2 = await fCanvas.standingsLandscape(iLeague, mongoLeagueStats.standings_gs, mongoLeagueStats, strRound);
-      await interaction.followUp({ files: [attachment2] });
-    };
-  }
-  else if (iLeague == 'j1') {
+  if (iLeague == 'j1') {
     const attachment = await fCanvas.standings(iLeague, mongoLeagueStats.standings, mongoLeagueStats);
     await interaction.followUp({ files: [attachment] });
     const attachment2 = await fCanvas.standingsLandscape(iLeague, mongoLeagueStats.standings_gs, mongoLeagueStats, null);
@@ -1457,8 +1388,6 @@ async function usefulLinks(interaction, client) {
     content = `* Main Server\n${config.link.server.main}`;
     await interaction.followUp({ content: content });
     content = `* Reps Server\n${config.link.server.reps}`;
-    await interaction.followUp({ content: content });
-    content = `* eSports (5V) Server\n${config.link.server.five}`;
     await interaction.followUp({ content: content });
     content = `* Bot Server\n${config.link.server.bot}`;
     await interaction.followUp({ content: content });

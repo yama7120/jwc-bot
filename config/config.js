@@ -6,44 +6,40 @@ export default {
   lvTH: 18,
   lvTHmix: [18, 17, 16],
   rangeLvTH: { min: 12, max: 18 },
-  cronWarStatus: { j1: 'on', j2: 'on', swiss: 'off', mix: 'off', five: 'off', cup: 'off' }, // on / off
-  season: { j1: 20, j2: 20, j: 20, swiss: 20, mix: 20, five: 3, cup: 1 },
-  seasonNext: { j1: 20, j2: 20, swiss: 20, mix: 20, five: 4, cup: 1 }, // 応募受付時の表示、ロール付与時
-  seasonLast: { j1: 19, j2: 19, swiss: 19, mix: 19, five: 3, cup: 1 },
+  cronWarStatus: { j1: 'on', j2: 'on', swiss: 'off', mix: 'off', cup: 'off' }, // on / off
+  season: { j1: 20, j2: 20, j: 20, swiss: 20, mix: 20, cup: 1 },
+  seasonNext: { j1: 20, j2: 20, swiss: 20, mix: 20, cup: 1 }, // 応募受付時の表示、ロール付与時
+  seasonLast: { j1: 19, j2: 19, swiss: 19, mix: 19, cup: 1 },
   league: {
     j1: 'J1',
     j2: 'J2',
     j: 'J1 / J2',
     swiss: 'SWISS',
     mix: 'MIX',
-    five: '5V',
     cup: 'JWC CUP',
   },
-  leagueM: { j1: 'j', j2: 'j', swiss: 'swiss', mix: 'mix', five: 'five', cup: 'cup' },
+  leagueM: { j1: 'j', j2: 'j', swiss: 'swiss', mix: 'mix', cup: 'cup' },
   leaguePlusEmote: {
     j1: '<:JWC:930381270482030602> **J1**',
     j2: '<:JWC:930381270482030602> **J2**',
     swiss: ':flag_ch: **SWISS**',
     mix: ':four_leaf_clover: **MIX**',
-    five: ':crossed_swords: **5V**',
     cup: '<:yTH18n:1440166975283269663> **JWC CUP**',
   },
-  nHit: { j1: 2, j2: 2, swiss: 1, mix: 1, five: 1, cup: 2 },
+  nHit: { j1: 2, j2: 2, swiss: 1, mix: 1, cup: 2 },
   mode: {
     j1: 'eSport Mode',
     j2: 'eSport Mode',
     swiss: 'eSport Mode',
     mix: 'eSport Mode',
-    five: 'eSport Mode',
     cup: 'eSport Mode',
   },
-  minSize: { j1: 15, j2: 15, j1j2: 15, swiss: 10, mix: 5, five: 5, cup: 5 },
+  minSize: { j1: 15, j2: 15, j1j2: 15, swiss: 10, mix: 5, cup: 5 },
   bd: {
     j1: 15,
     j2: 15,
     swiss: 10,
     mix: { th18: 1, th17: 2, th16: 2 },
-    five: 5,
     cup: 5,
   },
   weeksQ: {
@@ -51,13 +47,8 @@ export default {
     j2: 5,
     swiss: 4,
     mix: 5,
-    five: 5,
     cup: 3,
   }, // 予選週数
-  weeksGS: {
-    start: 6,
-    end: 8,
-  }, // 5vグループステージ
   emote: {
     discord: '<:discord:1318762607276069035>',
     jwc: '<:JWC:930381270482030602>',
@@ -142,7 +133,6 @@ export default {
       main: 'https://discord.gg/rQz6KEY3E8',
       reps: 'https://discord.gg/eJKFYmQxQm',
       bot: 'https://discord.gg/J9pN36evmW',
-      five: 'https://discord.gg/5v7heGT2Wj',
     },
     rule: {
       j: {
@@ -268,7 +258,7 @@ export default {
       id: '1232699102689755186',
       subCommand: {
         summary: '対戦情報取得（同WEEK全対戦）',
-        live: '対戦中の対戦情報取得（5v以外）',
+        live: '対戦中の対戦情報取得',
         single: '詳細な対戦情報取得（1対戦）',
         own: '自チームの対戦情報取得（要チャンネル登録）',
         attacks: '攻撃結果取得',
@@ -370,7 +360,6 @@ export default {
       id: '1229035726549680191',
       subCommand: {
         deal_war: '対戦日報告',
-        deal_war_5v: '対戦日報告（5v専用）',
         my_roster: '自分のチームのロスター（チーム専用チャンネル内限定）',
         my_team_information: '自分のチーム情報（チーム専用チャンネル内限定）',
       },
@@ -381,8 +370,6 @@ export default {
         },
         roster: {
           new: 'ロスターに新規アカウントを登録（チーム専用チャンネル内限定）',
-          new_5v:
-            'ロスターに新規アカウントを登録（チーム専用チャンネル内限定；5v専用）',
           delete:
             'ロスターからアカウントを登録解除（チーム専用チャンネル内限定）',
         },
@@ -405,21 +392,12 @@ export default {
       { name: 'MIX', value: 'mix' },
       { name: 'CUP', value: 'cup' },
     ],
-    league5: [
-      { name: 'J1', value: 'j1' },
-      { name: 'J2', value: 'j2' },
-      { name: 'SWISS', value: 'swiss' },
-      { name: 'MIX', value: 'mix' },
-      { name: '5V', value: 'five' },
-      { name: 'CUP', value: 'cup' },
-    ],
     leagueAll: [
       { name: 'J1', value: 'j1' },
       { name: 'J2', value: 'j2' },
       { name: 'J3', value: 'j3' },
       { name: 'SWISS', value: 'swiss' },
       { name: 'MIX', value: 'mix' },
-      { name: '5V', value: 'five' },
       { name: 'CUP', value: 'cup' },
     ],
     week: [
@@ -525,10 +503,6 @@ export default {
       { name: '23:00', value: '23:00' },
       { name: '23:59', value: '23:59' },
     ],
-    time5v: [
-      { name: '22:00', value: '22:00' },
-      { name: '23:00', value: '23:00' },
-    ],
     prep_time: [
       { name: '5m', value: '5m' },
       { name: '15m', value: '15m' },
@@ -585,14 +559,10 @@ export default {
     jwcMain: '877775359867748373',
     jwcReps: '919210540436443146',
     jwcbot: '1097835501546901554',
-    jwc5v: '1011303526330286161',
   },
   roleId: {
     admins: '919211876699766794', // repsServer
     bots: '919214471401046016', // repsServer
-    admins5v: '1011307935944683550',
-    bots5v: '1011611408879865958',
-    streamer5v: '1016650523094564895',
     repsServer: {
       s1: {
         cup: '1505934749850665183',
@@ -651,11 +621,6 @@ export default {
         mix: '1503378680884498513',
       },
     },
-    repsServer5v: {
-      s1: '1011309090317803600',
-      s2: '1298820300246351883',
-      s3: '1310778576932569110',
-    },
   },
   parentId: {
     repsServer: {
@@ -664,7 +629,6 @@ export default {
       j2: '1252617170211569754',
       swiss: '1252617250091962368',
       mix: '1252617308392787969',
-      five: '1310778318324240435',
       cup: '1505724810594877460',
     },
   },
@@ -688,13 +652,11 @@ export default {
     bet: '1129067815022907444',
     freeBotRoom: '884266417812291645',
     adminBotRoom: '1137991284070567966',
-    adminBotRoom5v: '1011628458461380708',
     playerRegistration: {
       j1: '1195027619025010778',
       j2: '1195027728693461143',
       swiss: '1195027785396256848',
       mix: '1195027889205297192',
-      five: '1300743302848581632',
       cup: '1505723746890027138',
     },
     calendar: '1268907406746849323',
@@ -704,7 +666,6 @@ export default {
     j2: '1097839686233374751',
     swiss: '1097839701563551805',
     mix: '1097839720475656222',
-    five: '1302998907604832296',
     cup: '1505746661488726046',
   },
   leagueCh: {
@@ -712,7 +673,6 @@ export default {
     j2: '989176760065216602',
     swiss: '928319135698534450',
     mix: '989175788442095636',
-    five: '1300743128763990016',
     cup: '1505723579554074634',
   },
   rankingCh: {
@@ -720,7 +680,6 @@ export default {
     j2: '999999999999',
     swiss: '999999999999',
     mix: '999999999999',
-    five: '999999999999',
     cup: '999999999999',
   },
   resultCh: {
@@ -728,7 +687,6 @@ export default {
     j2: '989176845675167774',
     swiss: '928319198571167774',
     mix: '989175922106187787',
-    five: '1300743218446467122',
     cup: '1505723678879645758',
   },
   attacklogch: {
@@ -790,18 +748,6 @@ export default {
       m9: '1097844181168304280',
       m10: '1097844189502377986',
     },
-    five: {
-      m1: '1302996506722439188',
-      m2: '1302996520508985344',
-      m3: '1302996535633514496',
-      m4: '1302996547495268473',
-      m5: '1302996560883224618',
-      m6: '1302996572912615494',
-      m7: '1302996583561822289',
-      m8: '1302996594181931139',
-      m9: '1302996608207552604',
-      m10: '1302996621423808552',
-    },
     cup: {
       m1: '1505747311983067217',
       m2: '1505747337648275537',
@@ -851,7 +797,6 @@ export default {
     j3: '#C27C0E',
     swiss: '#F1C40F',
     mix: '#1F8B4C',
-    five: '#1ABC9C',
     cup: '#9B59B6',
     attack: '#992D22',
     defense: '#206694',

@@ -122,9 +122,6 @@ async function scheduleWar(client, dataObject) {
   description += result.description;
 
   let idCh = config.logch.adminBotRoom;
-  if (league == 'five') {
-    idCh = config.logch.adminBotRoom5v;
-  };
 
   let myEmbed = new EmbedBuilder();
   let title = `**SCHEDULE**`;

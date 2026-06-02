@@ -474,16 +474,6 @@ async function updateScore(clientMongo, league, mongoClan) {
   let sumScoreClanQ = {};
   let sumScoreOppQ = {};
 
-  // group stage for 5v
-  let nWarGS = 0;
-  let nWarGSf = 0; // includes forfeited war
-  let nWinGS = 0;
-  let nTieGS = 0;
-  let nLossGS = 0;
-  let sumPointGS = 0;
-  let sumScoreClanGS = {};
-  let sumScoreOppGS = {};
-
   await Promise.all(mongoWars.map(async (mongoWar) => {
     const week = mongoWar.week;
     const weekStr = `w${week}`;
@@ -549,28 +539,6 @@ async function updateScore(clientMongo, league, mongoClan) {
               };
             };
           }
-          else if (league == 'five') {
-            if (week <= config.weeksQ[league]) {
-              nWarQ += 1;
-              nWinQ += win;
-              nTieQ += tie;
-              nLossQ += loss;
-              sumPointQ += point;
-              if (mongoWar.result.state != 'forfeited') {
-                nWarQF += 1;
-              };
-            }
-            else if (config.weeksGS.start <= week && week <= config.weeksGS.end) {
-              nWarGS += 1;
-              nWinGS += win;
-              nTieGS += tie;
-              nLossGS += loss;
-              sumPointGS += point;
-              if (mongoWar.result.state != 'forfeited') {
-                nWarGSf += 1;
-              };
-            };
-          };
 
           let scoreClan = {};
           let scoreOpp = {};
@@ -594,16 +562,6 @@ async function updateScore(clientMongo, league, mongoClan) {
                   sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, 'opponent');
                 };
               }
-              else if (league == 'five') {
-                if (week <= config.weeksQ[league]) {
-                  sumScoreClanQ = await sumResult(sumScoreClanQ, mongoWar, 'clan');
-                  sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, 'opponent');
-                }
-                else if (config.weeksGS.start <= week && week <= config.weeksGS.end) {
-                  sumScoreClanGS = await sumResult(sumScoreClanGS, mongoWar, 'clan');
-                  sumScoreOppGS = await sumResult(sumScoreOppGS, mongoWar, 'opponent');
-                };
-              };
             }
             else if (mongoWar.opponent_abbr == clanAbbr) {
               scoreClan = mongoWar.result.opponent;
@@ -623,16 +581,6 @@ async function updateScore(clientMongo, league, mongoClan) {
                   sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, 'clan');
                 };
               }
-              else if (league == 'five') {
-                if (week <= config.weeksQ[league]) {
-                  sumScoreClanQ = await sumResult(sumScoreClanQ, mongoWar, 'opponent');
-                  sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, 'clan');
-                }
-                else if (config.weeksGS.start <= week && week <= config.weeksGS.end) {
-                  sumScoreClanGS = await sumResult(sumScoreClanGS, mongoWar, 'opponent');
-                  sumScoreOppGS = await sumResult(sumScoreOppGS, mongoWar, 'clan');
-                };
-              };
             };
           }
           else if (mongoWar.result.state == 'forfeited') {
@@ -670,17 +618,6 @@ async function updateScore(clientMongo, league, mongoClan) {
   let starDifferenceQ = (nWarQF > 0) ? sumScoreClanQ.sumStars - sumScoreOppQ.sumStars : 0;
   let ptDefDifferenceQ = (nWarQF > 0) ? sumScoreClanQ.sumPtDef - sumScoreOppQ.sumPtDef : 0;
   let starPlusPtDefDifferenceQ = starDifferenceQ + ptDefDifferenceQ;
-
-  let starDifferenceGS = 0;
-
-  if (league == 'five') {
-    sumScoreClanGS.sumDestruction = (nWarGSf > 0) ? Math.round(sumScoreClanGS.sumDestruction * 100) / 100 : 0;
-    sumScoreOppGS.sumDestruction = (nWarGSf > 0) ? Math.round(sumScoreOppGS.sumDestruction * 100) / 100 : 0;
-    sumScoreClanGS.destruction = (nWarGSf > 0) ? Math.round(sumScoreClanGS.sumDestruction / nWarGSf * 100) / 100 : NaN;
-    sumScoreOppGS.destruction = (nWarGSf > 0) ? Math.round(sumScoreOppGS.sumDestruction / nWarGSf * 100) / 100 : NaN;
-
-    starDifferenceGS = (nWarGSf > 0) ? sumScoreClanGS.sumStars - sumScoreOppGS.sumStars : 0;
-  };
 
   if (mongoClan.score != null) {
     if (mongoClan.score.add != null) {
@@ -725,21 +662,6 @@ async function updateScore(clientMongo, league, mongoClan) {
     opponent: sumScoreOppQ,
   };
   scoreAll.sumQ = scoreSumQ;
-
-  if (league == 'five') {
-    const scoreSumGS = {
-      nWar: nWarGS,
-      nWin: nWinGS,
-      nTie: nTieGS,
-      nLoss: nLossGS,
-      point: sumPointGS,
-      starDifference: starDifferenceGS,
-      starDifferenceAvg: Math.round(starDifferenceGS / nWarGS * 10) / 10,
-      clan: sumScoreClanGS,
-      opponent: sumScoreOppGS,
-    };
-    scoreAll.sumGS = scoreSumGS;
-  };
 
   clientMongo.db('jwc').collection('clans').updateOne({ clan_abbr: mongoClan.clan_abbr }, { $set: { score: scoreAll } });
 };
@@ -1553,7 +1475,7 @@ async function calcStatsAccs(clientMongo, league, clanAbbr, season) {
 
     let stats = {};
     if (mongoAcc.stats == null) {
-      stats = { j1: '', j2: '', swiss: '', mix: '', five: '', cup: '' };
+      stats = { j1: '', j2: '', swiss: '', mix: '', cup: '' };
     }
     else {
       stats = mongoAcc.stats;

@@ -415,7 +415,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
     ctx.fillText(text, pos.h81 + 30, pos_triple);
     text = `/${mongoTeam.score.sum.clan.overkill.nAt.total}`;
     ctx.fillText(text, pos.h41 + 30, pos_triple);
-  } else if (league == 'swiss' || league == 'five' || league == 'cup') {
+  } else if (league == 'swiss' || league == 'cup') {
     var imgRatio = 0.5;
     var imgStars = await Canvas.loadImage(`./image/scStarTriple.png`);
     var posImgStarsH = pos.h91 - (300 * imgRatio) / 2 - 50;
@@ -598,7 +598,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
     chartDataTeam[5] = mongoTeam.stats.tScoreDef.sum.fresh.total;
     chartDataTeam[6] = mongoTeam.stats.tScoreDef.sum.cleanup.total;
     chartDataTeam[7] = mongoTeam.stats.tScoreDef.sum.overkill.total;
-  } else if (league == 'swiss' || league == 'five' || league == 'cup') {
+  } else if (league == 'swiss' || league == 'cup') {
     chartLabels = ['All att.', 'Fresh att.', 'All def.', 'Fresh def.'];
     chartDataAvg = [50, 50, 50, 50];
     chartDataTeam[0] = mongoTeam.stats.tScore.sum.allAttackTypes.total;
@@ -629,14 +629,12 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
     j2: config.rgb.blue,
     swiss: config.rgb.yellow,
     mix: config.rgb.green,
-    five: config.rgb.purple.default,
   };
   const chartColorAlpha = {
     j1: config.rgba.red,
     j2: config.rgba.blue,
     swiss: config.rgba.yellow,
     mix: config.rgba.green,
-    five: config.rgb.purple.one,
   };
   const chartData = {
     labels: chartLabels,
@@ -779,9 +777,6 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
   } else if (league == 'mix') {
     spacing = 140;
     weekMax = 14;
-  } else if (league == 'five') {
-    spacing = 160;
-    weekMax = 12;
   }
   for (let week = 1; week <= weekMax; week++) {
     ctx.textAlign = 'center';
@@ -1060,7 +1055,7 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
         counter += 1;
       }
     });
-  } else if (league == 'swiss' || league == 'five' || league == 'cup') {
+  } else if (league == 'swiss' || league == 'cup') {
     posStart_topPlayers.total = pos.v51;
     spacing = 70;
     let counter = 1;
@@ -1283,9 +1278,8 @@ async function standings(league, standings, leagueStats) {
   posH.fresh = pos.h92;
   posH.cleanup = pos.h122;
   posH.overkill = pos.h152;
-  // swiss, five
+  // swiss
   posH.hitrate.swiss = pos.h72;
-  posH.hitrate.five = pos.h72;
   posH.triple = pos.h122;
   // mix
   posH.hitrate.mix = pos.h62;
@@ -1322,7 +1316,7 @@ async function standings(league, standings, leagueStats) {
       ctx.fillText(text, pos.h172, headerHeight);
     };
     */
-  } else if (league == 'swiss' || league == 'five' || league == 'cup') {
+  } else if (league == 'swiss' || league == 'cup') {
   } else if (league == 'mix') {
     // change TH level
     text = 'TH17';
@@ -1388,7 +1382,7 @@ async function standings(league, standings, leagueStats) {
   ctx.fillText(text, posH.sd, headerHeight + 50);
   text = 'Destruction Percentage';
   ctx.fillText(text, posH.dp, headerHeight + 50);
-  if (league == 'swiss' || league == 'five' || league == 'cup') {
+  if (league == 'swiss' || league == 'cup') {
     ctx.fillStyle = config.rgb.snowWhite;
     setFont(ctx, config.canvasFontSize.xxSmall);
     text = 'Triples / Attacks';
@@ -1463,7 +1457,7 @@ async function standings(league, standings, leagueStats) {
 
       text = team.team_name.replace(/\\/g, '').replace(/‪⋆͛/g, '');
       let fontSizeTeamName = '';
-      if (league == 'swiss' || league == 'five' || league == 'cup') {
+      if (league == 'swiss' || league == 'cup') {
         fontSizeTeamName = config.canvasFontSize.xxxxSmall;
       } else {
         fontSizeTeamName = config.canvasFontSize.xxSmall;
@@ -1600,7 +1594,7 @@ async function standings(league, standings, leagueStats) {
             10,
             spacing / 4,
           );
-        } else if (league == 'swiss' || league == 'five' || league == 'cup') {
+        } else if (league == 'swiss' || league == 'cup') {
           ctxHitrate(
             ctx,
             score.clan.allAttackTypes,
@@ -1799,7 +1793,6 @@ async function standings(league, standings, leagueStats) {
       league == 'j1' ||
       league == 'swiss' ||
       league == 'mix' ||
-      league == 'five' ||
       league == 'cup'
     ) {
       statsLeague = leagueStats.stats.sumQ;
@@ -1908,7 +1901,7 @@ async function standings(league, standings, leagueStats) {
           10,
           spacing / 4,
         );
-      } else if (league == 'swiss' || league == 'five' || league == 'cup') {
+      } else if (league == 'swiss' || league == 'cup') {
         ctxHitrate(
           ctx,
           statsLeague.allAttackTypes,
@@ -2184,23 +2177,7 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
   let numTeamLeft = 8;
 
   let spacing = {};
-  if (league == 'five') {
-    if (strRound == 'QUALIFIER') {
-      headerHeight = 400;
-      marginTop = 600;
-      spacing = {
-        left: (heightCanvas - 800) / numTeamLeft,
-        right: (heightCanvas - 800) / (standings.length - numTeamLeft),
-      };
-    } else if (strRound == 'GROUP STAGE') {
-      headerHeight = 400;
-      marginTop = 700;
-      spacing = {
-        left: (heightCanvas - 800) / 4,
-        right: (heightCanvas - 800) / 4,
-      };
-    }
-  } else if (league == 'j1') {
+  if (league == 'j1') {
     headerHeight = 450;
     marginTop = 650;
     spacing = {
@@ -2281,32 +2258,7 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
       //console.dir(team);
       let rank = 0;
       let ratioSpacing = 0;
-      if (league == 'five') {
-        if (strRound == 'QUALIFIER') {
-          rank = team.rank;
-          if (index < numTeamLeft) {
-            posSide[index] = 'left';
-            pos0[index] = marginTop + index * spacing[posSide[index]];
-          } else if (index >= numTeamLeft) {
-            posSide[index] = 'right';
-            pos0[index] =
-              marginTop + (index - numTeamLeft) * spacing[posSide[index]];
-          }
-          ratioSpacing = 0.4;
-          ctx.globalAlpha = 0.6;
-        } else if (strRound == 'GROUP STAGE') {
-          rank = team.rank_div;
-          if (team.division == 'a') {
-            posSide[index] = 'left';
-          } else if (team.division == 'b') {
-            posSide[index] = 'right';
-          }
-          pos0[index] =
-            marginTop + (team.rank_div - 1) * spacing[posSide[index]];
-          ratioSpacing = 0.3;
-          ctx.globalAlpha = 0.5;
-        }
-      } else if (league == 'j1') {
+      if (league == 'j1') {
         rank = team.rank_div;
         if (team.division == 'fist') {
           posSide[index] = 'left';

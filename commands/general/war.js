@@ -93,7 +93,7 @@ let data = new SlashCommandBuilder()
       )
   );
 
-config.choices.league5.forEach(choice => {
+config.choices.league4.forEach(choice => {
   data.options[0].options[0].addChoices(choice);
   data.options[2].options[0].addChoices(choice);
   data.options[4].options[0].addChoices(choice);
@@ -346,10 +346,6 @@ async function warOwn(interaction, client) {
   if (flagFind == 0) {
     [flagFind, match, league] = await getMatch(interaction, 'mix');
   };
-  if (flagFind == 0) {
-    [flagFind, match, league] = await getMatch(interaction, 'five');
-  };
-
   if (flagFind != 0) {
     week = await functions.getWeekNow(league);
     mongoWar = await client.clientMongo.db('jwc').collection('wars')
@@ -502,9 +498,6 @@ async function warAttacks(interaction, client) {
             };
           };
           let time = attack.unixTime == null ? '' : `<t:${attack.unixTime}:t> `;
-          if (iLeague == 'five') {
-            time = '';
-          };
           description += `${time}${stars[0]}${stars[1]}${stars[2]} **${attack.destruction}%**`;
           if (countEquip && countEquip.epic > 0) {
             description += ` _E${countEquip.epic}_`;

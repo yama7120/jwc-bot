@@ -163,7 +163,7 @@ async function getClanWarUpdateDB(client, mongoWar) {
           if (clanWar.clan.members.length < 15) {
             return flagUpdate;
           }
-        } else if (league == 'swiss' || league == 'mix' || league == 'five' || league == 'cup') {
+        } else if (league == 'swiss' || league == 'mix' || league == 'cup') {
           if (clanWar.clan.members.length != config.minSize[league]) {
             return flagUpdate;
           }
@@ -317,14 +317,7 @@ async function getClanWarUpdateDB(client, mongoWar) {
             await sendEnd(client, mongoWarUpdated);
             await fMongo.standings(client.clientMongo, league);
             
-            if (league == 'five') {
-              await fMongo.standingsGroupStage(
-                client.clientMongo,
-                league,
-                'a',
-                'b',
-              );
-            } else if (league == 'j1') {
+            if (league == 'j1') {
               await fMongo.standingsGroupStage(
                 client.clientMongo,
                 league,
@@ -532,12 +525,7 @@ async function sendEnd(client, mongoWar) {
 
   const negoChannel = await client.channels.fetch(mongoWar.nego_channel);
   let newChName = negoChannel.name.replace('✅', '🏁');
-  let guild = null;
-  if (league == 'five') {
-    guild = await client.guilds.fetch(config.guildId.jwc5v);
-  } else {
-    guild = await client.guilds.fetch(config.guildId.jwcReps);
-  }
+  const guild = await client.guilds.fetch(config.guildId.jwcReps);
   guild.channels.edit(mongoWar.nego_channel, { name: newChName });
 }
 export { sendEnd };

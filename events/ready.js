@@ -49,7 +49,6 @@ export default {
       j2: '*/3 * * * *',
       swiss: '*/7 * * * *',
       mix: '*/5 * * * *',
-      five: '*/1 * * * *',
       cup: '*/5 * * * *',
     };
     for (const [league, schedule] of Object.entries(cronWarSchedules)) {

@@ -895,7 +895,6 @@ async function getAccInfoDescriptionJWC(mongoAcc) {
   description += `J1/J2 *S${config.season.j}*: ${(mongoAcc?.homeClanAbbr?.j?.trim().toUpperCase() || 'FREE') === 'FREE' ? '*FREE*' : `**${mongoAcc.homeClanAbbr.j.toUpperCase()}**`}\n`;
   description += `SWISS *S${config.season.swiss}*: ${(mongoAcc?.homeClanAbbr?.swiss?.trim().toUpperCase() || 'FREE') === 'FREE' ? '*FREE*' : `**${mongoAcc.homeClanAbbr.swiss.toUpperCase()}**`}\n`;
   description += `MIX *S${config.season.mix}*: ${(mongoAcc?.homeClanAbbr?.mix?.trim().toUpperCase() || 'FREE') === 'FREE' ? '*FREE*' : `**${mongoAcc.homeClanAbbr.mix.toUpperCase()}**`}\n`;
-  description += `5V *S${config.season.five}*: ${(mongoAcc?.homeClanAbbr?.five?.trim().toUpperCase() || 'FREE') === 'FREE' ? '*FREE*' : `**${mongoAcc.homeClanAbbr.five.toUpperCase()}**`}\n`;
   description += `CUP *S${config.season.cup}*: ${(mongoAcc?.homeClanAbbr?.cup?.trim().toUpperCase() || 'FREE') === 'FREE' ? '*FREE*' : `**${mongoAcc.homeClanAbbr.cup.toUpperCase()}**`}\n`;
   description += `\n`;
 
@@ -1135,7 +1134,6 @@ async function getEmbedStatusInfo(clientMongo, isAdmin, unixTime) {
   description += await getDescriptionStatusInfo('j2');
   description += await getDescriptionStatusInfo('swiss');
   description += await getDescriptionStatusInfo('mix');
-  description += await getDescriptionStatusInfo('five');
   description += await getDescriptionStatusInfo('cup');
 
   description += '\n';
@@ -1348,13 +1346,6 @@ function setDescriptionClanListOne(iLeague, index, season, clan) {
   if (iLeague == 'j1' || iLeague == 'j2') {
     clanAbbrRoster = 'J_' + clanAbbrRoster;
   }
-  /*
-  if (iLeague != 'five') {
-    const rosterLink = 'https://docs.google.com/spreadsheets/d/' + config.ssId[clanAbbrRoster] + '/edit?usp=sharing';
-    return_str += `[__ROSTER | ${clanAbbr.toUpperCase()}__](${rosterLink})\n`;
-    return_str += `\n`;
-  };
-  */
   return return_str;
 }
 
@@ -1377,74 +1368,54 @@ async function getDescriptionNego(
     weekday: 'short',
   };
 
-  if (league == 'five') {
-    myContent += `* 本対戦に関する連絡や交渉はこちらのチャンネル内でのみお願いします。\n`;
-    myContent += `* 下記の基準日を含めて ${schedule.dateDef5v.period[`w${week}`]} 日以内に対戦を実施してください。\n`;
-    myContent += `* マッチング時間は 22:00 または 23:00 としてください。\n`;
-    myContent += `* 交渉結果は </rep deal_war_5v:1229035726549680191> コマンドで報告してください。\n`;
-    myContent += `* 対戦の申請はホームチームから行ってください。\n`;
-
-    myDescription += `**HOME: ${teamNameA}**\n`;
-    myDescription += `**AWAY: ${teamNameB}**\n`;
-    myDescription += `\n`;
-    myDescription += `対戦人数： **${config.bd[league]}** ${config.emote.thn[config.lvTH]}\n`;
-    myDescription += `攻撃回数： **${config.nHit[league]}** 回\n`;
-    myDescription += `対戦モード： **eSports Mode**:fire:\n`;
-    myDescription += `\n`;
-    myDescription += `基準日・基準時間 (JST)：\n`;
-    myDescription += `:calendar: ${schedule.dateDef5v.day[`w${week}`].toLocaleDateString('ja-JP', options)}\n`;
-    myDescription += `:alarm_clock: ${schedule.dateDef5v.time[`w${week}`]} ポチ\n`;
-    myDescription += `:hourglass_flowing_sand: ${schedule.timePrep[league]} 分 / :crossed_swords: ${schedule.timeBattle[league]} 分\n`;
-  } else if (league != 'five') {
-    myContent += `* 交渉はこちらのチャンネル内でのみお願いします。\n`;
-    myContent += `* 日程と、どちらから申請するかを決めてください。\n`;
-    myContent += `* 交渉結果は </rep deal_war:1229035726549680191> コマンドで報告してください。 <#1123531433475063818>\n`;
-    myContent += `* 下記の基準日から変更する場合は、必ず基準期間内に __マッチング__ するようご注意ください。\n`;
-    if (league == 'cup') {
-      myContent += `* 対戦時間は **12 時間** で変更は不可とします。\n`;
-    }
-
-    myDescription += `**${teamNameA}** :vs: **${teamNameB}**\n`;
-    myDescription += `\n`;
-
-    if (league == 'swiss' || league == 'mix' || league == 'cup') {
-      myDescription += `対戦人数（固定）： `;
-    } else {
-      myDescription += `対戦人数（増加可）： `;
-    }
-
-    if (league == 'mix') {
-      config.lvTHmix.forEach((lvTH, index) => {
-        myDescription += `**${config.bd['mix'][`th${lvTH}`]}** ${config.emote.thn[lvTH]}`;
-        if (index == config.lvTHmix.length - 1) {
-          myDescription += `\n`;
-        } else {
-          myDescription += ` / `;
-        }
-      });
-    } else {
-      if (league == 'j1j2') {
-        league = 'j2';
-      }
-      let bd = config.bd[league];
-      myDescription += `**${bd}** ${config.emote.thn[config.lvTH]}\n`;
-    }
-
-    myDescription += `攻撃回数： **${config.nHit[league]}** 回\n`;
-    myDescription += `対戦モード： **${config.mode[league]}**:fire:\n`;
-    myDescription += `\n`;
-    const weekKey = `w${week}`;
-    const dateDef =
-      league == 'cup' ? schedule.dateDefCup : schedule.dateDef[league];
-    myDescription += `基準日：\n`;
-    myDescription += `:calendar: ${dateDef.day[weekKey].toLocaleDateString('ja-JP', options)}\n`;
-    myDescription += `:alarm_clock: ${league == 'cup' ? dateDef.time[weekKey] : '11:00'} ポチ\n`;
-    myDescription += `:hourglass_flowing_sand: ${schedule.timePrep[league]} 時間 / :crossed_swords: ${schedule.timeBattle[league]} 時間\n`;
-    myDescription += `\n`;
-    myDescription += `基準期間：\n`;
-    myDescription += `${dateDef.start[weekKey].toLocaleDateString('ja-JP', options)} ～ `;
-    myDescription += `${dateDef.end[weekKey].toLocaleDateString('ja-JP', options)}\n`;
+  myContent += `* 交渉はこちらのチャンネル内でのみお願いします。\n`;
+  myContent += `* 日程と、どちらから申請するかを決めてください。\n`;
+  myContent += `* 交渉結果は </rep deal_war:1229035726549680191> コマンドで報告してください。 <#1123531433475063818>\n`;
+  myContent += `* 下記の基準日から変更する場合は、必ず基準期間内に __マッチング__ するようご注意ください。\n`;
+  if (league == 'cup') {
+    myContent += `* 対戦時間は **12 時間** で変更は不可とします。\n`;
   }
+
+  myDescription += `**${teamNameA}** :vs: **${teamNameB}**\n`;
+  myDescription += `\n`;
+
+  if (league == 'swiss' || league == 'mix' || league == 'cup') {
+    myDescription += `対戦人数（固定）： `;
+  } else {
+    myDescription += `対戦人数（増加可）： `;
+  }
+
+  if (league == 'mix') {
+    config.lvTHmix.forEach((lvTH, index) => {
+      myDescription += `**${config.bd['mix'][`th${lvTH}`]}** ${config.emote.thn[lvTH]}`;
+      if (index == config.lvTHmix.length - 1) {
+        myDescription += `\n`;
+      } else {
+        myDescription += ` / `;
+      }
+    });
+  } else {
+    if (league == 'j1j2') {
+      league = 'j2';
+    }
+    let bd = config.bd[league];
+    myDescription += `**${bd}** ${config.emote.thn[config.lvTH]}\n`;
+  }
+
+  myDescription += `攻撃回数： **${config.nHit[league]}** 回\n`;
+  myDescription += `対戦モード： **${config.mode[league]}**:fire:\n`;
+  myDescription += `\n`;
+  const weekKey = `w${week}`;
+  const dateDef =
+    league == 'cup' ? schedule.dateDefCup : schedule.dateDef[league];
+  myDescription += `基準日：\n`;
+  myDescription += `:calendar: ${dateDef.day[weekKey].toLocaleDateString('ja-JP', options)}\n`;
+  myDescription += `:alarm_clock: ${league == 'cup' ? dateDef.time[weekKey] : '11:00'} ポチ\n`;
+  myDescription += `:hourglass_flowing_sand: ${schedule.timePrep[league]} 時間 / :crossed_swords: ${schedule.timeBattle[league]} 時間\n`;
+  myDescription += `\n`;
+  myDescription += `基準期間：\n`;
+  myDescription += `${dateDef.start[weekKey].toLocaleDateString('ja-JP', options)} ～ `;
+  myDescription += `${dateDef.end[weekKey].toLocaleDateString('ja-JP', options)}\n`;
 
   objReturn.content = myContent;
   objReturn.description = myDescription;
@@ -1767,22 +1738,6 @@ async function editRoleMain(interaction, user, action, league, flagReturn) {
 }
 export { editRoleMain };
 
-async function editRoleMain5v(interaction, user, action, flagReturn) {
-  // 小数のseasonに対応するため、文字列として処理
-  const seasonValue = config.seasonNext.five;
-  const seasonStr = seasonToString(seasonValue);
-  const repId = config.roleId.repsServer5v[seasonStr];
-
-  if (action == 'add') {
-    if (!interaction.guild.members.cache.get(user.id)._roles.includes(repId)) {
-      await editRole(interaction, user, repId, action, flagReturn);
-    }
-  } else if (action == 'remove') {
-    await editRole(interaction, user, repId, action, flagReturn);
-  }
-}
-export { editRoleMain5v };
-
 async function editRole(interaction, user, roleId, action, flagReturn) {
   let title = ``;
   let description = ``;
@@ -1826,7 +1781,6 @@ function detectTownHallLevel(league, lvTownHall) {
     league == 'j1' ||
     league == 'j2' ||
     league == 'swiss' ||
-    league == 'five' ||
     league == 'cup'
   ) {
     if (lvTownHall == config.lvTH) {
