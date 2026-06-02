@@ -131,6 +131,14 @@ function isNonLegendRankedSeasonStart(
 
   const storedSeason = mongoAcc?.legend?.lastRankedSeasonId;
   const currentSeason = getStoredRankedSeasonId(afterPlayerStats, seasonData);
+  // 既にこの ranked シーズンを処理済みなら、events の season 差分等で再判定しない
+  if (
+    typeof storedSeason === 'string'
+    && storedSeason.length > 0
+    && storedSeason === currentSeason
+  ) {
+    return false;
+  }
   if (
     typeof storedSeason === 'string'
     && storedSeason.length > 0
@@ -415,7 +423,8 @@ async function autoUpdateLegend(
     return;
   }
 
-  // Legend I 以外: シーズン切り替え時は新シーズン通知のみ（前シーズン分の防衛/攻撃は通知しない）
+  // Legend I 以外: シーズン切替の通知は LEAGUE RESET! に任せる。
+  // ここでは battle log の無通知取り込みと lastRankedSeasonId 更新のみ行う。
   if (
     isNonLegendRankedSeasonStart(
       beforePlayerStats,
@@ -424,13 +433,6 @@ async function autoUpdateLegend(
       mongoAcc,
     )
   ) {
-    const embed = await createLogLegendNewSeason(
-      afterPlayerStats,
-      mongoAcc,
-      baseEventData,
-      seasonData,
-    );
-    await sendLogEmbed(client, mongoAcc, embed);
     if (Array.isArray(battleLogItems)) {
       await ingestLegendRankedBattleLogSilent(
         client,
@@ -439,6 +441,10 @@ async function autoUpdateLegend(
         afterPlayerStats,
         seasonData,
       );
+      if (mongoAcc) {
+        mongoAcc.legend = mongoAcc.legend ?? {};
+        mongoAcc.legend.lastRankedSeasonId = rankedSeasonId;
+      }
     } else {
       await markRankedSeasonTransition(client, mongoAcc, rankedSeasonId);
     }
