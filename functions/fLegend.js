@@ -339,6 +339,18 @@ async function markRankedSeasonTransition(client, mongoAcc, rankedSeasonId) {
         $unset: { 'legend.rankedBattleLog': '' },
       },
     );
+
+  // accountsLegend はメモリにキャッシュされるため、DB更新だけだと次のポーリングまで
+  // isNonLegendRankedSeasonStart 判定が古い lastRankedSeasonId を見てしまい、
+  // 「New season has started」が繰り返し通知され得る。ローカルも同時に更新する。
+  if (mongoAcc) {
+    mongoAcc.legend = mongoAcc.legend ?? {};
+    mongoAcc.legend.lastRankedSeasonId = rankedSeasonId;
+    mongoAcc.legend.rankedEventsSeeded = false;
+    if (Object.prototype.hasOwnProperty.call(mongoAcc.legend, 'rankedBattleLog')) {
+      delete mongoAcc.legend.rankedBattleLog;
+    }
+  }
 }
 
 async function autoUpdateLegend(
