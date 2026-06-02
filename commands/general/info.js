@@ -248,17 +248,6 @@ let data = new SlashCommandBuilder()
               .setAutocomplete(true)
           )
       )
-      .addSubcommand(subcommand =>
-        subcommand
-          .setName('transfer')
-          .setDescription(config.command[nameCommand].subCommandGroup['roster']['transfer'])
-          .addStringOption(option =>
-            option
-              .setName('league')
-              .setDescription('LEAGUE')
-              .setRequired(true)
-          )
-      )
   )
   // options[4]
   .addSubcommand(subcommand =>
@@ -352,9 +341,6 @@ config.choices.league5.forEach(choice => {
   data.options[3].options[0].options[0].addChoices(choice);
   data.options[3].options[1].options[0].addChoices(choice);
   data.options[3].options[2].options[0].addChoices(choice);
-});
-config.choices.leagueM.forEach(choice => {
-  data.options[3].options[3].options[0].addChoices(choice);
 });
 config.choices.leagueAll.forEach(choice => {
   // champions
@@ -536,9 +522,6 @@ export default {
       }
       else if (subcommand == 'clan') {
         await fRoster.rosterClan(interaction, client, iLeague, iTeamAbbr);
-      }
-      else if (subcommand == 'transfer') {
-        transfer(interaction, client);
       };
     }
     else if (subcommand == 'zap_quake') {
@@ -1192,124 +1175,6 @@ async function setDescriptionStandingsGroupStage(standings) {
   }));
 
   return return_str;
-};
-
-
-async function transfer(interaction, client) {
-  let iLeague = await interaction.options.getString('league');
-  let leagueM = iLeague;
-
-  const query = { $or: [{ [`homeClanAbbr.${leagueM}`]: { $ne: '' } }, { [`lastSeason.${leagueM}.homeClanAbbr`]: { $ne: '' } }], status: true };
-  const sort = { [`homeClanAbbr.${leagueM}`]: 1, [`lastSeason.${leagueM}.homeClanAbbr`]: 1 };
-  const options = { projection: { _id: 0, tag: 1, name: 1, homeClanAbbr: 1, lastSeason: 1, townHallLevel: 1 } };
-  const cursor = client.clientMongo.db('jwc').collection('accounts').find(query, options).sort(sort);
-  let accs = await cursor.toArray();
-  await cursor.close();
-
-  let arrDescription = [];
-  await Promise.all(accs.map(async (acc, index) => {
-    arrDescription[index] = '';
-    const homeTeamAbbrNew = acc.homeClanAbbr[leagueM];
-    let homeTeamAbbrOld = '';
-    if (acc.lastSeason == null) {
-      homeTeamAbbrOld = '';
-    }
-    else if (acc.lastSeason[leagueM] == null) {
-      homeTeamAbbrOld = '';
-    }
-    else {
-      homeTeamAbbrOld = acc.lastSeason[leagueM].homeClanAbbr ?? '';
-    };
-    if (homeTeamAbbrOld != homeTeamAbbrNew) {
-      if (homeTeamAbbrOld != '' && homeTeamAbbrNew != '') {
-        arrDescription[index] += `${homeTeamAbbrOld.toUpperCase()} :arrow_right: ${homeTeamAbbrNew.toUpperCase()}`;
-      }
-      else if (homeTeamAbbrNew != '') {
-        arrDescription[index] += `*FREE* :arrow_right: ${homeTeamAbbrNew.toUpperCase()}`;
-      }
-      else if (homeTeamAbbrOld != '') {
-        arrDescription[index] += `${homeTeamAbbrOld.toUpperCase()} :arrow_right: *FREE*`;
-      };
-      arrDescription[index] += ` ${config.emote.thn[acc.townHallLevel]}`;
-      arrDescription[index] += ` **${functions.nameReplacer(acc.name)}**\n`;
-    };
-  }));
-
-  let description = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
-  let counter = 0;
-  for (let i = 0; i < accs.length; i++) {
-    if (arrDescription[i] != '') {
-      counter += 1;
-      if (counter <= 25) {
-        description[0] += `${counter}. ${arrDescription[i]}`;
-      }
-      else if (counter <= 50) {
-        description[1] += `${counter}. ${arrDescription[i]}`;
-      }
-      else if (counter <= 75) {
-        description[2] += `${counter}. ${arrDescription[i]}`;
-      }
-      else if (counter <= 100) {
-        description[3] += `${counter}. ${arrDescription[i]}`;
-      }
-      else if (counter <= 125) {
-        description[4] += `${counter}. ${arrDescription[i]}`;
-      }
-      else if (counter <= 150) {
-        description[5] += `${counter}. ${arrDescription[i]}`;
-      }
-      else if (counter <= 175) {
-        description[6] += `${counter}. ${arrDescription[i]}`;
-      }
-      else if (counter <= 200) {
-        description[7] += `${counter}. ${arrDescription[i]}`;
-      }
-      else if (counter <= 225) {
-        description[8] += `${counter}. ${arrDescription[i]}`;
-      }
-      else if (counter <= 250) {
-        description[9] += `${counter}. ${arrDescription[i]}`;
-      }
-      else if (counter <= 275) {
-        description[10] += `${counter}. ${arrDescription[i]}`;
-      }
-      else if (counter <= 300) {
-        description[11] += `${counter}. ${arrDescription[i]}`;
-      }
-      else if (counter <= 325) {
-        description[12] += `${counter}. ${arrDescription[i]}`;
-      }
-      else if (counter <= 350) {
-        description[13] += `${counter}. ${arrDescription[i]}`;
-      }
-      else if (counter <= 375) {
-        description[14] += `${counter}. ${arrDescription[i]}`;
-      }
-      else if (counter <= 400) {
-        description[15] += `${counter}. ${arrDescription[i]}`;
-      };
-    };
-  };
-
-  if (description[0] == '') {
-    description = '*no transfer*';
-  };
-
-  let title = `**TRANSFER** | ${config.league[iLeague]}`;
-
-  let embed = new EmbedBuilder();
-  embed.setTitle(title);
-  embed.setColor(config.color[leagueM]);
-  embed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
-
-  for (let i = 0; i < 16; i++) {
-    if (description[i] != '') {
-      embed.setDescription(description[i]);
-      await interaction.followUp({ embeds: [embed] });
-    };
-  };
-
-  return;
 };
 
 

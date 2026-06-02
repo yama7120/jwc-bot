@@ -316,7 +316,6 @@ export default {
           //selected: '登録アカウント（チェックのみ）',
           league: 'ロスター数一覧',
           clan: 'クラン内ロスター確認',
-          transfer: '移籍情報',
         },
         team: {
           list: '参加チーム一覧',
@@ -418,13 +417,6 @@ export default {
       { name: 'J1', value: 'j1' },
       { name: 'J2', value: 'j2' },
       { name: 'J3', value: 'j3' },
-      { name: 'SWISS', value: 'swiss' },
-      { name: 'MIX', value: 'mix' },
-      { name: '5V', value: 'five' },
-      { name: 'CUP', value: 'cup' },
-    ],
-    leagueM: [
-      { name: 'J1/J2', value: 'j' },
       { name: 'SWISS', value: 'swiss' },
       { name: 'MIX', value: 'mix' },
       { name: '5V', value: 'five' },
