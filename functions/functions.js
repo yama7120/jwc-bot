@@ -250,6 +250,19 @@ function formatTeamAutocompleteName(clanAbbr, teamName) {
 }
 export { formatTeamAutocompleteName };
 
+/** チーム autocomplete 用の部分一致（大文字小文字を区別しない）. */
+function teamMatchesAutocompleteFilter(team, focusedValue) {
+  const q = String(focusedValue ?? '').trim().toLowerCase();
+  if (!q) return true;
+  const abbr = String(team.clan_abbr ?? team.team_abbr ?? '').toLowerCase();
+  if (abbr.includes(q)) return true;
+  const teamName = String(team.team_name ?? '').toLowerCase();
+  if (teamName.includes(q)) return true;
+  const clanName = String(team.clan_name ?? '').toLowerCase();
+  return clanName.includes(q);
+}
+export { teamMatchesAutocompleteFilter };
+
 /** team オプションの値を clan_abbr に正規化（表示ラベル誤入力対策）. */
 function normalizeTeamAbbrFromOption(raw) {
   if (raw == null || raw === '') return '';

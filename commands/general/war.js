@@ -139,7 +139,9 @@ export default {
       let teamList = await client.clientMongo.db('jwc').collection('config').findOne({ _id: 'teamList' });
 
       const focusedValue = interaction.options.getFocused();
-      teamList = teamList[iLeague].filter(function(team) { return team.team_abbr.includes(focusedValue) });
+      teamList = teamList[iLeague].filter(function(team) {
+        return functions.teamMatchesAutocompleteFilter(team, focusedValue);
+      });
       if (teamList.length >= 25) {
         teamList = teamList.filter(function(team, index) { return index < 25 });
       };

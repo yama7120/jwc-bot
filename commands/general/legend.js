@@ -272,7 +272,9 @@ export default {
           await interaction.respond([]);
           return;
         }
-        let teams = leagueTeams.filter(function(team) { return team.team_abbr.includes(focusedValue) });
+        let teams = leagueTeams.filter(function(team) {
+          return functions.teamMatchesAutocompleteFilter(team, focusedValue);
+        });
         if (teams.length >= 25) {
           teams = teams.filter(function(clan, index) { return index < 25 });
         };

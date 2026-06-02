@@ -373,8 +373,9 @@ export default {
         let clanAbbr = mongoWar.clan_abbr;
         let opponentAbbr = mongoWar.opponent_abbr;
         choices = [clanAbbr.toUpperCase(), opponentAbbr.toUpperCase()];
+        const q = String(focusedValue ?? '').toLowerCase();
         choices = choices.filter(function (choice) {
-          return choice.includes(focusedValue);
+          return choice.toLowerCase().includes(q);
         });
         await interaction.respond(
           choices.map((choice) => ({ name: choice, value: choice })),
@@ -419,7 +420,7 @@ export default {
       await cursor.close();
 
       mongoClans = mongoClans.filter(function (team) {
-        return team.clan_abbr.includes(focusedValue);
+        return functions.teamMatchesAutocompleteFilter(team, focusedValue);
       });
 
       if (mongoClans.length >= 25) {

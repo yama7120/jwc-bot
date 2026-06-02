@@ -385,7 +385,9 @@ export default {
           let mongoClans = await cursor.toArray();
           await cursor.close();
 
-          mongoClans = mongoClans.filter(function(team) { return team.clan_abbr.includes(focusedValue) });
+          mongoClans = mongoClans.filter(function(team) {
+            return functions.teamMatchesAutocompleteFilter(team, focusedValue);
+          });
 
           if (mongoClans.length >= 25) {
             mongoClans = mongoClans.filter(function(team, index) { return index < 25 });
@@ -450,7 +452,9 @@ export default {
         let mongoClans = await cursor.toArray();
         await cursor.close();
 
-        mongoClans = mongoClans.filter(function(team) { return team.clan_abbr.includes(focusedValue) });
+        mongoClans = mongoClans.filter(function(team) {
+          return functions.teamMatchesAutocompleteFilter(team, focusedValue);
+        });
         if (mongoClans.length >= 25) {
           mongoClans = mongoClans.filter(function(team, index) { return index < 25 });
         };

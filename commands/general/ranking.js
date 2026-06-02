@@ -243,7 +243,9 @@ export default {
       }
       else {
         const leagueTeams = Array.isArray(teamList?.[iLeague]) ? teamList[iLeague] : [];
-        let teams = leagueTeams.filter(function(team) { return team.team_abbr.includes(focusedValue) });
+        let teams = leagueTeams.filter(function(team) {
+          return functions.teamMatchesAutocompleteFilter(team, focusedValue);
+        });
         if (iLeague == 'j1' || iLeague == 'j2') {
           if (subcommandGroup == 'jwc') {
             teams = [{ team_abbr: 'Entire', clan_name: config.league[iLeague], team_name: config.league[iLeague], division: '' }].concat(teams);
