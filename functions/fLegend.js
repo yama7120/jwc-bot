@@ -809,40 +809,53 @@ async function sendLogLegendMain(
   result,
   seasonData,
 ) {
-  let embed = null;
+  const userPostEnabled =
+    mongoAcc.legend?.logSettings
+    && (mongoAcc.legend.logSettings.post === 'channel'
+      || mongoAcc.legend.logSettings.post === 'dm');
 
-  // embed作成
-  if (mongoAcc.legend.logSettings) {
-    if (
-      mongoAcc.legend.logSettings.post === 'channel' ||
-      mongoAcc.legend.logSettings.post === 'dm'
-    ) {
-      embed = await handleBattleLog(
-        client,
-        legendEventType,
-        scPlayer,
-        mongoAcc,
-        eventData,
-        nEvents,
-        i,
-        result,
-        seasonData,
-      );
-    } else {
-      embed = null;
-    }
-  } else {
-    embed = null;
+  if (!userPostEnabled) {
+    return;
   }
 
-  // 送信
-  if (embed) {
-    await sendLogEmbed(client, mongoAcc, embed);
+  // 本人向け（設定チャンネル/DM）: ランキング API 不調時のため順位なし
+  const eventDataForUser = { ...eventData, includeRanking: false };
+  const embedUser = await handleBattleLog(
+    client,
+    legendEventType,
+    scPlayer,
+    mongoAcc,
+    eventDataForUser,
+    nEvents,
+    i,
+    result,
+    seasonData,
+  );
+
+  if (embedUser) {
+    await sendLogEmbedToUser(client, mongoAcc, embedUser);
     if (legendEventType === 'attack' || legendEventType === 'defense') {
       await saveAccountTrophies(client, mongoAcc.tag, scPlayer.trophies);
     }
-  } else {
-    //await sendSimpleLogToChannel(client, mongoAcc, eventData, seasonData);
+  }
+
+  // 集約ログ（config.logch.legend）: 従来どおりランキング付き
+  const disableLegendLogs = process.env.DISABLE_LEGEND_LOGS === 'true';
+  if (!disableLegendLogs) {
+    const embedLog = await handleBattleLog(
+      client,
+      legendEventType,
+      scPlayer,
+      mongoAcc,
+      eventData,
+      nEvents,
+      i,
+      result,
+      seasonData,
+    );
+    if (embedLog) {
+      await sendLegendLogChannelEmbed(client, embedLog);
+    }
   }
 }
 
@@ -1700,45 +1713,54 @@ function getWeeklySummaryFromEvents(events, seasonData) {
   };
 }
 
+/** 本人設定（channel / dm）のみ。シーズン通知などランキング無し embed 用 */
 async function sendLogEmbed(client, mongoAcc, myEmbed) {
   try {
+    await sendLogEmbedToUser(client, mongoAcc, myEmbed);
     const disableLegendLogs = process.env.DISABLE_LEGEND_LOGS === 'true';
-
-    // ユーザー設定に基づく送信
-    if (!mongoAcc.legend.logSettings) {
-      return;
-    } else if (mongoAcc.legend.logSettings.post == 'NA') {
-      return;
-    } else if (mongoAcc.legend.logSettings.post === 'channel') {
-      const channelUser = client.channels.cache.get(
-        mongoAcc.legend.logSettings.channel,
-      );
-      if (channelUser?.isTextBased()) {
-        await channelUser.send({ embeds: [myEmbed] });
-      } else {
-        console.error(
-          'チャンネルが見つからないか、テキストチャンネルではありません。',
-          mongoAcc.name,
-          mongoAcc.tag,
-        );
-      }
-    } else if (mongoAcc.legend.logSettings.post == 'dm') {
-      await sendToDM(client, mongoAcc, myEmbed);
-    }
-
-    // ログチャンネルへの送信
     if (!disableLegendLogs) {
-      const channelLog = client.channels.cache.get(config.logch.legend);
-      if (channelLog?.isTextBased()) {
-        await channelLog.send({ embeds: [myEmbed] });
-      } else {
-        console.error(
-          'ログチャンネルが見つからないか、テキストチャンネルではありません。',
-        );
-      }
+      await sendLegendLogChannelEmbed(client, myEmbed);
     }
   } catch (error) {
     console.error('ログ送信中にエラーが発生しました:', error, mongoAcc.name);
+  }
+}
+
+async function sendLogEmbedToUser(client, mongoAcc, myEmbed) {
+  if (!mongoAcc.legend?.logSettings) {
+    return;
+  }
+  if (mongoAcc.legend.logSettings.post === 'NA') {
+    return;
+  }
+  if (mongoAcc.legend.logSettings.post === 'channel') {
+    const channelUser = client.channels.cache.get(
+      mongoAcc.legend.logSettings.channel,
+    );
+    if (channelUser?.isTextBased()) {
+      await channelUser.send({ embeds: [myEmbed] });
+    } else {
+      console.error(
+        'チャンネルが見つからないか、テキストチャンネルではありません。',
+        mongoAcc.name,
+        mongoAcc.tag,
+      );
+    }
+    return;
+  }
+  if (mongoAcc.legend.logSettings.post === 'dm') {
+    await sendToDM(client, mongoAcc, myEmbed);
+  }
+}
+
+async function sendLegendLogChannelEmbed(client, myEmbed) {
+  const channelLog = client.channels.cache.get(config.logch.legend);
+  if (channelLog?.isTextBased()) {
+    await channelLog.send({ embeds: [myEmbed] });
+  } else {
+    console.error(
+      'ログチャンネルが見つからないか、テキストチャンネルではありません。',
+    );
   }
 }
 
