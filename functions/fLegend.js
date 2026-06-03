@@ -1796,21 +1796,18 @@ async function createLogLegendAttack(
     if (weekLine) description += weekLine;
   }
 
-  if (isLegendLeagueTierId(eventData.leagueId)) {
-    if (eventData.includeRanking !== false) {
-      const rankingDisplay = await getRankingDisplay(client, scPlayer, mongoAcc);
-      if (rankingDisplay) {
-        description += rankingDisplay;
-      }
+  if (eventData.includeRanking !== false) {
+    const rankingDisplay = await getRankingDisplay(client, scPlayer, eventData);
+    if (rankingDisplay) {
+      description += rankingDisplay;
     }
-
-    if (
-      eventData.leagueId === config_coc.leagueId.legend
-      && eventData.includeRanking !== false
-    ) {
-      description += `${config.emote.discord}</legend stats:${config.command.legend.id}>`;
-      description += ` ${config.emote.discord}</legend history own:${config.command.legend.id}>`;
-    }
+  }
+  if (
+    scPlayer?.leagueTier?.id === config_coc.leagueId.legend
+    && eventData.includeRanking !== false
+  ) {
+    description += `${config.emote.discord}</legend stats:${config.command.legend.id}>`;
+    description += ` ${config.emote.discord}</legend history own:${config.command.legend.id}>`;
   }
   myEmbed.setDescription(description);
 
@@ -1861,21 +1858,18 @@ async function createLogLegendDefense(
     if (weekLine) description += weekLine;
   }
 
-  if (isLegendLeagueTierId(eventData.leagueId)) {
-    if (eventData.includeRanking !== false) {
-      const rankingDisplay = await getRankingDisplay(client, scPlayer, mongoAcc);
-      if (rankingDisplay) {
-        description += rankingDisplay;
-      }
+  if (eventData.includeRanking !== false) {
+    const rankingDisplay = await getRankingDisplay(client, scPlayer, eventData);
+    if (rankingDisplay) {
+      description += rankingDisplay;
     }
-
-    if (
-      eventData.leagueId === config_coc.leagueId.legend
-      && eventData.includeRanking !== false
-    ) {
-      description += `${config.emote.discord}</legend stats:${config.command.legend.id}>`;
-      description += ` ${config.emote.discord}</legend history own:${config.command.legend.id}>`;
-    }
+  }
+  if (
+    scPlayer?.leagueTier?.id === config_coc.leagueId.legend
+    && eventData.includeRanking !== false
+  ) {
+    description += `${config.emote.discord}</legend stats:${config.command.legend.id}>`;
+    description += ` ${config.emote.discord}</legend history own:${config.command.legend.id}>`;
   }
   myEmbed.setDescription(description);
 
@@ -1889,6 +1883,22 @@ function parsePositiveRank(value) {
 
 function globalRankFromScPlayer(scPlayer) {
   return parsePositiveRank(scPlayer?.legendStatistics?.currentSeason?.rank);
+}
+
+function findRankInLegends200List(players, tag) {
+  if (!Array.isArray(players) || !tag) return null;
+  const hit = players.find((p) => p?.tag === tag);
+  return parsePositiveRank(hit?.rank);
+}
+
+/** 通知のトロフィーとプロフィールが一致するときだけ順位を出す（一括通知の中間戦闘で古い順位を出さない） */
+function shouldShowLegendRankingForEvent(scPlayer, eventData) {
+  const profileTrophies = Number(scPlayer?.trophies);
+  const eventTrophies = Number(eventData?.trophiesCurrent);
+  if (!Number.isFinite(profileTrophies) || !Number.isFinite(eventTrophies)) {
+    return false;
+  }
+  return profileTrophies === eventTrophies;
 }
 
 /** 通知用: ポーリング getPlayer の legendStatistics をそのままプレーン化（補完なし） */
@@ -1911,24 +1921,101 @@ export function legendStatisticsForNotify(playerStats) {
   };
 }
 
-// ランキング表示用の共通関数
-async function getRankingDisplay(client, scPlayer, mongoAcc = null) {
+// ランキング表示: Legend I は location 榜優先。それ以外は legendStatistics.currentSeason.rank があれば公式順位を表示
+async function getRankingDisplay(client, scPlayer, eventData = null) {
   try {
-    const globalRankValue = globalRankFromScPlayer(scPlayer);
+    let playerForRank = scPlayer;
+    if (client?.clientCoc?.getPlayer && scPlayer?.tag) {
+      try {
+        const fresh = await client.clientCoc.getPlayer(scPlayer.tag);
+        playerForRank = {
+          ...scPlayer,
+          trophies: fresh.trophies,
+          legendStatistics: legendStatisticsForNotify(fresh),
+        };
+      } catch (refreshErr) {
+        console.warn(
+          `ランキング用 getPlayer 再取得スキップ (${scPlayer.tag}):`,
+          refreshErr?.message ?? refreshErr,
+        );
+      }
+    }
 
-    let japanRank = null;
-    try {
-      const playerRanks = await client.clientCoc.getPlayerRanks(
-        config_coc.locationId.japan,
-      );
-      japanRank = playerRanks.find((rank) => rank.tag === scPlayer.tag) ?? null;
-    } catch (jpError) {
-      console.error('日本ランキング取得エラー:', jpError);
+    const isLegend1 = playerForRank?.leagueTier?.id === config_coc.leagueId.legend;
+    const legendGlobalRank = globalRankFromScPlayer(playerForRank);
+    if (!isLegend1 && legendGlobalRank == null) {
+      return '';
+    }
+
+    if (eventData && !shouldShowLegendRankingForEvent(playerForRank, eventData)) {
+      return '';
+    }
+
+    const tag = playerForRank.tag;
+    let japanRankValue = null;
+    let globalRankValue = null;
+
+    if (isLegend1) {
+      try {
+        const legends200 = await client.clientMongo
+          .db('jwc')
+          .collection('ranking')
+          .findOne({ name: 'legends200' }, { projection: { _id: 0, japan: 1, global: 1 } });
+        japanRankValue = findRankInLegends200List(legends200?.japan, tag);
+        globalRankValue = findRankInLegends200List(legends200?.global, tag);
+      } catch (mongoErr) {
+        console.error('legends200 読み込みエラー:', mongoErr);
+      }
+
+      if (japanRankValue == null) {
+        try {
+          const playerRanks = await client.clientCoc.getPlayerRanks(
+            config_coc.locationId.japan,
+          );
+          japanRankValue = findRankInLegends200List(playerRanks, tag);
+        } catch (jpError) {
+          console.error('日本ランキング取得エラー:', jpError);
+        }
+      }
+
+      if (globalRankValue == null) {
+        try {
+          const globalRanks = await client.clientCoc.getPlayerRanks('global');
+          globalRankValue = findRankInLegends200List(globalRanks, tag);
+        } catch (globalError) {
+          console.error('グローバルランキング取得エラー:', globalError);
+        }
+      }
+
+      if (globalRankValue == null) {
+        globalRankValue = legendGlobalRank;
+      }
+    } else {
+      globalRankValue = legendGlobalRank;
+      try {
+        const legends200 = await client.clientMongo
+          .db('jwc')
+          .collection('ranking')
+          .findOne({ name: 'legends200' }, { projection: { _id: 0, japan: 1 } });
+        japanRankValue = findRankInLegends200List(legends200?.japan, tag);
+      } catch (mongoErr) {
+        console.error('legends200 読み込みエラー:', mongoErr);
+      }
+      if (japanRankValue == null) {
+        try {
+          const playerRanks = await client.clientCoc.getPlayerRanks(
+            config_coc.locationId.japan,
+          );
+          japanRankValue = findRankInLegends200List(playerRanks, tag);
+        } catch (jpError) {
+          console.error('日本ランキング取得エラー:', jpError);
+        }
+      }
     }
 
     let rankingText = '';
-    if (japanRank) {
-      rankingText += `:flag_jp: No. **${japanRank.rank}** in JAPAN\n`;
+    if (japanRankValue != null) {
+      rankingText += `:flag_jp: No. **${japanRankValue}** in JAPAN\n`;
     }
     if (globalRankValue != null) {
       rankingText += `:earth_asia: No. **${globalRankValue}** in GLOBAL\n`;

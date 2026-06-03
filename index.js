@@ -243,6 +243,23 @@ class PollingSystem {
     this.playerUpdateLocks = new Set();
     this.lastLegendStatusUpdateMs = 0;
     this.lastBattleLogSweepMsByTag = new Map();
+    this.battleLogSweepFailStreakByTag = new Map();
+    this.battleLogSweepBackoffUntilByTag = new Map();
+  }
+
+  sanitizeTagForBattleLogSweep(rawTag) {
+    if (typeof rawTag !== 'string') return null;
+    const compact = rawTag.replace(/\s+/g, '');
+    if (!compact) return null;
+    return this.functions.tagReplacer(compact);
+  }
+
+  formatBattleLogSweepError(err) {
+    const parts = [];
+    if (err?.reason) parts.push(String(err.reason));
+    if (err?.status) parts.push(`status=${err.status}`);
+    if (err?.message) parts.push(String(err.message));
+    return parts.length > 0 ? parts.join(' | ') : String(err);
   }
 
   // メンテナンスの処理の初期化
@@ -555,14 +572,24 @@ class PollingSystem {
           if (!tag) continue;
           if (this.playerUpdateLocks.has(tag)) continue;
 
-          const last = Number(this.lastBattleLogSweepMsByTag.get(tag) ?? 0);
           const now = Date.now();
+          const backoffUntil = Number(this.battleLogSweepBackoffUntilByTag.get(tag) ?? 0);
+          if (now < backoffUntil) continue;
+
+          const last = Number(this.lastBattleLogSweepMsByTag.get(tag) ?? 0);
           if (now - last < perTagCooldownMs) continue;
+
+          const apiTag = this.sanitizeTagForBattleLogSweep(tag);
+          if (!apiTag) {
+            console.warn(`⚠️ battlelog sweep skipped invalid tag: ${tag}`);
+            this.battleLogSweepBackoffUntilByTag.set(tag, now + 30 * 60 * 1000);
+            continue;
+          }
 
           this.lastBattleLogSweepMsByTag.set(tag, now);
           this.playerUpdateLocks.add(tag);
           try {
-            const scPlayer = await this.client.clientCoc.getPlayer(tag);
+            const scPlayer = await this.client.clientCoc.getPlayer(apiTag);
             const boundaryUtcHour =
               scPlayer?.leagueTier?.id === config_coc.leagueId.legend ? 5 : 17;
             const seasonData = this.functions.calculateSeasonValues(
@@ -570,7 +597,7 @@ class PollingSystem {
               new Date(),
               boundaryUtcHour,
             );
-            const battleLogItems = await fetchBattleLogItems(this.client.clientCoc, tag);
+            const battleLogItems = await fetchBattleLogItems(this.client.clientCoc, apiTag);
 
             // 「変動が無いから before/after が無い」ケース向けに、after を両方渡して battlelog 差分だけ処理させる
             const pick = ({
@@ -611,8 +638,22 @@ class PollingSystem {
               seasonData,
               battleLogItems,
             );
+            this.battleLogSweepFailStreakByTag.delete(tag);
+            this.battleLogSweepBackoffUntilByTag.delete(tag);
           } catch (e) {
-            console.warn(`⚠️ battlelog sweep failed for ${tag}:`, e?.message ?? e);
+            const streak = (this.battleLogSweepFailStreakByTag.get(tag) ?? 0) + 1;
+            this.battleLogSweepFailStreakByTag.set(tag, streak);
+            const backoffMs = Math.min(
+              30 * 60 * 1000,
+              perTagCooldownMs * (2 ** Math.min(streak, 4)),
+            );
+            this.battleLogSweepBackoffUntilByTag.set(tag, now + backoffMs);
+            if (streak === 1 || streak % 5 === 0) {
+              console.warn(
+                `⚠️ battlelog sweep failed for ${tag} (api=${apiTag}, streak=${streak}, retry in ${Math.round(backoffMs / 1000)}s):`,
+                this.formatBattleLogSweepError(e),
+              );
+            }
           } finally {
             this.playerUpdateLocks.delete(tag);
           }

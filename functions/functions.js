@@ -233,7 +233,8 @@ function tagReplacer(tag) {
     tag.includes('#') || tag.includes('＃')
       ? tag.replace('＃', '#')
       : '#' + tag;
-  return tagNew.replace(/O/g, '0').toUpperCase();
+  // 小文字 o も大文字化後に 0 へ（clashofclans.js の formatTag と同順）
+  return tagNew.toUpperCase().replace(/O/g, '0');
 }
 export { tagReplacer };
 
