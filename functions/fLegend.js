@@ -939,6 +939,16 @@ function formatSignedInt(n) {
   return v >= 0 ? `+${v}` : `${v}`;
 }
 
+/** 連続通知時は最新1件だけ総トロフィーをタイトルに出す */
+function formatRankedBattleLogTitle(eventData) {
+  const titleEmote = eventData.diffTrophies >= 0 ? config.emote.up : config.emote.down;
+  const diffPart = `${titleEmote}**${formatSignedInt(eventData.diffTrophies)}**`;
+  if (eventData.showTrophiesInTitle === false) {
+    return diffPart;
+  }
+  return `${diffPart} :trophy: **${eventData.trophiesCurrent}**`;
+}
+
 function buildLegendBarChartLine(kind, nToday) {
   if (!nToday) return '';
 
@@ -1489,6 +1499,7 @@ async function processLegendRankedBattleLog(
   });
   const totalDelta = diffsChronological.reduce((sum, v) => sum + (Number(v) || 0), 0);
   let runningTrophies = Number(afterPlayerStats.trophies) - totalDelta;
+  const pendingNotifications = [];
 
   for (let idx = 0; idx < chronological.length; idx++) {
     const item = chronological[idx];
@@ -1526,16 +1537,30 @@ async function processLegendRankedBattleLog(
     if (updatedLegend) {
       mongoAccMut = { ...mongoAccMut, legend: updatedLegend };
     }
+    pendingNotifications.push({
+      legendEventType,
+      eventData,
+      lastResult,
+      seasonData: seasonDataAtBattle,
+    });
+  }
+
+  for (let i = 0; i < pendingNotifications.length; i++) {
+    const pending = pendingNotifications[i];
+    const eventDataForSend = {
+      ...pending.eventData,
+      showTrophiesInTitle: i === pendingNotifications.length - 1,
+    };
     await sendLogLegendMain(
       client,
       afterPlayerStats,
       mongoAccMut,
-      legendEventType,
-      eventData,
+      pending.legendEventType,
+      eventDataForSend,
       1,
       0,
-      lastResult,
-      seasonData,
+      pending.lastResult,
+      pending.seasonData,
     );
   }
 
@@ -1785,10 +1810,7 @@ async function createLogLegendAttack(
   result = null,
 ) {
   const myEmbed = new EmbedBuilder();
-  const titleEmote = eventData.diffTrophies >= 0 ? config.emote.up : config.emote.down;
-  myEmbed.setTitle(
-    `${titleEmote}**${formatSignedInt(eventData.diffTrophies)}** :trophy: **${eventData.trophiesCurrent}**`,
-  );
+  myEmbed.setTitle(formatRankedBattleLogTitle(eventData));
   let footer = '';
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     footer =
@@ -1848,10 +1870,7 @@ async function createLogLegendDefense(
   result = null,
 ) {
   const myEmbed = new EmbedBuilder();
-  const titleEmote = eventData.diffTrophies >= 0 ? config.emote.up : config.emote.down;
-  myEmbed.setTitle(
-    `${titleEmote}**${formatSignedInt(eventData.diffTrophies)}** :trophy: **${eventData.trophiesCurrent}**`,
-  );
+  myEmbed.setTitle(formatRankedBattleLogTitle(eventData));
   let footer = '';
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     footer =
