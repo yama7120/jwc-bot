@@ -389,7 +389,34 @@ async function autoUpdateAccLegend1(client) {
   return accountsAll.length;
 }
 
+function findLegendDayStats(acc, targetSeason, targetDay) {
+  const daysArr = Array.isArray(acc.legend?.days) ? acc.legend.days : [];
+  return (
+    daysArr.find((d) => d?.season === targetSeason && d?.day === targetDay) ?? null
+  );
+}
+
+/** 終了した legend 日の trophies で降順 TOP10（表示数値と同じキーでソート） */
+function pickTop10ByLegendDayTrophies(accountsAll, targetSeason, targetDay) {
+  return accountsAll
+    .map((acc) => {
+      const dayStats = findLegendDayStats(acc, targetSeason, targetDay);
+      const trophies = Number(dayStats?.trophies);
+      if (!dayStats || !Number.isFinite(trophies)) {
+        return null;
+      }
+      return { acc, dayStats };
+    })
+    .filter(Boolean)
+    .sort((a, b) => Number(b.dayStats.trophies) - Number(a.dayStats.trophies))
+    .slice(0, 10);
+}
+
 async function sendLogUpdated(client, nAccs, seasonData) {
+  // cron は JST 14:00 起動。表示・ソート対象は終了した日 (daysNow - 1) の日次サマリ
+  const targetSeason = seasonData.seasonId;
+  const targetDay = seasonData.daysNow - 1;
+
   const query = { status: true, 'legend.days': { $ne: null } };
   const options = {
     projection: {
@@ -403,10 +430,11 @@ async function sendLogUpdated(client, nAccs, seasonData) {
       diffAttackWins: 1
     }
   };
-  const sort = { trophies: -1 };
-  const cursor = client.clientMongo.db('jwc').collection('accounts').find(query, options).sort(sort).limit(10);
-  const accounts = await cursor.toArray();
+  const cursor = client.clientMongo.db('jwc').collection('accounts').find(query, options);
+  const accountsAll = await cursor.toArray();
   await cursor.close();
+
+  const top10 = pickTop10ByLegendDayTrophies(accountsAll, targetSeason, targetDay);
   const legends200 = await client.clientMongo
     .db('jwc')
     .collection('ranking')
@@ -424,31 +452,17 @@ async function sendLogUpdated(client, nAccs, seasonData) {
   const myEmbed = new EmbedBuilder();
   const title = `:white_check_mark: **UPDATED**`;
 
+  const unixTimeRequest =
+    top10[0]?.acc?.unixTimeRequest ?? Math.round(Date.now() / 1000);
   const descriptionLines = [
-    `<t:${Math.round(accounts[0].unixTimeRequest)}:t> (<t:${Math.round(accounts[0].unixTimeRequest)}:R>)`,
+    `<t:${Math.round(unixTimeRequest)}:t> (<t:${Math.round(unixTimeRequest)}:R>)`,
     '*The data for all JWC accounts has been successfully updated.*',
     `*${nAccs} accounts*`,
     ``,
-    `${config.emote.legend} **TOP 10 LEGEND PLAYERS**`
+    `${config.emote.legend} **TOP 10 LEGEND PLAYERS** (DAY ${targetDay})`
   ];
 
-  // cron は 02:00 JST = CoC 日境界で起動するため seasonData.daysNow は
-  // 「これから始まる新しい日 (N)」を指す。TOP10 で表示したいのは
-  // 「ちょうど終わった日 (N-1)」のサマリなので targetDay = daysNow - 1。
-  const targetSeason = seasonData.seasonId;
-  const targetDay = seasonData.daysNow - 1;
-
-  accounts.forEach((acc, index) => {
-    const daysArr = Array.isArray(acc.legend?.days) ? acc.legend.days : [];
-    const dayStats = daysArr.find(
-      (d) => d?.season === targetSeason && d?.day === targetDay,
-    ) ?? {
-      trophies: acc.trophies ?? 0,
-      diffTrophies: 0,
-      attackTrophies: 0,
-      defenseTrophies: 0,
-    };
-
+  top10.forEach(({ acc, dayStats }, index) => {
     const diffTrophies =
       dayStats.diffTrophies >= 0
         ? `+${dayStats.diffTrophies}`
@@ -476,6 +490,12 @@ async function sendLogUpdated(client, nAccs, seasonData) {
       ].filter(Boolean).join(' ')
     );
   });
+
+  if (top10.length === 0) {
+    descriptionLines.push(
+      `_No legend day stats for season ${targetSeason} day ${targetDay}._`,
+    );
+  }
 
   descriptionLines.push(
     ``,
