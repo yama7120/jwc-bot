@@ -457,6 +457,7 @@ async function autoUpdateLegend(
       client,
       mongoAcc,
       battleLogItems,
+      beforePlayerStats,
       afterPlayerStats,
       seasonData,
     );
@@ -835,7 +836,12 @@ async function sendLogLegendMain(
   if (embedUser) {
     await sendLogEmbedToUser(client, mongoAcc, embedUser);
     if (legendEventType === 'attack' || legendEventType === 'defense') {
-      await saveAccountTrophies(client, mongoAcc.tag, scPlayer.trophies);
+      const trophiesToSave = Number(eventData.trophiesCurrent);
+      await saveAccountTrophies(
+        client,
+        mongoAcc.tag,
+        Number.isFinite(trophiesToSave) ? trophiesToSave : scPlayer.trophies,
+      );
     }
   }
 
@@ -1143,6 +1149,42 @@ function rankedBattleTrophyDeltaFromBattleLog(
   return calcDefenseTrophies(stars, destruction);
 }
 
+function getLatestStoredEventTrophies(legendEvents) {
+  if (!Array.isArray(legendEvents) || legendEvents.length === 0) {
+    return null;
+  }
+  const t = Number(legendEvents[0]?.trophies);
+  return Number.isFinite(t) ? t : null;
+}
+
+/**
+ * battlelog 通知の trophiesCurrent 起点。
+ * - ポーリングで trophies が変わった: after.trophies 基準（バッチ全体を含む）
+ * - sweep / attackWins のみ変化: 直前 event の trophies から diff を加算（profile 未反映対策）
+ */
+function computeInitialRunningTrophies(
+  beforePlayerStats,
+  afterPlayerStats,
+  legendEvents,
+  totalDelta,
+) {
+  const afterT = Number(afterPlayerStats?.trophies);
+  const beforeT = Number(beforePlayerStats?.trophies);
+  const trophiesChanged =
+    Number.isFinite(beforeT) && Number.isFinite(afterT) && beforeT !== afterT;
+
+  if (trophiesChanged && Number.isFinite(afterT) && Number.isFinite(totalDelta)) {
+    return afterT - totalDelta;
+  }
+
+  const lastStored = getLatestStoredEventTrophies(legendEvents);
+  if (Number.isFinite(lastStored)) {
+    return lastStored;
+  }
+
+  return Number.isFinite(afterT) ? afterT : 0;
+}
+
 async function reloadMongoAccLegendProjection(client, mongoAcc) {
   const doc = await client.clientMongo
     .db('jwc')
@@ -1408,6 +1450,7 @@ async function processLegendRankedBattleLog(
   client,
   mongoAcc,
   battleLogItems,
+  beforePlayerStats,
   afterPlayerStats,
   seasonData,
 ) {
@@ -1498,7 +1541,12 @@ async function processLegendRankedBattleLog(
     );
   });
   const totalDelta = diffsChronological.reduce((sum, v) => sum + (Number(v) || 0), 0);
-  let runningTrophies = Number(afterPlayerStats.trophies) - totalDelta;
+  let runningTrophies = computeInitialRunningTrophies(
+    beforePlayerStats,
+    afterPlayerStats,
+    mongoAccMut?.legend?.events,
+    totalDelta,
+  );
   const pendingNotifications = [];
 
   for (let idx = 0; idx < chronological.length; idx++) {
