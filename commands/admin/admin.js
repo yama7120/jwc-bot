@@ -489,6 +489,22 @@ let data = new SlashCommandBuilder()
                 { name: 'streamer ON/OFF', value: 'streamer' },
               ),
           ),
+      )
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName('unlink_pilot_dc')
+          .setDescription(
+            config.adminCommand[nameCommand].subCommandGroup['edit'][
+              'unlink_pilot_dc'
+            ],
+          )
+          .addStringOption((option) =>
+            option
+              .setName('account')
+              .setDescription('プレイヤータグ')
+              .setRequired(true)
+              .setAutocomplete(true),
+          ),
       ),
   )
   // subcommandGroup 3
@@ -862,7 +878,51 @@ export default {
       iWeek = await functions.getWeekNow(iLeague);
     }
 
-    if (subcommandGroup == 'roster') {
+    if (
+      subcommandGroup == 'edit' &&
+      subcommand == 'unlink_pilot_dc' &&
+      focusedOption.name === 'account'
+    ) {
+      const focusedValue = interaction.options.getFocused();
+      const query = {
+        pilotDC: { $exists: true, $nin: [null, '', 'no discord acc'] },
+        'pilotDC.id': { $exists: true },
+        status: { $ne: false },
+      };
+      const options = {
+        projection: { _id: 0, tag: 1, name: 1, townHallLevel: 1, pilotDC: 1 },
+      };
+      const sort = { townHallLevel: -1 };
+      const cursor = client.clientMongo
+        .db('jwc')
+        .collection('accounts')
+        .find(query, options)
+        .sort(sort);
+      let accs = await cursor.toArray();
+      await cursor.close();
+
+      accs = accs.filter(function (acc) {
+        return acc.name.includes(focusedValue);
+      });
+      if (accs.length > 25) {
+        accs = accs.filter(function (acc, index) {
+          return index < 25;
+        });
+      }
+
+      if (accs.length > 0) {
+        await interaction.respond(
+          accs.map((acc) => {
+            const pilotName =
+              acc.pilotDC.globalName ?? acc.pilotDC.username ?? 'unknown';
+            return {
+              name: `[TH${acc.townHallLevel}] ${acc.name} | ${pilotName}`,
+              value: acc.tag,
+            };
+          }),
+        );
+      }
+    } else if (subcommandGroup == 'roster') {
       const mongoTeam = await client.clientMongo
         .db('jwc')
         .collection('clans')
@@ -1194,6 +1254,8 @@ export default {
         addAttack(interaction, client);
       } else if (subcommand == 'account') {
         editAccount(interaction, client);
+      } else if (subcommand == 'unlink_pilot_dc') {
+        unlinkPilotDc(interaction, client);
       }
     } else if (subcommandGroup == 'edit_dc') {
       if (subcommand == 'role') {
@@ -3067,6 +3129,60 @@ async function calcDestruction(membersAtt, membersDef) {
   let destruction = sumDestruction / membersDef.length;
   destruction = Math.round(destruction * 100) / 100;
   return destruction;
+}
+
+function isPilotDCLinked(pilotDCInfo) {
+  return (
+    pilotDCInfo &&
+    pilotDCInfo !== 'no discord acc' &&
+    pilotDCInfo !== '' &&
+    pilotDCInfo.id
+  );
+}
+
+async function unlinkPilotDc(interaction, client) {
+  const iPlayerTag = functions.tagReplacer(
+    await interaction.options.getString('account'),
+  );
+
+  const mongoAcc = await client.clientMongo
+    .db('jwc')
+    .collection('accounts')
+    .findOne({ tag: iPlayerTag });
+
+  const embed = new EmbedBuilder()
+    .setColor(config.color.main)
+    .setFooter({ text: config.footer, iconURL: config.urlImage.jwc })
+    .setTimestamp();
+
+  if (!mongoAcc) {
+    embed
+      .setTitle(':x: **not found**')
+      .setDescription('*The account is not registered in the JWC bot database.*');
+    await interaction.followUp({ embeds: [embed], ephemeral: true });
+    return;
+  }
+
+  const title = await functions.getAccInfoTitle(mongoAcc, 'long');
+  let description = await functions.getAccInfoDescriptionMain(mongoAcc, 'long');
+  description += '\n';
+
+  if (!isPilotDCLinked(mongoAcc.pilotDC)) {
+    description += ':exclamation: _This account is not linked with any Discord user._';
+  } else {
+    const unlinkedPilot = mongoAcc.pilotDC;
+    await client.clientMongo
+      .db('jwc')
+      .collection('accounts')
+      .updateOne({ tag: iPlayerTag }, { $unset: { pilotDC: '' } });
+    description += `:white_check_mark: _Successfully unlinked_ <@!${unlinkedPilot.id}>`;
+  }
+
+  embed.setTitle(title);
+  embed.setDescription(description);
+  await interaction.followUp({ embeds: [embed] });
+
+  return;
 }
 
 async function editAccount(interaction, client) {

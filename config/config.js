@@ -213,6 +213,7 @@ export default {
           team_score: 'チーム成績編集',
           add_attack: '攻撃追加',
           account: 'アカウント情報編集',
+          unlink_pilot_dc: 'Discord紐付け解除（pilot_dc）',
         },
         edit_dc: {
           role: '役職編集',
