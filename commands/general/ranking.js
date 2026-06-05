@@ -64,20 +64,6 @@ let data = new SlashCommandBuilder()
             { name: 'Attack Wins', value: 'attackWins' },
             { name: 'Lifetime War Stars', value: 'warStars' },
             { name: 'Total Hero Lv.', value: 'lvHeroes' },
-            { name: 'Total Hero Equip. Lv.', value: 'equipTotal' },
-            { name: 'Giant Gauntlet Lv.', value: 'equipGiantGauntlet' },
-            { name: 'Spiky Ball Lv.', value: 'equipSpikyBall' },
-            { name: 'Snake Bracelet Lv.', value: 'equipSnakeBracelet' },
-            { name: 'Frozen Arrow Lv.', value: 'equipFrozenArrow' },
-            { name: 'Magic Mirror Lv.', value: 'equipMagicMirror' },
-            { name: 'Action Figure Lv.', value: 'equipActionFigure' },
-            { name: 'Fireball Lv.', value: 'equipFireball' },
-            { name: 'Lavaloon Puppet Lv.', value: 'equipLavaloonPuppet' },
-            { name: 'Rocket Spear Lv.', value: 'equipRocketSpear' },
-            { name: 'Electro Boots Lv.', value: 'equipElectroBoots' },
-            { name: 'Dark Crown Lv.', value: 'equipDarkCrown' },
-            { name: 'Meteor Staff Lv.', value: 'equipMeteorStaff' },
-            { name: 'Rocket Backpack Lv.', value: 'equipRocketBackpack' },
           )
       )
       .addStringOption(option =>
@@ -583,27 +569,7 @@ async function accountData(interaction, client) {
 
   let nAccPerPage = 50;
   let arrDescription = [];
-  if (iItem.includes('equip')) {
-    for (let [index, acc] of accs.entries()) {
-      let emoteTH = config.emote.thn[acc.townHallLevel];
-      let nameAcc = `**${String(acc.name).replace(/\*/g, '\\*').replace(/_/g, '\\_')}**`;
-      if (iTeamAbbr == 'entire') {
-        arrDescription[index] = `${index + 1}. **${acc[iItem].level}**/${acc[iItem].maxLevel}  ${emoteTH}  ${nameAcc}\n`;
-      }
-      else {
-        let nameTeam = String(acc.homeClanAbbr[leagueM]).toUpperCase();
-        if (iTeamAbbr == 'Entire') {
-          arrDescription[index] = `${index + 1}. **${acc[iItem].level}**/${acc[iItem].maxLevel}  ${emoteTH}  ${nameAcc}  |  ${acc.pilotName[leagueM]}  |  ${nameTeam}\n`;
-        }
-        else {
-          arrDescription[index] = `${index + 1}. **${acc[iItem].level}**/${acc[iItem].maxLevel}  ${emoteTH}  ${nameAcc}  |  ${acc.pilotName[leagueM]}\n`;
-        };
-      };
-      let myIndex = nDisplay - 1;
-      if (index == myIndex) break;
-    };
-  }
-  else if (iItem == 'trophies' || iItem == 'warStars' || iItem == 'attackWins') {
+  if (iItem == 'trophies' || iItem == 'warStars' || iItem == 'attackWins') {
     for (let [index, acc] of accs.entries()) {
       let emoteTH = config.emote.thn[acc.townHallLevel];
       let nameAcc = `**${String(acc.name).replace(/\*/g, '\\*').replace(/_/g, '\\_')}**`;
@@ -669,16 +635,8 @@ async function accountData(interaction, client) {
     };
   }));
 
-  if (iItem == 'equipTotal') {
-    title = `${config.emote.jwc} **Total Hero Equipment Level**`;
-  }
-  else if (iItem == 'lvHeroes') {
+  if (iItem == 'lvHeroes') {
     title = `${config.emote.jwc} **Total Hero Level**`;
-  }
-  else if (iItem.includes('equip')) {
-    const nameEquipment = iItem.slice(5).replace(/([A-Z])/g, ' $1').trim();
-    const foundEquipment = config_coc.heroEquipments.find(equipment_config => equipment_config.name == nameEquipment);
-    title = `${foundEquipment.emote} **${nameEquipment} Level**`;
   }
   else if (iItem == 'trophies') {
     title = `:trophy: **Trophies**`;

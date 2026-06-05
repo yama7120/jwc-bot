@@ -1013,6 +1013,10 @@ export default {
         emote: '<:eqActionFigure:1359153281825505451>'
       },
       {
+        id: 923, name: 'Monolith Arrow', hero: 'Archer Queen', type: 'epic',
+        emote: ':question:'
+      },
+      {
         id: 2, name: 'Archer Puppet', hero: 'Archer Queen', type: 'common',
         emote: '<:eqArcherPuppet:1190169146005127268>'
       },
@@ -1136,9 +1140,6 @@ export default {
     /*
     新装備実装時
     1. config_coc.heroEquipments に追加
-    （以下epicのみ）
-    2. fRanking.rankingMain 編集
-    3. ranking.js 編集
     */
       maxLevel: {
       heroes: {

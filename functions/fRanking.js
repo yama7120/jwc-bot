@@ -8,26 +8,6 @@ async function rankingMain(clientMongo) {
   // legend trophies
   await rankingLegend(clientMongo, 'legendTrophies', 'legendTrophies', 'legend.legendTrophies');
 
-  // ** Hero Equipment **
-  // 14時バッチのMongo負荷を下げるため、一時的に更新を無効化。
-  const updateEquipmentRankings = false;
-  if (updateEquipmentRankings) {
-    await rankingEquipment(clientMongo, 'Total');
-    await rankingEquipment(clientMongo, 'giantGauntlet');
-    await rankingEquipment(clientMongo, 'spikyBall');
-    await rankingEquipment(clientMongo, 'snakeBracelet');
-    await rankingEquipment(clientMongo, 'frozenArrow');
-    await rankingEquipment(clientMongo, 'magicMirror');
-    await rankingEquipment(clientMongo, 'actionFigure');
-    await rankingEquipment(clientMongo, 'fireball');
-    await rankingEquipment(clientMongo, 'lavaloonPuppet');
-    await rankingEquipment(clientMongo, 'rocketSpear');
-    await rankingEquipment(clientMongo, 'electroBoots');
-    await rankingEquipment(clientMongo, 'darkCrown');
-    await rankingEquipment(clientMongo, 'meteorStaff');
-    await rankingEquipment(clientMongo, 'rocketBackpack');
-  }
-
   // ** Others **
   await rankingGeneral(clientMongo, 'trophies');
   await rankingGeneral(clientMongo, 'warStars');
@@ -63,37 +43,6 @@ async function rankingLegend(clientMongo, nameItem, nameRanking, key) {
   return;
 }
 export { rankingLegend };
-
-
-async function rankingEquipment(clientMongo, nameItem) {
-  let arr = [];
-  let nameRanking = `equip${nameItem.charAt(0).toUpperCase() + nameItem.slice(1)}`;
-  if (nameItem == 'Total') {
-    nameItem = 'total';
-  }
-  const key = `lvHeroEquipment.${nameItem}.level`;
-  let query = { status: true, [key]: { $gt: 0 } };
-  let options = { projection: { _id: 0, name: 1, pilotName: 1, townHallLevel: 1, homeClanAbbr: 1, lvHeroEquipment: 1, unixTimeRequest: 1 } };
-  let sort = { [key]: -1 };
-  let accs = await getAccsFromMongo(clientMongo, query, options, sort);
-
-  await Promise.all(accs.map(async (acc, index) => {
-    let obj = { name: acc.name, pilotName: acc.pilotName, townHallLevel: acc.townHallLevel, homeClanAbbr: acc.homeClanAbbr, [nameRanking]: acc.lvHeroEquipment[nameItem] };
-    arr.push(obj);
-  }));
-
-  var listing = {};
-  listing.accounts = arr;
-  listing.date = new Date();
-  listing.unixTime = Math.round(Date.now() / 1000);
-
-  await clientMongo.db('jwc').collection('ranking').updateOne({ name: nameRanking }, { $set: listing });
-
-  console.log(`Mongo: ${nameRanking} has been updated.`);
-
-  return;
-}
-export { rankingEquipment };
 
 
 async function rankingGeneral(clientMongo, nameRanking) {
