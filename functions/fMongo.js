@@ -400,9 +400,25 @@ async function updateAcc(client, tagAccount) {
       (eq) => eq.type === 'epic',
     );
 
-    if (scPlayer.heroEquipment) {
+    const equipmentByName = new Map();
+    const addEquipment = (equipment) => {
+      if (!equipment?.name) {
+        return;
+      }
+      const existing = equipmentByName.get(equipment.name);
+      if (!existing || equipment.level > existing.level) {
+        equipmentByName.set(equipment.name, equipment);
+      }
+    };
+
+    scPlayer.heroEquipment?.forEach(addEquipment);
+    scPlayer.heroes?.forEach((hero) => {
+      hero.equipment?.forEach(addEquipment);
+    });
+
+    if (equipmentByName.size > 0) {
       await Promise.all(
-        scPlayer.heroEquipment.map((equipment) => {
+        [...equipmentByName.values()].map((equipment) => {
           const foundEquipment = config_coc.heroEquipments.find(
             (e) => e.name === equipment.name,
           );

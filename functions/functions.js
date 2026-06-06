@@ -635,13 +635,33 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
       equipmentsByHero[heroName] = [];
     });
 
-    scPlayer.heroEquipment.map((equipment) => {
+    const equipmentByName = new Map();
+    const heroByEquipmentName = new Map();
+    const addEquipment = (equipment) => {
+      if (!equipment?.name) {
+        return;
+      }
+      const existing = equipmentByName.get(equipment.name);
+      if (!existing || equipment.level > existing.level) {
+        equipmentByName.set(equipment.name, equipment);
+      }
+    };
+
+    scPlayer.heroEquipment?.forEach(addEquipment);
+    scPlayer.heroes?.forEach((hero) => {
+      hero.equipment?.forEach((equipment) => {
+        addEquipment(equipment);
+        heroByEquipmentName.set(equipment.name, hero.name);
+      });
+    });
+
+    equipmentByName.forEach((equipment) => {
       const foundEquipment = config_coc.heroEquipments.find(
         (equipment_config) => equipment_config.name == equipment.name,
       );
       let hallMaxLevel = 99;
       let emote = ':question:';
-      let heroName = 'Unknown';
+      let heroName = heroByEquipmentName.get(equipment.name) ?? 'Unknown';
       if (foundEquipment) {
         hallMaxLevel =
           equipment.maxLevel ??
@@ -652,7 +672,7 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
         emote = foundEquipment.emote;
         heroName = foundEquipment.hero;
       } else {
-        logUnknownEquipment(equipment.name);
+        logUnknownEquipment(equipment.name, heroName);
       }
 
       if (!equipmentsByHero[heroName]) {
