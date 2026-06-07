@@ -773,13 +773,21 @@ async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo 
 
   try {
     if (mongoAcc.legend.logSettings.post === 'channel') {
-      const channel = client.channels.cache.get(mongoAcc.legend.logSettings.channel);
+      let channel = client.channels.cache.get(mongoAcc.legend.logSettings.channel);
       if (!channel) {
-        throw new Error('チャンネルが見つからないか、テキストチャンネルではありません。');
+        channel = await client.channels.fetch(mongoAcc.legend.logSettings.channel).catch(() => null);
       }
-      await channel.send({ embeds: [embed] });
-      await channel.send({ files: [result.attachment] });
-      await channel.send({ files: [attachmentHistory] });
+      if (channel?.isTextBased()) {
+        await channel.send({ embeds: [embed] });
+        await channel.send({ files: [result.attachment] });
+        await channel.send({ files: [attachmentHistory] });
+      } else {
+        console.error(
+          'Result: channel not found or not text-based',
+          mongoAcc.name,
+          mongoAcc.tag,
+        );
+      }
     } else if (mongoAcc.legend.logSettings.post === 'dm') {
       const pilotId = extractPilotId(mongoAcc);
       if (!pilotId) {
