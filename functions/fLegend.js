@@ -208,6 +208,53 @@ function getLeagueResetSummaryLine(beforePlayerStats, afterPlayerStats) {
   return `:exclamation: Ranked league reset: **${beforeLabel}** -> **${afterLabel}**`;
 }
 
+function formatLegendWeekTrophyDelta(value) {
+  if (!Number.isFinite(value)) return 'N/A';
+  return value >= 0 ? `+${value}` : `${value}`;
+}
+
+function formatLegendWeekStat(value, suffix = '') {
+  if (!Number.isFinite(value)) return '—';
+  return `${value}${suffix}`;
+}
+
+/** @param {Record<string, unknown> | null | undefined} week */
+function formatLastTournamentWeekSection(week) {
+  if (!week) return '';
+
+  const attacks = Number(week.attacks ?? 0);
+  const defenses = Number(week.defenses ?? 0);
+  const hasActivity =
+    attacks > 0
+    || defenses > 0
+    || Number.isFinite(Number(week.attackTrophies))
+    || Number.isFinite(Number(week.defenseTrophies));
+  if (!hasActivity) return '';
+
+  const leagueLabel = String(week.leagueName ?? 'Unknown');
+  const weekId = String(week.weekId ?? '');
+  const attackTrophies = Number(week.attackTrophies);
+  const defenseTrophies = Number(week.defenseTrophies);
+  const netTrophies =
+    (Number.isFinite(attackTrophies) ? attackTrophies : 0)
+    + (Number.isFinite(defenseTrophies) ? defenseTrophies : 0);
+
+  let block = `\n--- **LAST TOURNAMENT** ---\n`;
+  block += `**${leagueLabel}** · \`${weekId}\`\n`;
+  block += `${config.emote.sword} ${attacks}  ${formatLegendWeekTrophyDelta(attackTrophies)} :trophy:`;
+  block += `  |  ★${formatLegendWeekStat(Number(week.attackStarsAvg))} · ${formatLegendWeekStat(Number(week.attackDestAvg), '%')}\n`;
+  block += `${config.emote.shield} ${defenses}  ${formatLegendWeekTrophyDelta(defenseTrophies)} :trophy:`;
+  block += `  |  ★${formatLegendWeekStat(Number(week.defenseStarsAvg))} · ${formatLegendWeekStat(Number(week.defenseDestAvg), '%')}\n`;
+  block += `Net: **${formatLegendWeekTrophyDelta(netTrophies)}** :trophy:\n`;
+  return block;
+}
+
+function getLatestLegendWeek(mongoAcc) {
+  const weeks = mongoAcc?.legend?.weeks;
+  if (!Array.isArray(weeks) || weeks.length === 0) return null;
+  return weeks[0];
+}
+
 function getNextTournamentStartUnixFromReset(resetUnixSeconds, seasonData) {
   if (Number.isFinite(resetUnixSeconds) && resetUnixSeconds > 0) {
     const resetUtcMs = resetUnixSeconds * 1000;
@@ -304,6 +351,7 @@ async function createLogReset(
   afterPlayerStats,
   eventData,
   seasonData,
+  mongoAcc,
 ) {
   const myEmbed = new EmbedBuilder();
   myEmbed.setTitle('**⚔️ LEAGUE RESET!**');
@@ -328,6 +376,7 @@ async function createLogReset(
   if (Number.isFinite(tournamentStartUnix) && tournamentStartUnix > 0) {
     description += `Next tournament starts: <t:${tournamentStartUnix}:F> (<t:${tournamentStartUnix}:R>)\n`;
   }
+  description += formatLastTournamentWeekSection(getLatestLegendWeek(mongoAcc));
   myEmbed.setDescription(description);
 
   return myEmbed;
@@ -412,11 +461,21 @@ async function autoUpdateLegend(
   }
 
   if (isNonLegendLeagueReset(beforePlayerStats, afterPlayerStats)) {
+    if (afterPlayerStats.leagueTier?.id !== config_coc.leagueId.legend) {
+      await updateLegendWeeksFromEvents(
+        client,
+        mongoAcc,
+        mongoAcc.legend?.events,
+        seasonData,
+        beforePlayerStats.leagueTier,
+      );
+    }
     const embed = await createLogReset(
       beforePlayerStats,
       afterPlayerStats,
       baseEventData,
       seasonData,
+      mongoAcc,
     );
     await sendLogEmbed(client, mongoAcc, embed);
     await markRankedSeasonTransition(client, mongoAcc, rankedSeasonId);
