@@ -136,19 +136,28 @@ export default {
       };
     }
     else if (focusedOption.name === 'team') {
-      let teamList = await client.clientMongo.db('jwc').collection('config').findOne({ _id: 'teamList' });
+      if (!iLeague) {
+        await safeAutocompleteRespond(interaction, []);
+        return;
+      }
 
+      const teamListDoc = await client.clientMongo.db('jwc').collection('config').findOne({ _id: 'teamList' });
       const focusedValue = interaction.options.getFocused();
-      teamList = teamList[iLeague].filter(function(team) {
-        return functions.teamMatchesAutocompleteFilter(team, focusedValue);
-      });
-      if (teamList.length >= 25) {
-        teamList = teamList.filter(function(team, index) { return index < 25 });
-      };
+      let teams = Array.isArray(teamListDoc?.[iLeague]) ? teamListDoc[iLeague] : [];
+      teams = teams.filter((team) =>
+        functions.teamMatchesAutocompleteFilter(team, focusedValue),
+      );
+      if (teams.length >= 25) {
+        teams = teams.slice(0, 25);
+      }
 
-      await interaction.respond(teamList.map(team => (
-        { name: `${team.team_abbr.toUpperCase()}: ${team.team_name}`, value: team.team_abbr }
-      )));
+      await safeAutocompleteRespond(
+        interaction,
+        teams.map((team) => ({
+          name: `${team.team_abbr.toUpperCase()}: ${team.team_name}`,
+          value: team.team_abbr,
+        })),
+      );
     };
   },
 
@@ -157,28 +166,37 @@ export default {
     const subcommand = interaction.options.getSubcommand();
 
     if (subcommand == 'summary') {
-      warSummary(interaction, client);
+      await warSummary(interaction, client);
     }
     else if (subcommand == 'live') {
-      warLive(interaction, client);
+      await warLive(interaction, client);
     }
     else if (subcommand == 'single') {
-      warSingle(interaction, client);
+      await warSingle(interaction, client);
     }
     else if (subcommand == 'own') {
-      warOwn(interaction, client);
+      await warOwn(interaction, client);
     }
     else if (subcommand == 'attacks') {
-      warAttacks(interaction, client);
+      await warAttacks(interaction, client);
     }
     else if (subcommand == 'defenses') {
-      warDefenses(interaction, client);
+      await warDefenses(interaction, client);
     }
     else if (subcommand == 'lineup') {
-      warLineupMain(interaction, client);
+      await warLineupMain(interaction, client);
     };
   }
 };
+
+async function safeAutocompleteRespond(interaction, choices) {
+  try {
+    await interaction.respond(choices);
+  } catch (error) {
+    if (error?.code === 10062) return;
+    throw error;
+  }
+}
 
 
 async function warSummary(interaction, client) {
@@ -411,7 +429,7 @@ async function getMatch(interaction, league) {
 async function warAttacks(interaction, client) {
   const iLeague = await interaction.options.getString('league');
   const iClan = await interaction.options.getString('team');
-  let clanAbbr = iClan.toLowerCase();
+  let clanAbbr = functions.normalizeTeamAbbrFromOption(iClan);
   let iWeek = await interaction.options.getInteger('week');
 
   if (iWeek == null || iWeek == 99) {
@@ -420,8 +438,14 @@ async function warAttacks(interaction, client) {
 
   let mongoClan = await client.clientMongo.db('jwc').collection('clans').findOne(
     { clan_abbr: clanAbbr },
-    { projection: { team_name: 1, _id: 0 } }
+    { projection: { team_name: 1, logo_url: 1, _id: 0 } }
   );
+  if (!mongoClan) {
+    await interaction.followUp({
+      content: `*ERROR: team \`${clanAbbr}\` is not registered in clans.*`,
+    });
+    return;
+  }
   const teamName = mongoClan.team_name;
 
   const query = {
@@ -460,8 +484,8 @@ async function warAttacks(interaction, client) {
   let teamNameOpp = '';
   if (clanAbbrOpp) {
     const mongoClanOpp = await client.clientMongo.db('jwc').collection('clans')
-      .findOne({ clan_abbr: clanAbbrOpp });
-    teamNameOpp = mongoClanOpp.team_name;
+      .findOne({ clan_abbr: clanAbbrOpp }, { projection: { team_name: 1, _id: 0 } });
+    teamNameOpp = mongoClanOpp?.team_name ?? clanAbbrOpp.toUpperCase();
   };
 
   let arrDescription = ['', '', '', '', ''];
@@ -558,7 +582,7 @@ async function warAttacks(interaction, client) {
 async function warDefenses(interaction, client) {
   const iLeague = await interaction.options.getString('league');
   const iClan = await interaction.options.getString('team');
-  let clanAbbr = iClan.toLowerCase();
+  let clanAbbr = functions.normalizeTeamAbbrFromOption(iClan);
   let iWeek = await interaction.options.getInteger('week');
 
   if (iWeek == null || iWeek == 99) {
@@ -567,8 +591,14 @@ async function warDefenses(interaction, client) {
 
   let mongoClan = await client.clientMongo.db('jwc').collection('clans').findOne(
     { clan_abbr: clanAbbr },
-    { projection: { team_name: 1, _id: 0 } }
+    { projection: { team_name: 1, logo_url: 1, _id: 0 } }
   );
+  if (!mongoClan) {
+    await interaction.followUp({
+      content: `*ERROR: team \`${clanAbbr}\` is not registered in clans.*`,
+    });
+    return;
+  }
   const teamName = mongoClan.team_name;
 
   const query = {
@@ -583,6 +613,11 @@ async function warDefenses(interaction, client) {
   const projection = { _id: 0, clan_abbr: 1, opponent_abbr: 1, clan_war: 1, opponent_war: 1, result: 1 };
   const options = { projection: projection };
   const mongoWar = await client.clientMongo.db('jwc').collection('wars').findOne(query, options);
+
+  if (!mongoWar) {
+    await interaction.followUp({ content: '*ERROR: war not found.*' });
+    return;
+  }
 
   let clanAbbrOpp = '';
   let arrAttacks = {};
@@ -602,14 +637,14 @@ async function warDefenses(interaction, client) {
   let teamNameOpp = '';
   if (clanAbbrOpp) {
     const mongoClanOpp = await client.clientMongo.db('jwc').collection('clans')
-      .findOne({ clan_abbr: clanAbbrOpp });
-    teamNameOpp = mongoClanOpp.team_name;
+      .findOne({ clan_abbr: clanAbbrOpp }, { projection: { team_name: 1, _id: 0 } });
+    teamNameOpp = mongoClanOpp?.team_name ?? clanAbbrOpp.toUpperCase();
   };
 
   let arrDescription = ['', '', '', '', ''];
   let footerText = '';
 
-  if (arrAttacks && clanAbbrOpp) {
+  if (arrAttacks && clanAbbrOpp && Array.isArray(members)) {
     members.sort((a, b) => a.mapPosition - b.mapPosition);
 
     let membersTag = [];

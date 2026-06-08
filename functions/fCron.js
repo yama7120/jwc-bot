@@ -10,6 +10,7 @@ import { getWeekNow } from './weekNow.js';
 import * as fGetWars from './fGetWars.js';
 import * as fRanking from './fRanking.js';
 import * as fCanvas from './fCanvas.js';
+import { reportError } from './errorReport.js';
 
 const WAR_UPDATE_CONCURRENCY = 4;
 
@@ -44,6 +45,8 @@ async function autoUpdateWar(client, league, week) {
       const result = await fGetWars.getClanWarUpdateDB(client, mongoWar);
       sumFlagUpdate += result || 0;
     },
+    client,
+    'cronWar:update',
   );
 
   if (sumFlagUpdate > 0) {
@@ -69,6 +72,8 @@ async function autoUpdateWar(client, league, week) {
         }
       }
     },
+    client,
+    'cronWar:reminder',
   );
   void startedAt;
 }
@@ -947,7 +952,7 @@ function createLegendSummaryEmbed(items, seasonData) {
   return embed;
 }
 
-async function runWithConcurrency(items, concurrency, worker) {
+async function runWithConcurrency(items, concurrency, worker, client = null, workerSource = 'worker') {
   if (!Array.isArray(items) || items.length === 0) {
     return;
   }
@@ -964,6 +969,17 @@ async function runWithConcurrency(items, concurrency, worker) {
           await worker(item);
         } catch (error) {
           console.error('[runWithConcurrency] worker failed:', error);
+          if (client) {
+            const warInfo =
+              item?.league != null
+                ? `[${item.league}] w${item.week} ${item.clan_abbr} vs ${item.opponent_abbr}`
+                : undefined;
+            await reportError(client, error, {
+              source: workerSource,
+              context: { warInfo, cronJob: workerSource },
+              extra: item?._id ? { warId: String(item._id) } : undefined,
+            });
+          }
         }
       }
     },

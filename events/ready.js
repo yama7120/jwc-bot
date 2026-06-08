@@ -2,6 +2,7 @@ import { Events, EmbedBuilder, ActivityType } from 'discord.js';
 import config from '../config/config.js';
 import * as fMongo from '../functions/fMongo.js';
 import * as fCron from '../functions/fCron.js';
+import { reportError } from '../functions/errorReport.js';
 import cron from 'node-cron';
 
 const cronLocks = new Map();
@@ -144,6 +145,10 @@ function scheduleCronWithGuard(jobName, expression, task, options = {}) {
     } catch (error) {
       const elapsed = Date.now() - startedAt;
       console.error(`[CRON][ERROR] ${jobName} (${elapsed} ms):`, error);
+      await reportError(client, error, {
+        source: `cron:${jobName}`,
+        context: { cronJob: jobName },
+      });
     } finally {
       cronLocks.set(jobName, false);
     }

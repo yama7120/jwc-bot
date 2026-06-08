@@ -1,5 +1,10 @@
 import config from '../config/config.js';
 import * as functions from '../functions/functions.js';
+import {
+  interactionToContext,
+  reportError,
+  runWithErrorContext,
+} from '../functions/errorReport.js';
 import { Events, EmbedBuilder, MessageFlags } from 'discord.js';
 
 export default {
@@ -23,10 +28,12 @@ export default {
 
     if (interaction.isAutocomplete()) {
       try {
-        await command.autocomplete(interaction, client);
+        await runWithErrorContext(interactionToContext(interaction), () =>
+          command.autocomplete(interaction, client),
+        );
       } catch (error) {
         if (error?.code === 10062) return; // Unknown interaction (timeout/expired)
-        console.error(error);
+        await reportError(client, error, { source: 'autocomplete' });
       }
     } else if (interaction.isChatInputCommand()) {
       try {
@@ -38,11 +45,12 @@ export default {
             throw e;
           }
         }
-        await command.execute(interaction, client);
-        functions.logInteraction(interaction, client);
+        await runWithErrorContext(interactionToContext(interaction), () =>
+          command.execute(interaction, client),
+        );
+        await functions.logInteraction(interaction, client);
       } catch (error) {
-        console.error(error);
-        console.error(`${interaction.user.tag} - ${interaction.commandName}: ${interaction.toString()}`);
+        await reportError(client, error, { source: 'command' });
         let description = `*Please report to <@!${config.yamaId}>.*`;
         const embed = createEmbed('ERROR', description);
         if (interaction.replied || interaction.deferred) {

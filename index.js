@@ -14,6 +14,7 @@ import schedule from './config/schedule.js';
 import appConfig from './config/config.js';
 import config_coc from './config/config_coc.js';
 import * as functions from './functions/functions.js';
+import { reportError } from './functions/errorReport.js';
 import * as fLegend from './functions/fLegend.js';
 import * as fMongo from './functions/fMongo.js';
 import { loadWeekNowFromDb, getWeekNowSnapshot } from './functions/weekNow.js';
@@ -75,6 +76,7 @@ app.post('/post', async (req, res) => {
     await post(req, res, client, req.body);
   } catch (e) {
     console.error('Error in /post:', e);
+    reportError(client, e, { source: 'http:post' }).catch(() => {});
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -299,8 +301,11 @@ class PollingSystem {
       .setColor(this.config.color?.red ?? '#ff0000')
       .setTimestamp();
     const ch = this.client.channels.cache.get(this.config.logch?.freeBotRoom);
-    if (ch) ch.send({ embeds: [embed] });
-    else console.error('❌ channelFreeBotRoom not found');
+    if (ch) {
+      ch.send({ embeds: [embed] }).catch((e) =>
+        reportError(this.client, e, { source: 'maintenanceStart:notify' }),
+      );
+    } else console.error('❌ channelFreeBotRoom not found');
   }
 
   // メンテナンスが終わったときの処理
@@ -339,8 +344,11 @@ class PollingSystem {
       .setColor(this.config.color?.green ?? '#00ff00')
       .setTimestamp();
     const ch = this.client.channels.cache.get(this.config.logch?.freeBotRoom);
-    if (ch) ch.send({ embeds: [embed] });
-    else console.error('channelFreeBotRoom not found');
+    if (ch) {
+      ch.send({ embeds: [embed] }).catch((e) =>
+        reportError(this.client, e, { source: 'maintenanceEnd:notify' }),
+      );
+    } else console.error('channelFreeBotRoom not found');
   }
 
   // 新しいシーズンが始まったときの処理
@@ -352,10 +360,15 @@ class PollingSystem {
       .setColor(this.config.color?.green ?? '#00ff00')
       .setTimestamp();
     const ch = this.client.channels.cache.get(this.config.logch?.freeBotRoom);
-    if (ch) ch.send({ embeds: [embed] });
-    else console.error('❌ channelFreeBotRoom not found');
+    if (ch) {
+      ch.send({ embeds: [embed] }).catch((e) =>
+        reportError(this.client, e, { source: 'newSeason:notify' }),
+      );
+    } else console.error('❌ channelFreeBotRoom not found');
     await this.functions.sleep(30 * 1000);
-    this.fLegend.autoUpdateLegendReset(this.client);
+    this.fLegend.autoUpdateLegendReset(this.client).catch((e) =>
+      reportError(this.client, e, { source: 'newSeason:legendReset' }),
+    );
   }
 
   // プレイヤーのステータスが変化したときの処理の初期化
@@ -548,12 +561,11 @@ class PollingSystem {
 
   // 5分ごとにアカウントを更新
   startAccountUpdateInterval() {
-    const id = setInterval(
-      () => {
-        this.updateMonitoringAccounts();
-      },
-      5 * 60 * 1000,
-    );
+    const id = setInterval(() => {
+      this.updateMonitoringAccounts().catch((e) =>
+        reportError(this.client, e, { source: 'polling:updateAccounts' }),
+      );
+    }, 5 * 60 * 1000);
     return id;
   }
 
@@ -660,6 +672,9 @@ class PollingSystem {
         }
       } catch (e) {
         console.warn('⚠️ battlelog sweep loop error:', e?.message ?? e);
+        reportError(this.client, e, { source: 'polling:battleLogSweep' }).catch(
+          () => {},
+        );
       }
     }, intervalMs);
     return id;
@@ -677,8 +692,13 @@ class PollingSystem {
   setupPlayerStatsChangeListener() {
     if (this.pollingClientTrophies) {
       console.log('🔧 Attaching playerStatsChange listener');
-      this.pollingClientTrophies.on('playerStatsChange', async (before, after) => {
-        await this.handlePlayerStatsChange(before, after);
+      this.pollingClientTrophies.on('playerStatsChange', (before, after) => {
+        this.handlePlayerStatsChange(before, after).catch((e) =>
+          reportError(this.client, e, {
+            source: 'polling:playerStatsChange',
+            extra: { tag: after?.tag },
+          }),
+        );
       });
       console.log('🔧 Player stats change listener setup completed');
     } else {
@@ -728,24 +748,10 @@ class PollingSystem {
 
     // エラーハンドリング
     process.on('uncaughtException', (error) => {
-      console.error(`❌ [${new Date().toISOString()}] ${error.stack}`);
-      const embed = new EmbedBuilder()
-        .setTitle('ERROR - uncaughtException')
-        .setDescription('```\n' + error.stack + '\n```')
-        .setColor('#ff0000')
-        .setTimestamp();
-      const channelError = client.channels.cache.get(appConfig.logch?.error);
-      if (channelError) channelError.send({ embeds: [embed] });
+      reportError(client, error, { source: 'uncaughtException' });
     });
-    process.on('unhandledRejection', (reason, promise) => {
-      console.error(`❌ [${new Date().toISOString()}] ${reason}`, promise);
-      const embed = new EmbedBuilder()
-        .setTitle('ERROR - unhandledRejection')
-        .setDescription('```\n' + reason + '\n```')
-        .setColor('#ff0000')
-        .setTimestamp();
-      const channelError = client.channels.cache.get(appConfig.logch?.error);
-      if (channelError) channelError.send({ embeds: [embed] });
+    process.on('unhandledRejection', (reason) => {
+      reportError(client, reason, { source: 'unhandledRejection' });
     });
 
     await client.login(TOKEN);
