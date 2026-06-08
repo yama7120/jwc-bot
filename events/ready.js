@@ -2,6 +2,7 @@ import { Events, EmbedBuilder, ActivityType } from 'discord.js';
 import config from '../config/config.js';
 import * as fMongo from '../functions/fMongo.js';
 import * as fCron from '../functions/fCron.js';
+import * as fLegend from '../functions/fLegend.js';
 import { reportError } from '../functions/errorReport.js';
 import cron from 'node-cron';
 
@@ -71,6 +72,17 @@ export default {
       await fCron.cronUpdate2pmLegend1(client);
       console.log('END: fCron.cronUpdate2pmLegend1');
     });
+
+    // 日曜 14:00 JST (= 日曜 05:00 UTC) — ranked week end reminder (12h before Mon 02:00 JST reset)
+    scheduleCronWithGuard(
+      'rankedWeekEndReminder',
+      '00 00 05 * * 0',
+      async () => {
+        await fLegend.cronRankedWeekEndReminder(client);
+        console.log('END: fLegend.cronRankedWeekEndReminder');
+      },
+      { timeoutMs: 30 * 60 * 1000 },
+    );
 
     // 毎週月曜 15:00 JST (= 月曜 06:00 UTC) — leaguehistory を一括取得
     scheduleCronWithGuard('syncLeagueHistory', '00 00 06 * * 1', async () => {

@@ -219,7 +219,7 @@ function formatLegendWeekStat(value, suffix = '') {
 }
 
 /** @param {Record<string, unknown> | null | undefined} week */
-function formatLastTournamentWeekSection(week) {
+function formatWeeklyTournamentSection(week, heading = 'LAST TOURNAMENT') {
   if (!week) return '';
 
   const attacks = Number(week.attacks ?? 0);
@@ -239,7 +239,7 @@ function formatLastTournamentWeekSection(week) {
     (Number.isFinite(attackTrophies) ? attackTrophies : 0)
     + (Number.isFinite(defenseTrophies) ? defenseTrophies : 0);
 
-  let block = `\n--- **LAST TOURNAMENT** ---\n`;
+  let block = `\n--- **${heading}** ---\n`;
   block += `**${leagueLabel}** · \`${weekId}\`\n`;
   block += `${config.emote.sword} ${attacks}  ${formatLegendWeekTrophyDelta(attackTrophies)} :trophy:`;
   block += `  |  ★${formatLegendWeekStat(Number(week.attackStarsAvg))} · ${formatLegendWeekStat(Number(week.attackDestAvg), '%')}\n`;
@@ -249,10 +249,130 @@ function formatLastTournamentWeekSection(week) {
   return block;
 }
 
+function formatLastTournamentWeekSection(week) {
+  return formatWeeklyTournamentSection(week, 'LAST TOURNAMENT');
+}
+
 function getLatestLegendWeek(mongoAcc) {
   const weeks = mongoAcc?.legend?.weeks;
   if (!Array.isArray(weeks) || weeks.length === 0) return null;
   return weeks[0];
+}
+
+function rankedAccountHasNotifications(logSettings) {
+  if (!logSettings || logSettings.post === 'NA') return false;
+  if (logSettings.post !== 'channel' && logSettings.post !== 'dm') return false;
+  return (
+    logSettings.attacks === 'all'
+    || logSettings.defenses === 'all'
+    || logSettings.defenses === 'non-tripled'
+  );
+}
+
+function createRankedWeekEndReminderEmbed(mongoAcc, weekEndUnix) {
+  const playerLike = {
+    townHallLevel: mongoAcc.townHallLevel,
+    name: mongoAcc.name,
+    leagueTier: mongoAcc.leagueTier,
+  };
+  const myEmbed = new EmbedBuilder();
+  myEmbed.setTitle('**⏰ TOURNAMENT ENDS IN 12 HOURS**');
+  myEmbed.setFooter({
+    text: `${getLeagueTierDisplayName(playerLike)}${leagueFooterCapSuffix(playerLike)}`,
+    iconURL: getRankedBattleLogFooterIconUrl(playerLike),
+  });
+  myEmbed.setColor(config.color.main);
+  myEmbed.setTimestamp();
+
+  const nowUnix = Math.floor(Date.now() / 1000);
+  let description = '';
+  description += `<t:${nowUnix}:t> :trophy: **${mongoAcc.trophies ?? 0}** `;
+  description += `${config.emote.thn[mongoAcc.townHallLevel]} **${mongoAcc.name}**\n\n`;
+  description += `The weekly tournament ends in **12 hours**.\n`;
+  description += `Reset: <t:${weekEndUnix}:F> (<t:${weekEndUnix}:R>)\n`;
+  description += formatWeeklyTournamentSection(getLatestLegendWeek(mongoAcc), 'THIS WEEK');
+  myEmbed.setDescription(description);
+  return myEmbed;
+}
+
+async function cronRankedWeekEndReminder(client) {
+  const seasonData = functions.calculateSeasonValues(client, new Date(), 17);
+  const { startUnix, weekEndUnix } = getWeeklyTournamentUnixBounds(seasonData, Date.now());
+  const weekId = weeklyTournamentIdFromStartUnix(startUnix);
+  if (!weekId) {
+    console.warn('[cronRankedWeekEndReminder] invalid weekId');
+    return;
+  }
+
+  const query = {
+    status: true,
+    'leagueTier.id': { $ne: config_coc.leagueId.legend },
+    'legend.logSettings.post': { $in: ['channel', 'dm'] },
+    $or: [
+      { 'legend.logSettings.attacks': 'all' },
+      { 'legend.logSettings.defenses': 'all' },
+      { 'legend.logSettings.defenses': 'non-tripled' },
+    ],
+  };
+  const projection = {
+    _id: 0,
+    tag: 1,
+    name: 1,
+    townHallLevel: 1,
+    trophies: 1,
+    leagueTier: 1,
+    pilotDC: 1,
+    legend: 1,
+  };
+
+  const accounts = await client.clientMongo
+    .db('jwc')
+    .collection('accounts')
+    .find(query, { projection })
+    .toArray();
+
+  console.log(`[cronRankedWeekEndReminder] weekId=${weekId} accounts=${accounts.length}`);
+
+  let sent = 0;
+  let skipped = 0;
+
+  for (const mongoAcc of accounts) {
+    if (!rankedAccountHasNotifications(mongoAcc.legend?.logSettings)) {
+      skipped += 1;
+      continue;
+    }
+    if (mongoAcc.legend?.lastWeekEndReminderWeekId === weekId) {
+      skipped += 1;
+      continue;
+    }
+
+    try {
+      await updateLegendWeeksFromEvents(
+        client,
+        mongoAcc,
+        mongoAcc.legend?.events,
+        seasonData,
+        mongoAcc.leagueTier,
+      );
+
+      const embed = createRankedWeekEndReminderEmbed(mongoAcc, weekEndUnix);
+      await sendLogEmbedToUser(client, mongoAcc, embed);
+
+      await client.clientMongo
+        .db('jwc')
+        .collection('accounts')
+        .updateOne(
+          { tag: mongoAcc.tag },
+          { $set: { 'legend.lastWeekEndReminderWeekId': weekId } },
+        );
+      sent += 1;
+      await functions.sleep(200);
+    } catch (error) {
+      console.error(`[cronRankedWeekEndReminder] failed ${mongoAcc.tag}:`, error);
+    }
+  }
+
+  console.log(`[cronRankedWeekEndReminder] done sent=${sent} skipped=${skipped}`);
 }
 
 function getNextTournamentStartUnixFromReset(resetUnixSeconds, seasonData) {
@@ -1866,9 +1986,14 @@ async function sendLogEmbedToUser(client, mongoAcc, myEmbed) {
     return;
   }
   if (mongoAcc.legend.logSettings.post === 'channel') {
-    const channelUser = client.channels.cache.get(
+    let channelUser = client.channels.cache.get(
       mongoAcc.legend.logSettings.channel,
     );
+    if (!channelUser) {
+      channelUser = await client.channels
+        .fetch(mongoAcc.legend.logSettings.channel)
+        .catch(() => null);
+    }
     if (channelUser?.isTextBased()) {
       await channelUser.send({ embeds: [myEmbed] });
     } else {
@@ -2354,7 +2479,7 @@ async function autoUpdateLegendReset(client) {
 
   return;
 }
-export { autoUpdateLegendReset };
+export { autoUpdateLegendReset, cronRankedWeekEndReminder };
 
 async function updateLegendPreviousSeason(clientMongo, clientCoc, playerTag) {
   try {
