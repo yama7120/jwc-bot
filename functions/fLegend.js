@@ -502,17 +502,28 @@ async function createLogReset(
   return myEmbed;
 }
 
-async function markRankedSeasonTransition(client, mongoAcc, rankedSeasonId) {
+async function markRankedSeasonTransition(
+  client,
+  mongoAcc,
+  rankedSeasonId,
+  trophiesAfterReset = null,
+) {
+  const $set = {
+    'legend.lastRankedSeasonId': rankedSeasonId,
+    'legend.rankedEventsSeeded': false,
+  };
+  const resetTrophies = Number(trophiesAfterReset);
+  if (Number.isFinite(resetTrophies)) {
+    $set.trophies = resetTrophies;
+  }
+
   await client.clientMongo
     .db('jwc')
     .collection('accounts')
     .updateOne(
       { tag: mongoAcc.tag },
       {
-        $set: {
-          'legend.lastRankedSeasonId': rankedSeasonId,
-          'legend.rankedEventsSeeded': false,
-        },
+        $set,
         $unset: { 'legend.rankedBattleLog': '' },
       },
     );
@@ -526,6 +537,9 @@ async function markRankedSeasonTransition(client, mongoAcc, rankedSeasonId) {
     mongoAcc.legend.rankedEventsSeeded = false;
     if (Object.prototype.hasOwnProperty.call(mongoAcc.legend, 'rankedBattleLog')) {
       delete mongoAcc.legend.rankedBattleLog;
+    }
+    if (Number.isFinite(resetTrophies)) {
+      mongoAcc.trophies = resetTrophies;
     }
   }
 }
@@ -598,7 +612,12 @@ async function autoUpdateLegend(
       mongoAcc,
     );
     await sendLogEmbed(client, mongoAcc, embed);
-    await markRankedSeasonTransition(client, mongoAcc, rankedSeasonId);
+    await markRankedSeasonTransition(
+      client,
+      mongoAcc,
+      rankedSeasonId,
+      afterPlayerStats.trophies,
+    );
     return;
   }
 
@@ -620,12 +639,19 @@ async function autoUpdateLegend(
         afterPlayerStats,
         seasonData,
       );
+      await saveAccountTrophies(client, mongoAcc.tag, afterPlayerStats.trophies);
       if (mongoAcc) {
         mongoAcc.legend = mongoAcc.legend ?? {};
         mongoAcc.legend.lastRankedSeasonId = rankedSeasonId;
+        mongoAcc.trophies = afterPlayerStats.trophies;
       }
     } else {
-      await markRankedSeasonTransition(client, mongoAcc, rankedSeasonId);
+      await markRankedSeasonTransition(
+        client,
+        mongoAcc,
+        rankedSeasonId,
+        afterPlayerStats.trophies,
+      );
     }
     return;
   }
@@ -728,6 +754,9 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
       leagueId: event.leagueId,
       leagueName: event.leagueName,
     };
+    if (event.rankedSeasonId != null) {
+      row.rankedSeasonId = event.rankedSeasonId;
+    }
     if (opp) {
       row.opponentPlayerTag = opp;
     }
@@ -1015,11 +1044,12 @@ async function sendLogLegendMain(
   if (embedUser) {
     await sendLogEmbedToUser(client, mongoAcc, embedUser);
     if (legendEventType === 'attack' || legendEventType === 'defense') {
-      const trophiesToSave = Number(eventData.trophiesCurrent);
+      const apiTrophies = Number(scPlayer?.trophies);
+      const eventTrophies = Number(eventData.trophiesCurrent);
       await saveAccountTrophies(
         client,
         mongoAcc.tag,
-        Number.isFinite(trophiesToSave) ? trophiesToSave : scPlayer.trophies,
+        Number.isFinite(apiTrophies) ? apiTrophies : eventTrophies,
       );
     }
   }
@@ -1328,40 +1358,21 @@ function rankedBattleTrophyDeltaFromBattleLog(
   return calcDefenseTrophies(stars, destruction);
 }
 
-function getLatestStoredEventTrophies(legendEvents) {
-  if (!Array.isArray(legendEvents) || legendEvents.length === 0) {
-    return null;
-  }
-  const t = Number(legendEvents[0]?.trophies);
-  return Number.isFinite(t) ? t : null;
-}
-
 /**
- * battlelog 通知の trophiesCurrent 起点。
- * - ポーリングで trophies が変わった: after.trophies 基準（バッチ全体を含む）
- * - sweep / attackWins のみ変化: 直前 event の trophies から diff を加算（profile 未反映対策）
+ * API の現在トロフィーを終値として、各 battle の trophiesCurrent を逆算する。
+ * 単発通知では after.trophies、そのまま使われる。
  */
-function computeInitialRunningTrophies(
-  beforePlayerStats,
-  afterPlayerStats,
-  legendEvents,
-  totalDelta,
-) {
+function computeTrophiesCurrentByBattleIndex(afterPlayerStats, diffsChronological) {
   const afterT = Number(afterPlayerStats?.trophies);
-  const beforeT = Number(beforePlayerStats?.trophies);
-  const trophiesChanged =
-    Number.isFinite(beforeT) && Number.isFinite(afterT) && beforeT !== afterT;
-
-  if (trophiesChanged && Number.isFinite(afterT) && Number.isFinite(totalDelta)) {
-    return afterT - totalDelta;
+  const anchor = Number.isFinite(afterT) ? afterT : 0;
+  const n = diffsChronological.length;
+  const out = new Array(n);
+  let suffixDelta = 0;
+  for (let i = n - 1; i >= 0; i--) {
+    out[i] = anchor - suffixDelta;
+    suffixDelta += Number(diffsChronological[i]) || 0;
   }
-
-  const lastStored = getLatestStoredEventTrophies(legendEvents);
-  if (Number.isFinite(lastStored)) {
-    return lastStored;
-  }
-
-  return Number.isFinite(afterT) ? afterT : 0;
+  return out;
 }
 
 async function reloadMongoAccLegendProjection(client, mongoAcc) {
@@ -1434,7 +1445,7 @@ function buildRankedEventDataFromBattleLogItem(
   item,
   afterPlayerStats,
   seasonData,
-  runningTrophies,
+  trophiesCurrent,
   diffT,
   unixTimeSeconds,
   includeRanking,
@@ -1444,7 +1455,7 @@ function buildRankedEventDataFromBattleLogItem(
   return {
     season: seasonData.seasonId,
     day: seasonData.daysNow,
-    trophiesCurrent: runningTrophies,
+    trophiesCurrent,
     diffTrophies: diffT,
     unixTimeSeconds,
     attacksCurrent: afterPlayerStats.attackWins,
@@ -1455,6 +1466,7 @@ function buildRankedEventDataFromBattleLogItem(
     stars: Math.min(3, Math.max(0, Number(item?.stars ?? 0))),
     leagueId: afterPlayerStats.leagueTier.id,
     leagueName: afterPlayerStats.leagueTier.name,
+    rankedSeasonId: getStoredRankedSeasonId(afterPlayerStats, seasonData),
     includeRanking,
     opponentPlayerTag: opp || undefined,
   };
@@ -1719,12 +1731,9 @@ async function processLegendRankedBattleLog(
       afterPlayerStats.leagueTier.id,
     );
   });
-  const totalDelta = diffsChronological.reduce((sum, v) => sum + (Number(v) || 0), 0);
-  let runningTrophies = computeInitialRunningTrophies(
-    beforePlayerStats,
+  const trophiesByIdx = computeTrophiesCurrentByBattleIndex(
     afterPlayerStats,
-    mongoAccMut?.legend?.events,
-    totalDelta,
+    diffsChronological,
   );
   const pendingNotifications = [];
 
@@ -1733,7 +1742,6 @@ async function processLegendRankedBattleLog(
     const isAttack = item?.attack === true;
     const legendEventType = isAttack ? 'attack' : 'defense';
     const diffT = diffsChronological[idx];
-    runningTrophies += diffT;
     const battleUnix = battleTimeToUnixSeconds(item?.battleTime);
     const unixTimeSeconds =
       battleUnix ?? (baseUnixTimeSeconds + (idx * spacedStepSeconds));
@@ -1745,7 +1753,7 @@ async function processLegendRankedBattleLog(
       item,
       afterPlayerStats,
       seasonDataAtBattle,
-      runningTrophies,
+      trophiesByIdx[idx],
       diffT,
       unixTimeSeconds,
       includeRanking,
