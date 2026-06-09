@@ -397,6 +397,7 @@ class PollingSystem {
 
   // アカウントを更新
   async updateMonitoringAccounts() {
+    const t0 = Date.now();
     try {
       const query = {
         status: true,
@@ -426,24 +427,44 @@ class PollingSystem {
           townHallLevel: 1,
         },
       };
+      const tMongo = Date.now();
       const cursor = clientMongo
         .db('jwc')
         .collection('accounts')
         .find(query, options);
       const newAccountsLegend = await cursor.toArray();
       await cursor.close();
+      const mongoMs = Date.now() - tMongo;
       const newTags = newAccountsLegend.map((a) => a.tag);
       const newTagsSet = new Set(newTags);
       if (this.pollingClientTrophies) {
         // 古いアカウントで新しいリストにないものをポーリングから削除
         const oldTags = this.accountsLegend.map((a) => a.tag);
+        const oldTagsSet = new Set(oldTags);
         const removedTags = oldTags.filter((t) => !newTagsSet.has(t));
+        const addedTags = newTags.filter((t) => !oldTagsSet.has(t));
         if (removedTags.length > 0) {
+          const tDel = Date.now();
           this.pollingClientTrophies.deletePlayers(removedTags);
+          console.log(
+            `🗑️ deletePlayers done: ${removedTags.length} players in ${Date.now() - tDel}ms`,
+          );
         }
         // 新しいタグを追加
         if (newTags.length > 0) {
-          this.pollingClientTrophies.addPlayers(newTags);
+          const newLabel =
+            oldTags.length === 0
+              ? 'initial load'
+              : `${addedTags.length} new / ${newTags.length} total`;
+          console.log(`⏳ addPlayers start: ${newTags.length} players (${newLabel})`);
+          const tAdd = Date.now();
+          await this.pollingClientTrophies.addPlayers(newTags);
+          const addMs = Date.now() - tAdd;
+          console.log(
+            `✅ addPlayers done: ${newTags.length} players in ${(addMs / 1000).toFixed(1)}s (${addMs}ms)`,
+          );
+        } else {
+          console.log('ℹ️ addPlayers skipped: 0 players');
         }
       } else {
         console.warn(
@@ -452,6 +473,9 @@ class PollingSystem {
       }
       this.accountsLegend = newAccountsLegend;
       global.accountsLegend = newAccountsLegend;
+      console.log(
+        `📋 monitoring accounts: ${newTags.length} total (mongo ${mongoMs}ms, overall ${Date.now() - t0}ms)`,
+      );
     } catch (error) {
       console.error('❌ Error updating monitoring accounts:', error);
     }
