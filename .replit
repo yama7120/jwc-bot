@@ -6,10 +6,6 @@ expertMode = true
 [nix]
 packages = ["libuuid"]
 
-[[ports]]
-localPort = 3000
-externalPort = 3000
-
 [deployment]
 run = ["node", "index.js"]
 deploymentTarget = "vm"
@@ -41,6 +37,5 @@ outputType = "console"
 [userenv]
 
 [userenv.production]
-PORT = "3000"
 DEPLOYMENT = "true"
 STARTUP_GUARD = "your-random-long-string"

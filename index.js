@@ -37,31 +37,11 @@ if (!TOKEN) {
   process.exit(1);
 }
 
-// ====== MongoDB ======
-import { MongoClient, ServerApiVersion } from 'mongodb';
-
-const clientMongo = new MongoClient(MONGO_URI, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  },
-});
-
-const isDeployment =
-  process.env.DEPLOYMENT === 'true' &&
-  process.env.STARTUP_GUARD === 'your-random-long-string';
-
-if (!isDeployment) {
-  console.log('[GUARD] Bot startup blocked: Deployment-only mode.');
-  process.exit(0);
-}
-
-// --- Web server (Preview/health & /post:POST only) ---
+// --- Web server (healthcheck must respond before heavy init) ---
 const app = express();
 app.use(express.json());
-app.get('/', (_, res) => res.send('OK'));
-app.get('/ok', (_, res) => res.json({ ok: true, ts: Date.now() }));
+app.get('/', (_, res) => res.status(200).send('OK'));
+app.get('/ok', (_, res) => res.status(200).json({ ok: true, ts: Date.now() }));
 
 // /post は POST のみ許可（他メソッドは 405）
 app.all('/post', (req, res, next) => {
@@ -81,10 +61,30 @@ app.post('/post', async (req, res) => {
   }
 });
 
-const port = process.env.PORT || 3000;
+const port = Number(process.env.PORT) || 3000;
 app.listen(port, '0.0.0.0', () =>
-  console.log(`🌐 Web server up on 0.0.0.0:${port}`),
+  console.log(`🌐 Web server up on 0.0.0.0:${port} (PORT=${process.env.PORT ?? 'unset'})`),
 );
+
+const isDeployment =
+  process.env.DEPLOYMENT === 'true' &&
+  process.env.STARTUP_GUARD === 'your-random-long-string';
+
+if (!isDeployment) {
+  console.log('[GUARD] Bot startup blocked: Deployment-only mode.');
+  process.exit(0);
+}
+
+// ====== MongoDB ======
+import { MongoClient, ServerApiVersion } from 'mongodb';
+
+const clientMongo = new MongoClient(MONGO_URI, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  },
+});
 
 // Discord Client
 const client = new Client({
@@ -757,6 +757,7 @@ class PollingSystem {
     await client.login(TOKEN);
   } catch (err) {
     console.error('❌ Initialization error:', err);
-    process.exit(1);
+    reportError(client, err, { source: 'startup' }).catch(() => {});
+    // Keep the healthcheck server alive so deployment logs stay reachable.
   }
 })();
