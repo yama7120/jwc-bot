@@ -26,6 +26,30 @@ import {
   Util as CocUtil,
 } from 'clashofclans.js';
 
+let startupT0 = Date.now();
+
+function formatDuration(ms) {
+  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s (${ms}ms)`;
+  return `${ms}ms`;
+}
+
+function sinceBoot() {
+  return formatDuration(Date.now() - startupT0);
+}
+
+function logStartupBegin(label) {
+  console.log(`⏳ ${label}... (+${sinceBoot()} since boot)`);
+  return Date.now();
+}
+
+function logStartupPhase(label, startedAt, detail = '') {
+  const ms = Date.now() - startedAt;
+  const extra = detail ? ` | ${detail}` : '';
+  console.log(
+    `⏱️ ${label}: ${formatDuration(ms)}${extra} (+${sinceBoot()} since boot)`,
+  );
+}
+
 // ====== ENV ======
 const TOKEN = (process.env.BOT_TOKEN || '').trim();
 const MONGO_URI = (process.env.mongoURI || '').trim();
@@ -123,14 +147,17 @@ class CommandLoader {
       for (const file of commandFiles) {
         const fullPath = path.join(folderPath, file);
         try {
+          const tFile = Date.now();
           const mod = await import(pathToFileURL(fullPath).href);
+          const fileMs = Date.now() - tFile;
           const command = mod.default ?? mod;
           if (!command?.data?.name || typeof command?.execute !== 'function') {
             console.warn(`⚠️ Skipped ${file}: invalid command shape`);
             continue;
           }
           this.client.commands.set(command.data.name, command);
-          console.log(`🔧 loaded command: ${command.data.name}`);
+          const slowMark = fileMs >= 200 ? ` (${formatDuration(fileMs)})` : '';
+          console.log(`🔧 loaded command: ${command.data.name}${slowMark}`);
         } catch (err) {
           console.error(`❌ Error loading command ${file}:`, err);
         }
@@ -146,7 +173,9 @@ class CommandLoader {
     for (const file of eventFiles) {
       const fullPath = path.join(eventsRoot, file);
       try {
+        const tFile = Date.now();
         const mod = await import(pathToFileURL(fullPath).href);
+        const fileMs = Date.now() - tFile;
         const event = mod.default ?? mod;
         if (!event?.name || typeof event?.execute !== 'function') {
           console.warn(`⚠️ Skipped ${file}: invalid event shape`);
@@ -161,7 +190,9 @@ class CommandLoader {
             event.execute(...args, this.client),
           );
         }
-        console.log(`🔧 loaded event: ${event.name}`);
+        console.log(
+          `🔧 loaded event: ${event.name} (${file} ${formatDuration(fileMs)})`,
+        );
       } catch (err) {
         console.error(`❌ Error loading event ${file}:`, err);
       }
@@ -188,22 +219,26 @@ class ClashOfClans {
     this.utilCoc = CocUtil;
   }
   async loginMain() {
+    const t = logStartupBegin('coc loginMain');
     this.clientCoc = new ClientCoc();
     this.apiKey = await this.clientCoc.login({
       email: COC_EMAIL,
       password: COC_PW,
       keyName: 'replit_main',
     });
+    logStartupPhase('coc loginMain', t);
     console.log(`✅ LOGGED IN: clientCoc`);
     return this.clientCoc;
   }
   async loginLegend() {
+    const t = logStartupBegin('coc loginLegend');
     this.clientCocLegend = new ClientCoc();
     this.apiKeyLegend = await this.clientCocLegend.login({
       email: COC_EMAIL,
       password: COC_PW,
       keyName: 'replit_legend',
     });
+    logStartupPhase('coc loginLegend', t);
     console.log(`✅ LOGGED IN: clientCocLegend`);
     return this.clientCocLegend;
   }
@@ -266,9 +301,11 @@ class PollingSystem {
 
   // メンテナンスの処理の初期化
   async initializeMaintenancePolling(pollingClient) {
+    const t = logStartupBegin('maintenance polling init');
     try {
       this.pollingClientMaintenance = pollingClient;
       await this.pollingClientMaintenance.init();
+      logStartupPhase('maintenance polling init', t);
       console.log('⚙️ Maintenance polling initialized (60s)');
       this.pollingClientMaintenance.on('maintenanceStart', () => {
         this.handleMaintenanceStart();
@@ -373,9 +410,11 @@ class PollingSystem {
 
   // プレイヤーのステータスが変化したときの処理の初期化
   async initializeTrophyPolling(pollingClient) {
+    const t = logStartupBegin('trophy polling init');
     try {
       this.pollingClientTrophies = pollingClient;
       await this.pollingClientTrophies.init();
+      logStartupPhase('trophy polling init', t);
       console.log('⚙️ Trophy polling initialized (60s)');
       this.pollingClientTrophies.setPlayerEvent({
         name: 'playerStatsChange',
@@ -427,6 +466,7 @@ class PollingSystem {
           townHallLevel: 1,
         },
       };
+      console.log(`⏳ mongo accounts find start... (+${sinceBoot()} since boot)`);
       const tMongo = Date.now();
       const cursor = clientMongo
         .db('jwc')
@@ -435,6 +475,9 @@ class PollingSystem {
       const newAccountsLegend = await cursor.toArray();
       await cursor.close();
       const mongoMs = Date.now() - tMongo;
+      console.log(
+        `✅ mongo accounts find done: ${newAccountsLegend.length} docs in ${formatDuration(mongoMs)} (+${sinceBoot()} since boot)`,
+      );
       const newTags = newAccountsLegend.map((a) => a.tag);
       const newTagsSet = new Set(newTags);
       if (this.pollingClientTrophies) {
@@ -474,7 +517,7 @@ class PollingSystem {
       this.accountsLegend = newAccountsLegend;
       global.accountsLegend = newAccountsLegend;
       console.log(
-        `📋 monitoring accounts: ${newTags.length} total (mongo ${mongoMs}ms, overall ${Date.now() - t0}ms)`,
+        `📋 monitoring accounts update done: ${newTags.length} total in ${formatDuration(Date.now() - t0)}`,
       );
     } catch (error) {
       console.error('❌ Error updating monitoring accounts:', error);
@@ -732,13 +775,19 @@ class PollingSystem {
 }
 
 (async function () {
+  startupT0 = Date.now();
+  console.log('⏳ startup: heavy init begin');
   try {
     // Mongo 接続
+    let t = logStartupBegin('mongo connect');
     await clientMongo.connect();
+    logStartupPhase('mongo connect', t);
     console.log('✅ connected to the Mongo database');
     client.clientMongo = clientMongo;
 
+    t = logStartupBegin('weekNow load');
     const weekNowLoaded = await loadWeekNowFromDb(clientMongo);
+    logStartupPhase('weekNow load', t);
     if (Object.keys(weekNowLoaded).length > 0) {
       console.log('✅ weekNow loaded from DB:', getWeekNowSnapshot());
     } else {
@@ -747,12 +796,19 @@ class PollingSystem {
 
     // コマンド・イベント
     const commandLoader = new CommandLoader(client);
-    await commandLoader.loadAll();
+    t = logStartupBegin('load commands');
+    await commandLoader.loadCommands();
+    logStartupPhase('load commands', t, `${client.commands.size} commands`);
+    t = logStartupBegin('load events');
+    await commandLoader.loadEvents();
+    logStartupPhase('load events', t);
     console.log('⚡ Commands and events loaded successfully');
 
     // CoC クライアント
     const clashOfClans = new ClashOfClans(appConfig);
+    t = logStartupBegin('coc loginAll');
     await clashOfClans.loginAll();
+    logStartupPhase('coc loginAll', t);
     clashOfClans.setupClient(client);
     console.log('✅ Clash of Clans initialized successfully');
 
@@ -767,7 +823,9 @@ class PollingSystem {
     await pollingSystem.initializeMaintenancePolling(maintenancePolling);
     const trophyPolling = clashOfClans.createTrophyPolling();
     await pollingSystem.initializeTrophyPolling(trophyPolling);
+    t = logStartupBegin('polling system initialize');
     await pollingSystem.initialize();
+    logStartupPhase('polling system initialize', t);
     console.log('✅ Polling system initialized successfully');
 
     // エラーハンドリング
@@ -778,7 +836,10 @@ class PollingSystem {
       reportError(client, reason, { source: 'unhandledRejection' });
     });
 
+    t = logStartupBegin('discord login');
     await client.login(TOKEN);
+    logStartupPhase('discord login', t);
+    console.log(`✅ startup complete (+${sinceBoot()} since boot)`);
   } catch (err) {
     console.error('❌ Initialization error:', err);
     reportError(client, err, { source: 'startup' }).catch(() => {});
