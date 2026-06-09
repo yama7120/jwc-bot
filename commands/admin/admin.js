@@ -1691,6 +1691,14 @@ async function createTeamData(interaction, client) {
   functions.sendClanInfo(interaction, client, teamAbbr);
 }
 
+function getWarResultState(mongoWar) {
+  const result = mongoWar?.result;
+  if (result == null || result === '') {
+    return null;
+  }
+  return result.state ?? null;
+}
+
 async function updateSingleWar(interaction, client) {
   const iLeague = await interaction.options.getString('league');
   const iMatch = await interaction.options.getInteger('match');
@@ -1726,9 +1734,28 @@ async function updateSingleWar(interaction, client) {
     .collection('wars')
     .findOne(query);
 
+  if (!mongoWar) {
+    await interaction.followUp({
+      content: `:exclamation: War not found: ${iLeague}-w${iWeek}-m${iMatch}`,
+      ephemeral: true,
+    });
+    return;
+  }
+
   description += `${mongoWar.clan_abbr} vs. ${mongoWar.opponent_abbr}\n`;
 
-  if (mongoWar.clan_war.state == 'warEnded') {
+  console.log('getClanWarUpdateDB...');
+  const flagApiSync = await fGetWars.getClanWarUpdateDB(client, mongoWar);
+  if (flagApiSync > 0) {
+    description += `* CoC API synced: ${iLeague}-w${iWeek}-m${iMatch}\n`;
+  }
+
+  mongoWar = await client.clientMongo
+    .db('jwc')
+    .collection('wars')
+    .findOne(query);
+
+  if (mongoWar?.clan_war?.state === 'warEnded') {
     let clanWar = mongoWar.clan_war;
     let clanWarOpp = mongoWar.opponent_war;
     let mongoClan = null;
@@ -1765,18 +1792,18 @@ async function updateSingleWar(interaction, client) {
   let mongoWarUpdated = await client.clientMongo
     .db('jwc')
     .collection('wars')
-    .findOne({
-      season: config.season[iLeague],
-      league: iLeague,
-      week: iWeek,
-      match: iMatch,
-    });
+    .findOne(query);
 
-  if (mongoWarUpdated.result.state == null) {
-    embed.setDescription('*Before the war*');
+  const resultState = getWarResultState(mongoWarUpdated);
+  if (resultState == null) {
+    embed.setDescription(
+      flagApiSync > 0
+        ? '*Before the war*'
+        : '*Before the war* — CoC API sync returned no update (see server logs)',
+    );
     await interaction.followUp({ embeds: [embed] });
   } else {
-    if (mongoWarUpdated.result.state == 'warEnded') {
+    if (resultState === 'warEnded') {
       console.log('updateScoreAccs...');
       await fScore.updateScoreAccs(
         client.clientMongo,
