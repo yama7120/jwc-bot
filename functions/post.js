@@ -91,10 +91,10 @@ async function scheduleWar(client, dataObject) {
     listing.clan_abbr = war.clan_abbr;
     listing.opponent_abbr = war.opponent_abbr;
     listing.nego_channel = '';
-    listing.clan_war = '';
-    listing.opponent_war = '';
-    listing.result = '';
-    listing.deal = '';
+    listing.clan_war = null;
+    listing.opponent_war = null;
+    listing.result = null;
+    listing.deal = null;
     listing.name_match = war.name_match;
     let dbValueWar = await client.clientMongo.db('jwc').collection('wars').findOne({ 
       league: war.league, 

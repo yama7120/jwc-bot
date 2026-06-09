@@ -29,6 +29,16 @@ function setNegoChannelStatusPrefix(channelName, statusPrefix) {
   return `${statusPrefix}${stripNegoChannelStatusPrefix(channelName)}`;
 }
 
+/** post.js 初期値の空文字と未設定を同じ「未登録」扱いにする */
+function warResultIsUnset(mongoWar) {
+  const result = mongoWar?.result;
+  return result == null || result === '';
+}
+
+function clanWarPayloadIsUnset(value) {
+  return value == null || value === '';
+}
+
 /** WAR DECLARED 通知の二重送信を防ぐ（並列 cron / 再ポーリング対策） */
 async function claimWarStartNotification(client, mongoWarId) {
   if (!mongoWarId || !client?.clientMongo) {
@@ -117,9 +127,18 @@ async function getClanWarUpdateDB(client, mongoWar) {
   const teamName = mongoClan.team_name;
   const teamNameOpp = mongoClanOpp.team_name;
 
+  if (!mongoClan?.clan_tag || !mongoClanOpp?.clan_tag) {
+    console.warn(
+      `[${league}-w${week}-m${match}] clan tag missing: ${clanAbbr} vs ${clanAbbrOpp}`,
+    );
+    return 0;
+  }
+
   // db確認 - 終わった対戦は更新しない
-  if (mongoWar.clan_war && 
-      (mongoWar.clan_war?.state === 'warEnded' || mongoWar.result?.state === 'warEnded')) {
+  if (
+    !clanWarPayloadIsUnset(mongoWar.clan_war)
+    && (mongoWar.clan_war?.state === 'warEnded' || mongoWar.result?.state === 'warEnded')
+  ) {
     //console.dir(`[${league}-w${week}] warEnded: ${teamName} vs ${teamNameOpp}`);
     return 0;
   }
@@ -202,6 +221,9 @@ async function getClanWarUpdateDB(client, mongoWar) {
           }
         } else if (league == 'swiss' || league == 'mix' || league == 'cup') {
           if (clanWar.clan.members.length != config.minSize[league]) {
+            console.dir(
+              `[${league}-w${week}-m${match}] roster size ${clanWar.clan.members.length}/${config.minSize[league]}: ${teamName} vs ${teamNameOpp}`,
+            );
             return flagUpdate;
           }
         }
@@ -225,7 +247,7 @@ async function getClanWarUpdateDB(client, mongoWar) {
       }
       // state 判定 -> return
       // ********** マッチング完了（初回） -> データベース更新、通知 **********
-      if (!mongoWar.result) {
+      if (warResultIsUnset(mongoWar)) {
         if (client != 'noClient') {
           [mongoWarUpdated, flagUpdate] = await dbUpdate(
             client,
@@ -241,13 +263,13 @@ async function getClanWarUpdateDB(client, mongoWar) {
             teamName,
             teamNameOpp,
           );
-          if (flagUpdate > 0) {
+          if (flagUpdate > 0 && mongoWarUpdated?.clan_war) {
             const shouldNotify = await claimWarStartNotification(
               client,
               mongoWar._id,
             );
             if (shouldNotify) {
-              await sendStart(client, mongoWarUpdated ?? mongoWar, clanWar);
+              await sendStart(client, mongoWarUpdated, clanWar);
             }
           }
           //await functions.register_accs(client, league, clanAbbr, clanWar.clan.members);
@@ -257,9 +279,20 @@ async function getClanWarUpdateDB(client, mongoWar) {
         // ********** 準備中 **********
         if (clanWar.state == 'preparation' && clanWarOpp.state == 'preparation') {
           if (client != 'noClient') {
-            //dbUpdate(clientMongo, client, mongoWar, clanWar, clanWarOpp, league, week, match, nAtBefore, logChIdLocal, teamName, teamNameOpp);
-            //await fCreateJSON.currentWeek();
-            //console.dir(`end: fCreateJSON.currentWeek`);
+            [mongoWarUpdated, flagUpdate] = await dbUpdate(
+              client,
+              mongoWar,
+              clanWar,
+              clanWarOpp,
+              league,
+              week,
+              match,
+              nAtBefore,
+              mongoClan,
+              mongoClanOpp,
+              teamName,
+              teamNameOpp,
+            );
           }
         }
         // ********** 対戦中 -> データベース更新 **********
@@ -633,7 +666,10 @@ async function dbUpdate(
       flagUpdate = 1;
     }
 
-    if (mongoWar.result.state == 'preparation') {
+    if (
+      !warResultIsUnset(mongoWar)
+      && mongoWar.result?.state === 'preparation'
+    ) {
       flagUpdate = 1;
     }
 
@@ -1017,26 +1053,34 @@ async function dbUpdate(
   //flagUpdate = 1; // on遅れて対戦中にonした場合
 
   if (flagUpdate > 0 && client != 'noClient') {
-    let query = {
-      league: league,
-      week: week,
-      match: match,
-      season: config.season[league],
-    };
-    let updatedListing = {};
-    updatedListing = {
+    const query = mongoWar?._id
+      ? { _id: mongoWar._id }
+      : {
+          league,
+          week,
+          match,
+          season: config.season[league],
+        };
+    const updatedListing = {
       clan_war: clanWar,
       opponent_war: clanWarOpp,
-      result: result,
+      result,
       unixTimeRequest: unixTime,
     };
-    await client.clientMongo
+    const updateRes = await client.clientMongo
       .db('jwc')
       .collection('wars')
       .updateOne(query, { $set: updatedListing });
-    //console.dir(`end: dbupdate`);
 
-    let mongoWarUpdated = await client.clientMongo
+    if (updateRes.matchedCount === 0) {
+      console.error(
+        `[dbUpdate] no war document matched (${league}-w${week}-m${match}) ${teamName} vs ${teamNameOpp}`,
+        query,
+      );
+      return [mongoWar, 0];
+    }
+
+    const mongoWarUpdated = await client.clientMongo
       .db('jwc')
       .collection('wars')
       .findOne(query);
@@ -1823,7 +1867,7 @@ async function createDescription(clientMongo, mongoWar, league, type) {
     description += `**${mongoClanA.team_name} :vs: ${mongoClanB.team_name}**\n`;
   }
 
-  if (!mongoWar.result) {
+  if (warResultIsUnset(mongoWar)) {
     // マッチング前
     if (mongoWar.deal) {
       if (mongoWar.deal.unixTime) {
