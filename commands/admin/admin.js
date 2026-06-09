@@ -1699,6 +1699,10 @@ function getWarResultState(mongoWar) {
   return result.state ?? null;
 }
 
+function clanWarPayloadIsUnset(value) {
+  return value == null || value === '';
+}
+
 async function updateSingleWar(interaction, client) {
   const iLeague = await interaction.options.getString('league');
   const iMatch = await interaction.options.getInteger('match');
@@ -1745,15 +1749,18 @@ async function updateSingleWar(interaction, client) {
   description += `${mongoWar.clan_abbr} vs. ${mongoWar.opponent_abbr}\n`;
 
   console.log('getClanWarUpdateDB...');
-  const flagApiSync = await fGetWars.getClanWarUpdateDB(client, mongoWar);
-  if (flagApiSync > 0) {
-    description += `* CoC API synced: ${iLeague}-w${iWeek}-m${iMatch}\n`;
-  }
+  await fGetWars.getClanWarUpdateDB(client, mongoWar);
 
   mongoWar = await client.clientMongo
     .db('jwc')
     .collection('wars')
     .findOne(query);
+
+  if (!clanWarPayloadIsUnset(mongoWar?.clan_war)) {
+    description += `* Mongo war data saved: ${iLeague}-w${iWeek}-m${iMatch}\n`;
+  } else {
+    description += `* Mongo war data not saved — check server logs (${iLeague}-w${iWeek}-m${iMatch})\n`;
+  }
 
   if (mongoWar?.clan_war?.state === 'warEnded') {
     let clanWar = mongoWar.clan_war;
@@ -1797,9 +1804,9 @@ async function updateSingleWar(interaction, client) {
   const resultState = getWarResultState(mongoWarUpdated);
   if (resultState == null) {
     embed.setDescription(
-      flagApiSync > 0
-        ? '*Before the war*'
-        : '*Before the war* — CoC API sync returned no update (see server logs)',
+      clanWarPayloadIsUnset(mongoWarUpdated?.clan_war)
+        ? '*Before the war* — war data could not be saved (see server logs)'
+        : '*Before the war*',
     );
     await interaction.followUp({ embeds: [embed] });
   } else {

@@ -417,9 +417,10 @@ async function getClanWarUpdateDB(client, mongoWar) {
           }
         }
       }
-      flagUpdate = 1;
     } else {
-      //console.dir(`[${league}-w${week}] notInWar: ${teamName} vs ${teamNameOpp}`);
+      console.warn(
+        `[${league}-w${week}-m${match}] opponent tag mismatch: ${teamName} (${clanWar.clan?.tag} vs ${clanWar.opponent?.tag}) / ${teamNameOpp} (${clanWarOpp.clan?.tag} vs ${clanWarOpp.opponent?.tag})`,
+      );
     }
   }
 
@@ -652,7 +653,9 @@ async function dbUpdate(
     if (
       clanWar.clan.attackCount == nAtBefore.clan &&
       clanWar.opponent.attackCount == nAtBefore.opponent &&
-      clanWar.state == 'inWar'
+      clanWar.state == 'inWar' &&
+      !warResultIsUnset(mongoWar) &&
+      !clanWarPayloadIsUnset(mongoWar.clan_war)
     ) {
       flagUpdate = 0;
       return [mongoWar, flagUpdate];
@@ -1051,6 +1054,14 @@ async function dbUpdate(
   }
 
   //flagUpdate = 1; // on遅れて対戦中にonした場合
+
+  if (
+    (warResultIsUnset(mongoWar) || clanWarPayloadIsUnset(mongoWar.clan_war))
+    && clanWar.state !== 'notInWar'
+    && result.state != null
+  ) {
+    flagUpdate = Math.max(flagUpdate, 1);
+  }
 
   if (flagUpdate > 0 && client != 'noClient') {
     const query = mongoWar?._id
