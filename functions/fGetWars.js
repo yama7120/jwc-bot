@@ -7,6 +7,28 @@ import * as functions from './functions.js';
 import * as fMongo from './fMongo.js';
 import * as fCanvas from './fCanvas.js';
 
+const NEGO_CHANNEL_STATUS_PREFIXES = ['✅', '⚔️', '🏁', '❌'];
+
+function stripNegoChannelStatusPrefix(channelName) {
+  let name = String(channelName ?? '');
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const prefix of NEGO_CHANNEL_STATUS_PREFIXES) {
+      if (name.startsWith(prefix)) {
+        name = name.slice(prefix.length);
+        changed = true;
+        break;
+      }
+    }
+  }
+  return name;
+}
+
+function setNegoChannelStatusPrefix(channelName, statusPrefix) {
+  return `${statusPrefix}${stripNegoChannelStatusPrefix(channelName)}`;
+}
+
 /*
 async function autoUpdate(client, league, week) {
   const cursor = client.clientMongo.db('jwc').collection('wars')
@@ -366,25 +388,8 @@ async function sendStart(client, mongoWar, clanWar) {
     .collection('clans')
     .findOne({ clan_abbr: mongoWar.opponent_abbr });
 
-  // ********** 時間計算 **********
-  let prepTimeMinute = Math.round(
-    (clanWar.startTime - clanWar.preparationStartTime) / (60 * 1000),
-  );
-  let prepTimeStr = '';
-  if (prepTimeMinute >= 60) {
-    prepTimeStr = `${Math.round(prepTimeMinute / 60)}h`;
-  } else {
-    prepTimeStr = `${prepTimeMinute}m`;
-  }
-  let warTimeMinute = Math.round(
-    (clanWar.endTime - clanWar.startTime) / (60 * 1000),
-  );
-  let warTimeStr = '';
-  if (warTimeMinute >= 60) {
-    warTimeStr = `${Math.round(warTimeMinute / 60)}h`;
-  } else {
-    warTimeStr = `${warTimeMinute}m`;
-  }
+  const startTimeUnix = Math.floor(new Date(clanWar.startTime).getTime() / 1000);
+  const endTimeUnix = Math.floor(new Date(clanWar.endTime).getTime() / 1000);
 
   let embed = new EmbedBuilder();
   embed.setColor(config.color[league]);
@@ -394,7 +399,8 @@ async function sendStart(client, mongoWar, clanWar) {
   description += `${config.leaguePlusEmote[league]}  |  ${schedule.week[weekStr]}\n`;
   description += `${mongoClan.team_name} :vs: ${mongoClanOpp.team_name}\n`;
   description += `\n`;
-  description += `:hourglass_flowing_sand: ${prepTimeStr} / :crossed_swords: ${warTimeStr}\n`;
+  description += `Battle starts: <t:${startTimeUnix}:F> (<t:${startTimeUnix}:R>)\n`;
+  description += `War ends: <t:${endTimeUnix}:F> (<t:${endTimeUnix}:R>)\n`;
   description += `\n`;
 
   let description1 =
@@ -428,6 +434,29 @@ async function sendStart(client, mongoWar, clanWar) {
     description2 += `\n` + descriptionCommands;
     embed.setDescription(description2);
     await functions.safeSend(client, mongoClanOpp.log.start.channel_id, { embeds: [embed] }, `sendStart:${mongoClanOpp.clan_abbr}`);
+  }
+
+  if (mongoWar.nego_channel) {
+    const negoEmbed = EmbedBuilder.from(embed.data);
+    negoEmbed.setDescription(description.trimEnd());
+    await functions.safeSend(
+      client,
+      mongoWar.nego_channel,
+      { embeds: [negoEmbed] },
+      'sendStart:nego',
+    );
+
+    try {
+      const negoChannel = await client.channels.fetch(mongoWar.nego_channel);
+      const newChName = setNegoChannelStatusPrefix(negoChannel.name, '⚔️');
+      const guild = await client.guilds.fetch(config.guildId.jwcReps);
+      await guild.channels.edit(mongoWar.nego_channel, { name: newChName });
+    } catch (error) {
+      console.error(
+        `[sendStart] failed to rename nego channel ${mongoWar.nego_channel}:`,
+        error?.message ?? error,
+      );
+    }
   }
 }
 export { sendStart };
@@ -523,10 +552,17 @@ async function sendEnd(client, mongoWar) {
     await functions.safeSend(client, mongoClanOpp.log.end.channel_id, { files: [attachment] }, `sendEnd:${mongoClanOpp.clan_abbr}`);
   }
 
-  const negoChannel = await client.channels.fetch(mongoWar.nego_channel);
-  let newChName = negoChannel.name.replace('✅', '🏁');
-  const guild = await client.guilds.fetch(config.guildId.jwcReps);
-  guild.channels.edit(mongoWar.nego_channel, { name: newChName });
+  try {
+    const negoChannel = await client.channels.fetch(mongoWar.nego_channel);
+    const newChName = setNegoChannelStatusPrefix(negoChannel.name, '🏁');
+    const guild = await client.guilds.fetch(config.guildId.jwcReps);
+    await guild.channels.edit(mongoWar.nego_channel, { name: newChName });
+  } catch (error) {
+    console.error(
+      `[sendEnd] failed to rename nego channel ${mongoWar.nego_channel}:`,
+      error?.message ?? error,
+    );
+  }
 }
 export { sendEnd };
 
