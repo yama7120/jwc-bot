@@ -277,6 +277,7 @@ class PollingSystem {
     this.lastMaintenanceStart = 0;
     this.lastMaintenanceEnd = 0;
     this.accountsLegend = [];
+    this.accountsLegendReady = false;
     this.playerUpdateLocks = new Set();
     this.lastLegendStatusUpdateMs = 0;
     this.lastBattleLogSweepMsByTag = new Map();
@@ -434,99 +435,131 @@ class PollingSystem {
     }
   }
 
+  getMonitoringAccountsQuery() {
+    return {
+      status: true,
+      $or: [
+        { 'legend.logSettings.post': { $in: ['channel', 'dm'] } },
+        { 'leagueTier.id': config_coc.leagueId.legend },
+        { 'leagueTier.id': config_coc.leagueId.legend2 },
+        { 'leagueTier.id': config_coc.leagueId.legend3 },
+        { 'leagueTier.id': config_coc.leagueId.electro33 },
+        { 'leagueTier.id': config_coc.leagueId.electro32 },
+        { 'leagueTier.id': config_coc.leagueId.electro31 },
+      ],
+    };
+  }
+
+  getMonitoringAccountsProjection(mode = 'full') {
+    if (mode === 'tags') {
+      return { _id: 0, tag: 1 };
+    }
+    return {
+      _id: 0,
+      tag: 1,
+      'legend.logSettings': 1,
+      'legend.events': 1,
+      'legend.weeks': 1,
+      'legend.current': 1,
+      'legend.lastRankedSeasonId': 1,
+      legendStatistics: 1,
+      'leagueTier.id': 1,
+      'pilotDC.id': 1,
+      name: 1,
+      townHallLevel: 1,
+    };
+  }
+
+  async fetchMonitoringAccountsFromMongo(mode = 'full') {
+    const label = mode === 'tags' ? 'tags only' : 'full';
+    console.log(
+      `⏳ mongo accounts find start (${label})... (+${sinceBoot()} since boot)`,
+    );
+    const tMongo = Date.now();
+    const cursor = clientMongo
+      .db('jwc')
+      .collection('accounts')
+      .find(this.getMonitoringAccountsQuery(), {
+        projection: this.getMonitoringAccountsProjection(mode),
+      });
+    const accounts = await cursor.toArray();
+    await cursor.close();
+    const mongoMs = Date.now() - tMongo;
+    console.log(
+      `✅ mongo accounts find done (${label}): ${accounts.length} docs in ${formatDuration(mongoMs)} (+${sinceBoot()} since boot)`,
+    );
+    return accounts;
+  }
+
+  async syncPollingPlayers(newTags) {
+    const newTagsSet = new Set(newTags);
+    if (!this.pollingClientTrophies) {
+      console.warn('pollingClientTrophies is not initialized; skip addPlayers');
+      return;
+    }
+    const oldTags = this.accountsLegend.map((a) => a.tag);
+    const oldTagsSet = new Set(oldTags);
+    const removedTags = oldTags.filter((t) => !newTagsSet.has(t));
+    const addedTags = newTags.filter((t) => !oldTagsSet.has(t));
+    if (removedTags.length > 0) {
+      const tDel = Date.now();
+      this.pollingClientTrophies.deletePlayers(removedTags);
+      console.log(
+        `🗑️ deletePlayers done: ${removedTags.length} players in ${Date.now() - tDel}ms`,
+      );
+    }
+    if (newTags.length > 0) {
+      const newLabel =
+        oldTags.length === 0
+          ? 'initial load'
+          : `${addedTags.length} new / ${newTags.length} total`;
+      console.log(`⏳ addPlayers start: ${newTags.length} players (${newLabel})`);
+      const tAdd = Date.now();
+      await this.pollingClientTrophies.addPlayers(newTags);
+      const addMs = Date.now() - tAdd;
+      console.log(
+        `✅ addPlayers done: ${newTags.length} players in ${(addMs / 1000).toFixed(1)}s (${addMs}ms)`,
+      );
+    } else {
+      console.log('ℹ️ addPlayers skipped: 0 players');
+    }
+  }
+
   // アカウントを更新
-  async updateMonitoringAccounts() {
+  async updateMonitoringAccounts({
+    mode = 'full',
+    syncPolling = true,
+  } = {}) {
     const t0 = Date.now();
     try {
-      const query = {
-        status: true,
-        $or: [
-          { 'legend.logSettings.post': { $in: ['channel', 'dm'] } },
-          { 'leagueTier.id': config_coc.leagueId.legend },
-          { 'leagueTier.id': config_coc.leagueId.legend2 },
-          { 'leagueTier.id': config_coc.leagueId.legend3 },
-          { 'leagueTier.id': config_coc.leagueId.electro33 },
-          { 'leagueTier.id': config_coc.leagueId.electro32 },
-          { 'leagueTier.id': config_coc.leagueId.electro31 },
-        ],
-      };
-      const options = {
-        projection: {
-          _id: 0,
-          tag: 1,
-          'legend.logSettings': 1,
-          'legend.events': 1,
-          'legend.weeks': 1,
-          'legend.current': 1,
-          'legend.lastRankedSeasonId': 1,
-          legendStatistics: 1,
-          'leagueTier.id': 1,
-          'pilotDC.id': 1,
-          name: 1,
-          townHallLevel: 1,
-        },
-      };
-      console.log(`⏳ mongo accounts find start... (+${sinceBoot()} since boot)`);
-      const tMongo = Date.now();
-      const cursor = clientMongo
-        .db('jwc')
-        .collection('accounts')
-        .find(query, options);
-      const newAccountsLegend = await cursor.toArray();
-      await cursor.close();
-      const mongoMs = Date.now() - tMongo;
-      console.log(
-        `✅ mongo accounts find done: ${newAccountsLegend.length} docs in ${formatDuration(mongoMs)} (+${sinceBoot()} since boot)`,
-      );
-      const newTags = newAccountsLegend.map((a) => a.tag);
-      const newTagsSet = new Set(newTags);
-      if (this.pollingClientTrophies) {
-        // 古いアカウントで新しいリストにないものをポーリングから削除
-        const oldTags = this.accountsLegend.map((a) => a.tag);
-        const oldTagsSet = new Set(oldTags);
-        const removedTags = oldTags.filter((t) => !newTagsSet.has(t));
-        const addedTags = newTags.filter((t) => !oldTagsSet.has(t));
-        if (removedTags.length > 0) {
-          const tDel = Date.now();
-          this.pollingClientTrophies.deletePlayers(removedTags);
-          console.log(
-            `🗑️ deletePlayers done: ${removedTags.length} players in ${Date.now() - tDel}ms`,
-          );
-        }
-        // 新しいタグを追加
-        if (newTags.length > 0) {
-          const newLabel =
-            oldTags.length === 0
-              ? 'initial load'
-              : `${addedTags.length} new / ${newTags.length} total`;
-          console.log(`⏳ addPlayers start: ${newTags.length} players (${newLabel})`);
-          const tAdd = Date.now();
-          await this.pollingClientTrophies.addPlayers(newTags);
-          const addMs = Date.now() - tAdd;
-          console.log(
-            `✅ addPlayers done: ${newTags.length} players in ${(addMs / 1000).toFixed(1)}s (${addMs}ms)`,
-          );
-        } else {
-          console.log('ℹ️ addPlayers skipped: 0 players');
-        }
-      } else {
-        console.warn(
-          'pollingClientTrophies is not initialized; skip addPlayers',
-        );
+      const accounts = await this.fetchMonitoringAccountsFromMongo(mode);
+      const newTags = accounts.map((a) => a.tag);
+      if (syncPolling) {
+        await this.syncPollingPlayers(newTags);
       }
-      this.accountsLegend = newAccountsLegend;
-      global.accountsLegend = newAccountsLegend;
+      if (mode === 'full') {
+        this.accountsLegend = accounts;
+        global.accountsLegend = accounts;
+        this.accountsLegendReady = true;
+      }
       console.log(
-        `📋 monitoring accounts update done: ${newTags.length} total in ${formatDuration(Date.now() - t0)}`,
+        `📋 monitoring accounts update done (${mode}): ${newTags.length} total in ${formatDuration(Date.now() - t0)}`,
       );
     } catch (error) {
       console.error('❌ Error updating monitoring accounts:', error);
     }
   }
 
+  async loadFullMonitoringAccounts() {
+    await this.updateMonitoringAccounts({ mode: 'full', syncPolling: false });
+  }
+
   // プレイヤーのステータスが変化したときの処理
   async handlePlayerStatsChange(beforePlayerStats, afterPlayerStats) {
     const tagPlayer = afterPlayerStats.tag;
+    if (!this.accountsLegendReady) {
+      return;
+    }
     if (!this.accountsLegend || this.accountsLegend.length === 0) {
       console.log(
         `⚠️ accountsLegend not initialized; skip player stats change for tag: ${afterPlayerStats.tag}`,
@@ -747,9 +780,9 @@ class PollingSystem {
     return id;
   }
 
-  // 初期化
+  // 初期化（tag のみ取得して addPlayers、詳細は loadFullMonitoringAccounts で後読み）
   async initialize() {
-    await this.updateMonitoringAccounts();
+    await this.updateMonitoringAccounts({ mode: 'tags' });
     this.setupPlayerStatsChangeListener();
     this.startAccountUpdateInterval();
     this.startBattleLogSweepInterval();
@@ -840,6 +873,13 @@ class PollingSystem {
     await client.login(TOKEN);
     logStartupPhase('discord login', t);
     console.log(`✅ startup complete (+${sinceBoot()} since boot)`);
+
+    pollingSystem.loadFullMonitoringAccounts().catch((e) => {
+      console.error('❌ Background full monitoring accounts load failed:', e);
+      reportError(client, e, { source: 'startup:accountsFullLoad' }).catch(
+        () => {},
+      );
+    });
   } catch (err) {
     console.error('❌ Initialization error:', err);
     reportError(client, err, { source: 'startup' }).catch(() => {});
