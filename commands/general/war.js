@@ -25,6 +25,9 @@ let data = new SlashCommandBuilder()
     subcommand
       .setName('live')
       .setDescription(config.command[nameCommand].subCommand['live'])
+      .addStringOption(option =>
+        option.setName('league').setDescription('リーグ（未選択の場合は全リーグ）')
+      )
   )
   // 2
   .addSubcommand(subcommand =>
@@ -99,6 +102,9 @@ config.choices.league4.forEach(choice => {
   data.options[4].options[0].addChoices(choice);
   data.options[5].options[0].addChoices(choice);
   data.options[6].options[0].addChoices(choice);
+});
+config.choices.leagueLive.forEach(choice => {
+  data.options[1].options[0].addChoices(choice);
 });
 config.choices.weekInt.forEach(choice => {
   data.options[0].options[1].addChoices(choice);
@@ -271,8 +277,25 @@ async function warSummary(interaction, client) {
 };
 
 
+const LIVE_LEAGUE_GROUPS = {
+  j: ['j1', 'j2'],
+  swiss: ['swiss'],
+  mix: ['mix'],
+  cup: ['cup'],
+};
+const ALL_LIVE_LEAGUES = ['j1', 'j2', 'swiss', 'mix', 'cup'];
+
+function resolveLiveLeagues(group) {
+  if (!group) {
+    return ALL_LIVE_LEAGUES;
+  }
+  return LIVE_LEAGUE_GROUPS[group] ?? ALL_LIVE_LEAGUES;
+}
+
+
 async function warLive(interaction, client) {
-  const liveLeagues = ['j1', 'j2'];
+  const iLeague = interaction.options.getString('league');
+  const liveLeagues = resolveLiveLeagues(iLeague);
   const leagueConditions = await Promise.all(
     liveLeagues.map(async (league) => ({
       league,

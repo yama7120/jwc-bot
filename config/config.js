@@ -393,6 +393,12 @@ export default {
       { name: 'MIX', value: 'mix' },
       { name: 'CUP', value: 'cup' },
     ],
+    leagueLive: [
+      { name: 'J1/J2', value: 'j' },
+      { name: 'SWISS', value: 'swiss' },
+      { name: 'MIX', value: 'mix' },
+      { name: 'CUP', value: 'cup' },
+    ],
     leagueAll: [
       { name: 'J1', value: 'j1' },
       { name: 'J2', value: 'j2' },
