@@ -29,6 +29,21 @@ function setNegoChannelStatusPrefix(channelName, statusPrefix) {
   return `${statusPrefix}${stripNegoChannelStatusPrefix(channelName)}`;
 }
 
+/** WAR DECLARED 通知の二重送信を防ぐ（並列 cron / 再ポーリング対策） */
+async function claimWarStartNotification(client, mongoWarId) {
+  if (!mongoWarId || !client?.clientMongo) {
+    return false;
+  }
+  const res = await client.clientMongo
+    .db('jwc')
+    .collection('wars')
+    .updateOne(
+      { _id: mongoWarId, warStartNotified: { $ne: true } },
+      { $set: { warStartNotified: true } },
+    );
+  return res.modifiedCount === 1;
+}
+
 /*
 async function autoUpdate(client, league, week) {
   const cursor = client.clientMongo.db('jwc').collection('wars')
@@ -226,8 +241,15 @@ async function getClanWarUpdateDB(client, mongoWar) {
             teamName,
             teamNameOpp,
           );
-          //console.dir(mongoWarUpdated);
-          await sendStart(client, mongoWar, clanWar);
+          if (flagUpdate > 0) {
+            const shouldNotify = await claimWarStartNotification(
+              client,
+              mongoWar._id,
+            );
+            if (shouldNotify) {
+              await sendStart(client, mongoWarUpdated ?? mongoWar, clanWar);
+            }
+          }
           //await functions.register_accs(client, league, clanAbbr, clanWar.clan.members);
           //await functions.register_accs(client, league, clanAbbrOpp, clanWarOpp.clan.members);
         }
