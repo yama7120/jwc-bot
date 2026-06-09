@@ -218,6 +218,29 @@ function formatLegendWeekStat(value, suffix = '') {
   return `${value}${suffix}`;
 }
 
+/** 3★100%（dest 欠損の旧 event は 3★ のみ） */
+function isRankedBattleFullDestruction(event) {
+  const stars = Number(event?.stars);
+  if (!Number.isFinite(stars) || stars < 3) {
+    return false;
+  }
+  const dest = Number(event?.destructionPercentage);
+  if (Number.isFinite(dest)) {
+    return dest >= 100;
+  }
+  return true;
+}
+
+function formatWeekHitRateSuffix(triples, total) {
+  const t = Number(total);
+  const n = Number(triples);
+  if (!Number.isFinite(t) || t <= 0 || !Number.isFinite(n) || n < 0) {
+    return '';
+  }
+  const pct = Math.round((n / t) * 100);
+  return ` · :boom: **${pct}%** (**${n}/${t}**)`;
+}
+
 /** @param {Record<string, unknown> | null | undefined} week */
 function formatWeeklyTournamentSection(week, heading = 'LAST TOURNAMENT') {
   if (!week) return '';
@@ -242,9 +265,11 @@ function formatWeeklyTournamentSection(week, heading = 'LAST TOURNAMENT') {
   let block = `\n--- **${heading}** ---\n`;
   block += `**${leagueLabel}** · \`${weekId}\`\n`;
   block += `${config.emote.sword} ${attacks}  ${formatLegendWeekTrophyDelta(attackTrophies)} :trophy:`;
-  block += `  |  ★${formatLegendWeekStat(Number(week.attackStarsAvg))} · ${formatLegendWeekStat(Number(week.attackDestAvg), '%')}\n`;
+  block += `  |  ★${formatLegendWeekStat(Number(week.attackStarsAvg))} · ${formatLegendWeekStat(Number(week.attackDestAvg), '%')}`;
+  block += `${formatWeekHitRateSuffix(week.attackTriples, attacks)}\n`;
   block += `${config.emote.shield} ${defenses}  ${formatLegendWeekTrophyDelta(defenseTrophies)} :trophy:`;
-  block += `  |  ★${formatLegendWeekStat(Number(week.defenseStarsAvg))} · ${formatLegendWeekStat(Number(week.defenseDestAvg), '%')}\n`;
+  block += `  |  ★${formatLegendWeekStat(Number(week.defenseStarsAvg))} · ${formatLegendWeekStat(Number(week.defenseDestAvg), '%')}`;
+  block += `${formatWeekHitRateSuffix(week.defenseTriples, defenses)}\n`;
   block += `Net: **${formatLegendWeekTrophyDelta(netTrophies)}** :trophy:\n`;
   return block;
 }
@@ -1416,6 +1441,9 @@ async function updateLegendWeeksFromEvents(
   const { startUnix, weekEndUnix } = getWeeklyTournamentUnixBounds(seasonData);
   const ws = getWeeklySummaryFromEvents(legendEvents, seasonData);
   const av = getWeekRatedBattleAvgStats(legendEvents, seasonData);
+  const weekHitRatePct = (triples, total) => (
+    total > 0 ? Math.round((triples / total) * 100) : null
+  );
   const weekEntry = {
     season: seasonData.seasonId,
     weekId: weeklyTournamentIdFromStartUnix(startUnix),
@@ -1431,6 +1459,10 @@ async function updateLegendWeeksFromEvents(
     attackDestAvg: av.attackDestAvg,
     defenseStarsAvg: av.defenseStarsAvg,
     defenseDestAvg: av.defenseDestAvg,
+    attackTriples: av.attackTriples,
+    defenseTriples: av.defenseTriples,
+    attackHitRate: weekHitRatePct(av.attackTriples, ws.attacks),
+    defenseHitRate: weekHitRatePct(av.defenseTriples, ws.defenses),
     updatedAt: Math.floor(Date.now() / 1000),
   };
   const merged = mergeLegendWeeks(mongoAcc.legend?.weeks, weekEntry);
@@ -1889,6 +1921,8 @@ function getWeekRatedBattleAvgStats(events, seasonData) {
   let defStarN = 0;
   let defDestSum = 0;
   let defDestN = 0;
+  let attackTriples = 0;
+  let defenseTriples = 0;
   safeEvents.forEach((event) => {
     if (typeof event?.unixTime !== 'number') {
       return;
@@ -1910,6 +1944,9 @@ function getWeekRatedBattleAvgStats(events, seasonData) {
         atkDestSum += destRaw;
         atkDestN += 1;
       }
+      if (isRankedBattleFullDestruction(event)) {
+        attackTriples += 1;
+      }
       return;
     }
     if (event.action === 'defense') {
@@ -1920,6 +1957,9 @@ function getWeekRatedBattleAvgStats(events, seasonData) {
       if (Number.isFinite(destRaw)) {
         defDestSum += destRaw;
         defDestN += 1;
+      }
+      if (isRankedBattleFullDestruction(event)) {
+        defenseTriples += 1;
       }
     }
   });
@@ -1933,6 +1973,8 @@ function getWeekRatedBattleAvgStats(events, seasonData) {
     defenseDestAvg: defDestN ? Math.round(defDestSum / defDestN) : null,
     defStarN,
     defDestN,
+    attackTriples,
+    defenseTriples,
   };
 }
 
