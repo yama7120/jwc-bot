@@ -850,6 +850,7 @@ config.choices.league4.forEach((choice) => {
   //data.options[5].options[0].options[0].addChoices(choice);
   data.options[5].options[1].options[0].addChoices(choice);
   // subcommands
+  data.options[7].options[0].addChoices(choice);
   data.options[8].options[0].addChoices(choice);
   data.options[9].options[0].addChoices(choice);
 });
@@ -862,7 +863,7 @@ config.choices.weekInt.forEach((choice) => {
   data.options[2].options[3].options[1].addChoices(choice);
   data.options[3].options[5].options[0].addChoices(choice);
   data.options[4].options[0].options[1].addChoices(choice);
-  data.options[8].options[1].addChoices(choice);
+  data.options[7].options[1].addChoices(choice);
   data.options[9].options[1].addChoices(choice);
 });
 config.choices.townHallLevelInt.forEach((choice) => {
