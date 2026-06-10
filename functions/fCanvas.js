@@ -120,6 +120,25 @@ function getOrientation(imageDomWidth, imageDomHeight) {
   return `portrait`;
 }
 
+const JWC_LOGO_PATH = './image/JWC.png';
+
+async function loadTeamLogo(logoUrl) {
+  const url = typeof logoUrl === 'string' ? logoUrl.trim() : '';
+  if (url) {
+    try {
+      return await Canvas.loadImage(url);
+    } catch (error) {
+      // logo_url 取得失敗時は JWC ロゴへフォールバック
+    }
+  }
+  return await Canvas.loadImage(JWC_LOGO_PATH);
+}
+
+async function drawTeamLogo(ctx, logoUrl, lengthLogo, dx, dy) {
+  const img = await loadTeamLogo(logoUrl);
+  return reflectImage2Canvas(ctx, img, lengthLogo, lengthLogo, dx, dy);
+}
+
 async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
   const widthCanvas = config.canvasSize.width;
   const heightCanvas = config.canvasSize.height;
@@ -199,32 +218,14 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
   };
   //const lengthLogo2 = 3500;
   //const posLogo2 = { x: pos.h152 - lengthLogo2 / 2, y: pos.v162 - lengthLogo2 / 2 };
-  try {
-    const imgTeam = await Canvas.loadImage(
-      `./image/teamLogo/${mongoTeam.clan_abbr}.png`,
-    );
-    //ctx.globalAlpha = 0.2;
-    //ctx = reflectImage2Canvas(ctx, imgTeam, lengthLogo2, lengthLogo2, posLogo2.x, posLogo2.y);
-    ctx.globalAlpha = 1.0;
-    ctx = reflectImage2Canvas(
-      ctx,
-      imgTeam,
-      lengthLogo,
-      lengthLogo,
-      posLogo.x,
-      posLogo.y,
-    );
-  } catch (error) {
-    const imgJwc = await Canvas.loadImage(`./image/JWC.png`);
-    ctx = reflectImage2Canvas(
-      ctx,
-      imgJwc,
-      lengthLogo,
-      lengthLogo,
-      posLogo.x,
-      posLogo.y,
-    );
-  }
+  ctx.globalAlpha = 1.0;
+  ctx = await drawTeamLogo(
+    ctx,
+    mongoTeam.logo_url,
+    lengthLogo,
+    posLogo.x,
+    posLogo.y,
+  );
 
   // team name
   ctx.fillStyle = config.rgb.gray200;
@@ -1427,29 +1428,7 @@ async function standings(league, standings, leagueStats) {
       const lengthLogo = spacing * 0.5;
       let dxA = posH.logo - lengthLogo / 2;
       let dyA = pos0 - lengthLogo * 0.5;
-      try {
-        const imgTeam = await Canvas.loadImage(
-          `./image/teamLogo/${team.clan_abbr}.png`,
-        );
-        ctx = reflectImage2Canvas(
-          ctx,
-          imgTeam,
-          lengthLogo,
-          lengthLogo,
-          dxA,
-          dyA,
-        );
-      } catch (error) {
-        const imgJwc = await Canvas.loadImage(`./image/JWC.png`);
-        ctx = reflectImage2Canvas(
-          ctx,
-          imgJwc,
-          lengthLogo,
-          lengthLogo,
-          dxA,
-          dyA,
-        );
-      }
+      ctx = await drawTeamLogo(ctx, team.logo_url, lengthLogo, dxA, dyA);
 
       text = team.clan_abbr.toUpperCase();
       setFont(ctx, config.canvasFontSize.small);
@@ -2323,29 +2302,7 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
       const lengthLogo = spacing[posSide[index]] * 0.5;
       let dxA = posH.logo[posSide[index]] - lengthLogo / 2;
       let dyA = pos0[index] - lengthLogo * 0.5;
-      try {
-        const imgTeam = await Canvas.loadImage(
-          `./image/teamLogo/${team.clan_abbr}.png`,
-        );
-        ctx = reflectImage2Canvas(
-          ctx,
-          imgTeam,
-          lengthLogo,
-          lengthLogo,
-          dxA,
-          dyA,
-        );
-      } catch (error) {
-        const imgJwc = await Canvas.loadImage(`./image/JWC.png`);
-        ctx = reflectImage2Canvas(
-          ctx,
-          imgJwc,
-          lengthLogo,
-          lengthLogo,
-          dxA,
-          dyA,
-        );
-      }
+      ctx = await drawTeamLogo(ctx, team.logo_url, lengthLogo, dxA, dyA);
 
       // team abbr
       text = team.clan_abbr.toUpperCase();
@@ -3636,7 +3593,7 @@ async function legendHistory(mongoAcc) {
 }
 export { legendHistory };
 
-async function warProgress(mongoWar) {
+async function warProgress(mongoWar, teamLogos = {}) {
   const league = mongoWar.league;
 
   let chartData = {};
@@ -4785,54 +4742,22 @@ async function warProgress(mongoWar) {
   const lengthTeamLogo = widthCanvas / 6;
   let dxA = pos.h101 - lengthTeamLogo / 2;
   let dyA = pos.v161;
-  try {
-    const imgTeamA = await Canvas.loadImage(
-      `./image/teamLogo/${mongoWar.clan_abbr}.png`,
-    );
-    ctx = reflectImage2Canvas(
-      ctx,
-      imgTeamA,
-      lengthTeamLogo,
-      lengthTeamLogo,
-      dxA,
-      dyA,
-    );
-  } catch (error) {
-    const imgJwc = await Canvas.loadImage(`./image/JWC.png`);
-    ctx = reflectImage2Canvas(
-      ctx,
-      imgJwc,
-      lengthTeamLogo,
-      lengthTeamLogo,
-      dxA,
-      dyA,
-    );
-  }
+  ctx = await drawTeamLogo(
+    ctx,
+    teamLogos.clanLogoUrl,
+    lengthTeamLogo,
+    dxA,
+    dyA,
+  );
   let dxB = pos.h102 - lengthTeamLogo / 2;
   let dyB = pos.v161;
-  try {
-    const imgTeamB = await Canvas.loadImage(
-      `./image/teamLogo/${mongoWar.opponent_abbr}.png`,
-    );
-    ctx = reflectImage2Canvas(
-      ctx,
-      imgTeamB,
-      lengthTeamLogo,
-      lengthTeamLogo,
-      dxB,
-      dyB,
-    );
-  } catch (error) {
-    const imgJwc = await Canvas.loadImage(`./image/JWC.png`);
-    ctx = reflectImage2Canvas(
-      ctx,
-      imgJwc,
-      lengthTeamLogo,
-      lengthTeamLogo,
-      dxB,
-      dyB,
-    );
-  }
+  ctx = await drawTeamLogo(
+    ctx,
+    teamLogos.opponentLogoUrl,
+    lengthTeamLogo,
+    dxB,
+    dyB,
+  );
 
   // ***** 左下 ***** //
   setFont(ctx, config.canvasFontSize.medium, FONTS.MAIN, 'bold');

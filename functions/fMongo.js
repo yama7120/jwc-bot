@@ -657,7 +657,14 @@ async function standings(clientMongo, league) {
     [`status.${functions.seasonToString(config.season[league])}`]: 'true',
   };
   const options = {
-    projection: { _id: 0, clan_abbr: 1, team_name: 1, division: 1, score: 1 },
+    projection: {
+      _id: 0,
+      clan_abbr: 1,
+      team_name: 1,
+      division: 1,
+      score: 1,
+      logo_url: 1,
+    },
   };
   let sort = {};
   if (league == 'j1') {
@@ -736,6 +743,7 @@ async function standings(clientMongo, league) {
     }
     teamStats.clan_abbr = team.clan_abbr;
     teamStats.team_name = team.team_name;
+    teamStats.logo_url = team.logo_url;
     teamStats.division = team.division;
     teamStatsAbove = teamStats;
     arrStandings.push(teamStats);
@@ -759,7 +767,14 @@ async function standingsGroupStage(clientMongo, league, div1, div2) {
     division: { $in: [div1, div2] },
   };
   const options = {
-    projection: { _id: 0, clan_abbr: 1, team_name: 1, division: 1, score: 1 },
+    projection: {
+      _id: 0,
+      clan_abbr: 1,
+      team_name: 1,
+      division: 1,
+      score: 1,
+      logo_url: 1,
+    },
   };
   let sort = {};
   if (league == 'j1') {
@@ -813,6 +828,7 @@ async function standingsGroupStage(clientMongo, league, div1, div2) {
     }
     teamStats.clan_abbr = team.clan_abbr;
     teamStats.team_name = team.team_name;
+    teamStats.logo_url = team.logo_url;
     teamStats.division = team.division;
     teamStatsAbove = teamStats;
     arrStandings.push(teamStats);

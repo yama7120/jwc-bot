@@ -587,7 +587,10 @@ async function sendEnd(client, mongoWar) {
     mongoClan,
     mongoClanOpp,
   );
-  let attachment = await fCanvas.warProgress(mongoWar);
+  let attachment = await fCanvas.warProgress(mongoWar, {
+    clanLogoUrl: mongoClan.logo_url,
+    opponentLogoUrl: mongoClanOpp.logo_url,
+  });
 
   //var nameCommand = 'war own';
   //let description2 = description + `* </${nameCommand}:${config.command['war'].id}> to see stats of the war\n`;
@@ -2104,7 +2107,10 @@ async function sendWarStats(interaction, clientMongo, league, mongoWar) {
   await interaction.followUp({ embeds: [embed] });
 
   if (mongoWar.result != '') {
-    let attachment = await fCanvas.warProgress(mongoWar);
+    let attachment = await fCanvas.warProgress(mongoWar, {
+      clanLogoUrl: mongoClanA.logo_url,
+      opponentLogoUrl: mongoClanB.logo_url,
+    });
     await interaction.followUp({ files: [attachment] });
   }
 
