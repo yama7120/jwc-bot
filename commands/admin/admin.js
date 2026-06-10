@@ -761,7 +761,17 @@ let data = new SlashCommandBuilder()
         config.adminCommand[nameCommand].subCommand['send_message_war_ended'],
       )
       .addStringOption((option) =>
-        option.setName('league').setDescription('リーグ').setRequired(true),
+        option
+          .setName('league')
+          .setDescription('リーグ')
+          .setRequired(true)
+          .addChoices(
+            { name: 'J1', value: 'j1' },
+            { name: 'J2', value: 'j2' },
+            { name: 'SWISS', value: 'swiss' },
+            { name: 'MIX', value: 'mix' },
+            { name: 'CUP', value: 'cup' },
+          ),
       )
       .addIntegerOption((option) =>
         option.setName('week').setDescription('週（省略時は weekNow）'),
@@ -850,7 +860,6 @@ config.choices.league4.forEach((choice) => {
   //data.options[5].options[0].options[0].addChoices(choice);
   data.options[5].options[1].options[0].addChoices(choice);
   // subcommands
-  data.options[7].options[0].addChoices(choice);
   data.options[8].options[0].addChoices(choice);
   data.options[9].options[0].addChoices(choice);
 });
@@ -863,7 +872,6 @@ config.choices.weekInt.forEach((choice) => {
   data.options[2].options[3].options[1].addChoices(choice);
   data.options[3].options[5].options[0].addChoices(choice);
   data.options[4].options[0].options[1].addChoices(choice);
-  data.options[7].options[1].addChoices(choice);
   data.options[9].options[1].addChoices(choice);
 });
 config.choices.townHallLevelInt.forEach((choice) => {
