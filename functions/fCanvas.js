@@ -128,27 +128,21 @@ function getOrientation(imageDomWidth, imageDomHeight) {
 
 const JWC_LOGO_PATH = './image/JWC.png';
 
-function normalizeLogoUrl(url) {
-  let normalized = url.trim();
-  normalized = normalized.replace(
-    /^https:\/\/media\.discordapp\.net\//i,
-    'https://cdn.discordapp.com/',
-  );
+function getLogoUrlCandidates(raw) {
+  const trimmed = raw.trim();
+  const candidates = [trimmed];
   try {
-    const parsed = new URL(normalized);
-    if (
-      parsed.hostname === 'cdn.discordapp.com' ||
-      parsed.hostname.endsWith('discordapp.net')
-    ) {
-      if (parsed.pathname.includes('/attachments/')) {
-        parsed.search = '';
-      }
+    const parsed = new URL(trimmed);
+    const pathWithQuery = `${parsed.pathname}${parsed.search}`;
+    if (parsed.hostname === 'cdn.discordapp.com') {
+      candidates.push(`https://media.discordapp.net${pathWithQuery}`);
+    } else if (parsed.hostname === 'media.discordapp.net') {
+      candidates.push(`https://cdn.discordapp.com${pathWithQuery}`);
     }
-    normalized = parsed.toString();
   } catch {
-    // keep original url
+    // keep raw only
   }
-  return normalized;
+  return [...new Set(candidates)];
 }
 
 function getImageSize(img) {
@@ -161,9 +155,11 @@ function getImageSize(img) {
 async function fetchImageBuffer(url) {
   const response = await fetch(url, {
     headers: {
-      Accept: 'image/*,*/*',
-      'User-Agent': 'Mozilla/5.0 (compatible; JWC-Bot/1.0)',
+      Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       Referer: 'https://discord.com/',
+      Origin: 'https://discord.com',
     },
     redirect: 'follow',
   });
@@ -177,9 +173,56 @@ async function fetchImageBuffer(url) {
   return buffer;
 }
 
-async function loadTeamLogo(logoUrl, label = '') {
+async function fetchTeamLogoBuffer(logoUrl) {
+  const raw = typeof logoUrl === 'string' ? logoUrl.trim() : '';
+  if (!raw || raw === config.urlImage.jwc) {
+    return null;
+  }
+
+  let lastError = null;
+  for (const url of getLogoUrlCandidates(raw)) {
+    try {
+      return await fetchImageBuffer(url);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError ?? new Error('failed to fetch logo');
+}
+async function fetchDiscordAttachmentBuffer(url, botToken) {
+  const headers = {
+    Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+    Authorization: `Bot ${botToken}`,
+  };
+  const response = await fetch(url, { headers, redirect: 'follow' });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (buffer.length === 0) {
+    throw new Error('empty response body');
+  }
+  return buffer;
+}
+export { fetchTeamLogoBuffer, fetchDiscordAttachmentBuffer };
+
+async function loadTeamLogo(logoUrl, label = '', logoData = null) {
   const raw = typeof logoUrl === 'string' ? logoUrl.trim() : '';
   const tag = label ? ` ${label}` : '';
+
+  if (logoData instanceof Buffer && logoData.length > 0) {
+    try {
+      const img = await Canvas.loadImage(logoData);
+      const { w, h } = getImageSize(img);
+      console.log(`[loadTeamLogo${tag}] ok via logo_data (${w}x${h})`);
+      return img;
+    } catch (error) {
+      console.warn(
+        `[loadTeamLogo${tag}] logo_data decode failed:`,
+        error?.message ?? error,
+      );
+    }
+  }
 
   if (!raw) {
     console.warn(`[loadTeamLogo${tag}] logo_url is empty, using JWC fallback`);
@@ -193,9 +236,8 @@ async function loadTeamLogo(logoUrl, label = '') {
     return await Canvas.loadImage(JWC_LOGO_PATH);
   }
 
-  const url = normalizeLogoUrl(raw);
-
-  if (/^https?:\/\//i.test(url)) {
+  let lastError = null;
+  for (const url of getLogoUrlCandidates(raw)) {
     try {
       const buffer = await fetchImageBuffer(url);
       const img = await Canvas.loadImage(buffer);
@@ -205,33 +247,45 @@ async function loadTeamLogo(logoUrl, label = '') {
       );
       return img;
     } catch (fetchError) {
+      lastError = fetchError;
       console.warn(
         `[loadTeamLogo${tag}] fetch failed ${url.slice(0, 120)}:`,
         fetchError?.message ?? fetchError,
       );
     }
+
+    try {
+      const img = await Canvas.loadImage(url);
+      const { w, h } = getImageSize(img);
+      console.log(
+        `[loadTeamLogo${tag}] ok via direct (${w}x${h}) ${url.slice(0, 120)}`,
+      );
+      return img;
+    } catch (directError) {
+      lastError = directError;
+      console.warn(
+        `[loadTeamLogo${tag}] direct failed ${url.slice(0, 120)}:`,
+        directError?.message ?? directError,
+      );
+    }
   }
 
-  try {
-    const img = await Canvas.loadImage(url);
-    const { w, h } = getImageSize(img);
-    console.log(
-      `[loadTeamLogo${tag}] ok via direct (${w}x${h}) ${url.slice(0, 120)}`,
-    );
-    return img;
-  } catch (directError) {
-    console.warn(
-      `[loadTeamLogo${tag}] direct failed ${url.slice(0, 120)}:`,
-      directError?.message ?? directError,
-    );
-  }
-
-  console.warn(`[loadTeamLogo${tag}] all methods failed, using JWC fallback`);
+  console.warn(
+    `[loadTeamLogo${tag}] all methods failed${lastError ? `: ${lastError.message}` : ''}, using JWC fallback`,
+  );
   return await Canvas.loadImage(JWC_LOGO_PATH);
 }
 
-async function drawTeamLogo(ctx, logoUrl, lengthLogo, dx, dy, label = '') {
-  const img = await loadTeamLogo(logoUrl, label);
+async function drawTeamLogo(
+  ctx,
+  logoUrl,
+  lengthLogo,
+  dx,
+  dy,
+  label = '',
+  logoData = null,
+) {
+  const img = await loadTeamLogo(logoUrl, label, logoData);
   return reflectImage2Canvas(ctx, img, lengthLogo, lengthLogo, dx, dy);
 }
 
@@ -4851,8 +4905,10 @@ async function warProgress(mongoWar, teamLogos = {}) {
   console.log('[warProgress] team logos', {
     clan: mongoWar.clan_abbr,
     clanLogoUrl: teamLogos.clanLogoUrl ?? '(missing)',
+    clanHasLogoData: Boolean(teamLogos.clanLogoData?.length),
     opponent: mongoWar.opponent_abbr,
     opponentLogoUrl: teamLogos.opponentLogoUrl ?? '(missing)',
+    opponentHasLogoData: Boolean(teamLogos.opponentLogoData?.length),
   });
   ctx = await drawTeamLogo(
     ctx,
@@ -4861,6 +4917,7 @@ async function warProgress(mongoWar, teamLogos = {}) {
     dxA,
     dyA,
     mongoWar.clan_abbr,
+    teamLogos.clanLogoData,
   );
   let dxB = pos.h102 - lengthTeamLogo / 2;
   let dyB = pos.v161;
@@ -4871,6 +4928,7 @@ async function warProgress(mongoWar, teamLogos = {}) {
     dxB,
     dyB,
     mongoWar.opponent_abbr,
+    teamLogos.opponentLogoData,
   );
 
   // ***** 左下 ***** //
