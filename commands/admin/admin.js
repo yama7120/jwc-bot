@@ -3653,7 +3653,7 @@ async function warSummary(interaction, client) {
     iWeek = await functions.getWeekNow(iLeague);
   }
 
-  const embedGroups = await functions.getWarInfoEmbedGroups(
+  const { embedGroups } = await functions.getWarInfoEmbedGroups(
     client.clientMongo,
     iLeague,
     iWeek,

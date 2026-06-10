@@ -990,6 +990,7 @@ async function scanAcc(clientCoc, playerTag) {
 export { scanAcc };
 
 const EMBED_DESCRIPTION_MAX = 4096;
+const EMBED_DESCRIPTION_SOFT_MAX = 2800;
 const EMBED_MESSAGE_TOTAL_MAX = 6000;
 
 function getWarInfoTexts(league, weekStr) {
@@ -1048,13 +1049,16 @@ function splitWarDescriptionMessageGroups(parts, titleLen, footerLen) {
     messageIndex += 1;
   };
 
-  for (const part of filtered) {
-    let pending = part;
+  const appendText = (text) => {
+    let pending = text;
 
     while (pending.length > 0) {
       const descBudget = messageDescBudget();
-      const remainingEmbed = EMBED_DESCRIPTION_MAX - currentEmbed.length;
-      const remainingMessage = descBudget - messageDescUsed - currentEmbed.length;
+      const remainingEmbed =
+        Math.min(EMBED_DESCRIPTION_MAX, EMBED_DESCRIPTION_SOFT_MAX) -
+        currentEmbed.length;
+      const remainingMessage =
+        descBudget - messageDescUsed - currentEmbed.length;
       const capacity = Math.min(remainingEmbed, remainingMessage);
 
       if (capacity <= 0) {
@@ -1077,6 +1081,26 @@ function splitWarDescriptionMessageGroups(parts, titleLen, footerLen) {
       pending = pending.slice(slicePoint);
       flushEmbed();
     }
+  };
+
+  for (const part of filtered) {
+    const tryCombined = currentEmbed + part;
+    const descBudget = messageDescBudget();
+    const exceedsSoft =
+      currentEmbed.length > 0 &&
+      tryCombined.length > EMBED_DESCRIPTION_SOFT_MAX;
+    const exceedsEmbed = tryCombined.length > EMBED_DESCRIPTION_MAX;
+    const exceedsMessage =
+      messageDescUsed + tryCombined.length > descBudget;
+
+    if (currentEmbed && (exceedsSoft || exceedsEmbed || exceedsMessage)) {
+      flushEmbed();
+      if (messageDescUsed >= descBudget) {
+        flushMessage();
+      }
+    }
+
+    appendText(part);
   }
 
   flushMessage();
@@ -1162,6 +1186,7 @@ async function getWarDescriptionParts(clientMongo, league, weekStr) {
 
 async function getWarInfoEmbedGroups(clientMongo, league, weekStr) {
   const parts = await getWarDescriptionParts(clientMongo, league, weekStr);
+  const matchCount = parts.filter(Boolean).length;
   const { title, footerText } = getWarInfoTexts(league, weekStr);
   const messageGroups = splitWarDescriptionMessageGroups(
     parts,
@@ -1179,12 +1204,12 @@ async function getWarInfoEmbedGroups(clientMongo, league, weekStr) {
     }
   });
 
-  return embedGroups;
+  return { embedGroups, matchCount };
 }
 export { getWarInfoEmbedGroups };
 
 async function getWarInfoEmbeds(clientMongo, league, weekStr) {
-  const embedGroups = await getWarInfoEmbedGroups(clientMongo, league, weekStr);
+  const { embedGroups } = await getWarInfoEmbedGroups(clientMongo, league, weekStr);
   return embedGroups.flat();
 }
 export { getWarInfoEmbeds };
@@ -1197,7 +1222,7 @@ function getWarInfoMessageIds(dbValueSch) {
 }
 
 async function updateWarInfo(client, league, weekStr) {
-  const embedGroups = await getWarInfoEmbedGroups(
+  const { embedGroups, matchCount } = await getWarInfoEmbedGroups(
     client.clientMongo,
     league,
     weekStr,
@@ -1259,11 +1284,11 @@ async function updateWarInfo(client, league, weekStr) {
         .map((embeds) => getEmbedsTextTotal(embeds))
         .join('+');
       console.log(
-        `updateWarInfo: ${league}-w${weekStr} edited ${embedGroups.length} message(s), ${flatEmbeds.length} embed(s), total:${messageTotals} [${summarizeWarInfoEmbeds(flatEmbeds)}]`,
+        `updateWarInfo: ${league}-w${weekStr} edited ${embedGroups.length} message(s), ${flatEmbeds.length} embed(s), matches:${matchCount}, total:${messageTotals} [${summarizeWarInfoEmbeds(flatEmbeds)}]`,
       );
     } catch (error) {
       console.error(
-        `updateWarInfo: failed to edit ${league}-w${weekStr} (${embedGroups.length} message(s), ${flatEmbeds.length} embed(s) [${summarizeWarInfoEmbeds(flatEmbeds)}]):`,
+        `updateWarInfo: failed to edit ${league}-w${weekStr} (${embedGroups.length} message(s), ${flatEmbeds.length} embed(s), matches:${matchCount} [${summarizeWarInfoEmbeds(flatEmbeds)}]):`,
         error.message,
       );
     }
