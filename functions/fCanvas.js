@@ -84,14 +84,20 @@ function reflectImage2Canvas(
   dx,
   dy,
 ) {
-  const ratio =
-    getOrientation(imageDom.naturalWidth, imageDom.naturalHeight) ===
-    `landscape`
-      ? previewAreaDomWidth / imageDom.naturalWidth
-      : previewAreaDomHeight / imageDom.naturalHeight;
+  const naturalWidth = imageDom.naturalWidth || imageDom.width;
+  const naturalHeight = imageDom.naturalHeight || imageDom.height;
+  if (!naturalWidth || !naturalHeight) {
+    console.warn('[reflectImage2Canvas] zero size image, skip draw');
+    return ctx;
+  }
 
-  const resizedImageDomWidth = imageDom.naturalWidth * ratio;
-  const resizedImageDomHeight = imageDom.naturalHeight * ratio;
+  const ratio =
+    getOrientation(naturalWidth, naturalHeight) === `landscape`
+      ? previewAreaDomWidth / naturalWidth
+      : previewAreaDomHeight / naturalHeight;
+
+  const resizedImageDomWidth = naturalWidth * ratio;
+  const resizedImageDomHeight = naturalHeight * ratio;
 
   const resizedImageDomCenterX = resizedImageDomWidth / 2;
   const resizedImageDomCenterY = resizedImageDomHeight / 2;
@@ -105,8 +111,8 @@ function reflectImage2Canvas(
     imageDom,
     dx + deltaParallelMoveX,
     dy + deltaParallelMoveY,
-    imageDom.naturalWidth * ratio,
-    imageDom.naturalHeight * ratio,
+    naturalWidth * ratio,
+    naturalHeight * ratio,
   );
 
   return ctx;
@@ -122,49 +128,110 @@ function getOrientation(imageDomWidth, imageDomHeight) {
 
 const JWC_LOGO_PATH = './image/JWC.png';
 
+function normalizeLogoUrl(url) {
+  let normalized = url.trim();
+  normalized = normalized.replace(
+    /^https:\/\/media\.discordapp\.net\//i,
+    'https://cdn.discordapp.com/',
+  );
+  try {
+    const parsed = new URL(normalized);
+    if (
+      parsed.hostname === 'cdn.discordapp.com' ||
+      parsed.hostname.endsWith('discordapp.net')
+    ) {
+      if (parsed.pathname.includes('/attachments/')) {
+        parsed.search = '';
+      }
+    }
+    normalized = parsed.toString();
+  } catch {
+    // keep original url
+  }
+  return normalized;
+}
+
+function getImageSize(img) {
+  return {
+    w: img.naturalWidth || img.width || 0,
+    h: img.naturalHeight || img.height || 0,
+  };
+}
+
 async function fetchImageBuffer(url) {
   const response = await fetch(url, {
     headers: {
       Accept: 'image/*,*/*',
       'User-Agent': 'Mozilla/5.0 (compatible; JWC-Bot/1.0)',
+      Referer: 'https://discord.com/',
     },
     redirect: 'follow',
   });
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
   }
-  return Buffer.from(await response.arrayBuffer());
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (buffer.length === 0) {
+    throw new Error('empty response body');
+  }
+  return buffer;
 }
 
-async function loadTeamLogo(logoUrl) {
-  const url = typeof logoUrl === 'string' ? logoUrl.trim() : '';
-  if (url) {
+async function loadTeamLogo(logoUrl, label = '') {
+  const raw = typeof logoUrl === 'string' ? logoUrl.trim() : '';
+  const tag = label ? ` ${label}` : '';
+
+  if (!raw) {
+    console.warn(`[loadTeamLogo${tag}] logo_url is empty, using JWC fallback`);
+    return await Canvas.loadImage(JWC_LOGO_PATH);
+  }
+
+  if (raw === config.urlImage.jwc) {
+    console.warn(
+      `[loadTeamLogo${tag}] logo_url is default JWC URL in DB, using JWC fallback`,
+    );
+    return await Canvas.loadImage(JWC_LOGO_PATH);
+  }
+
+  const url = normalizeLogoUrl(raw);
+
+  if (/^https?:\/\//i.test(url)) {
     try {
-      return await Canvas.loadImage(url);
-    } catch (directError) {
-      if (/^https?:\/\//i.test(url)) {
-        try {
-          const buffer = await fetchImageBuffer(url);
-          return await Canvas.loadImage(buffer);
-        } catch (fetchError) {
-          console.warn(
-            `[loadTeamLogo] failed to load ${url}:`,
-            fetchError?.message ?? fetchError,
-          );
-        }
-      } else {
-        console.warn(
-          `[loadTeamLogo] failed to load ${url}:`,
-          directError?.message ?? directError,
-        );
-      }
+      const buffer = await fetchImageBuffer(url);
+      const img = await Canvas.loadImage(buffer);
+      const { w, h } = getImageSize(img);
+      console.log(
+        `[loadTeamLogo${tag}] ok via fetch (${w}x${h}, ${buffer.length} bytes) ${url.slice(0, 120)}`,
+      );
+      return img;
+    } catch (fetchError) {
+      console.warn(
+        `[loadTeamLogo${tag}] fetch failed ${url.slice(0, 120)}:`,
+        fetchError?.message ?? fetchError,
+      );
     }
   }
+
+  try {
+    const img = await Canvas.loadImage(url);
+    const { w, h } = getImageSize(img);
+    console.log(
+      `[loadTeamLogo${tag}] ok via direct (${w}x${h}) ${url.slice(0, 120)}`,
+    );
+    return img;
+  } catch (directError) {
+    console.warn(
+      `[loadTeamLogo${tag}] direct failed ${url.slice(0, 120)}:`,
+      directError?.message ?? directError,
+    );
+  }
+
+  console.warn(`[loadTeamLogo${tag}] all methods failed, using JWC fallback`);
   return await Canvas.loadImage(JWC_LOGO_PATH);
 }
 
-async function drawTeamLogo(ctx, logoUrl, lengthLogo, dx, dy) {
-  const img = await loadTeamLogo(logoUrl);
+async function drawTeamLogo(ctx, logoUrl, lengthLogo, dx, dy, label = '') {
+  const img = await loadTeamLogo(logoUrl, label);
   return reflectImage2Canvas(ctx, img, lengthLogo, lengthLogo, dx, dy);
 }
 
@@ -4781,12 +4848,19 @@ async function warProgress(mongoWar, teamLogos = {}) {
   const lengthTeamLogo = widthCanvas / 6;
   let dxA = pos.h101 - lengthTeamLogo / 2;
   let dyA = pos.v161;
+  console.log('[warProgress] team logos', {
+    clan: mongoWar.clan_abbr,
+    clanLogoUrl: teamLogos.clanLogoUrl ?? '(missing)',
+    opponent: mongoWar.opponent_abbr,
+    opponentLogoUrl: teamLogos.opponentLogoUrl ?? '(missing)',
+  });
   ctx = await drawTeamLogo(
     ctx,
     teamLogos.clanLogoUrl,
     lengthTeamLogo,
     dxA,
     dyA,
+    mongoWar.clan_abbr,
   );
   let dxB = pos.h102 - lengthTeamLogo / 2;
   let dyB = pos.v161;
@@ -4796,6 +4870,7 @@ async function warProgress(mongoWar, teamLogos = {}) {
     lengthTeamLogo,
     dxB,
     dyB,
+    mongoWar.opponent_abbr,
   );
 
   // ***** 左下 ***** //
