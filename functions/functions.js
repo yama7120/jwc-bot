@@ -994,6 +994,8 @@ const EMBED_MESSAGE_TOTAL_MAX = 6000;
 // 4096/6000 の上限ギリギリは避け、安全マージンを残す
 const EMBED_DESCRIPTION_SAFE = 4000;
 const MESSAGE_TOTAL_SAFE_RESERVE = 100;
+const MATCHES_PER_EMBED = 8;
+const MATCH_COUNT_SPLIT_THRESHOLD = 9;
 
 function getWarInfoTexts(league, weekStr) {
   const footerText = `${config.footer} ${config.league[league]} S${config.season[league]}`;
@@ -1018,17 +1020,28 @@ function hardSplitByNewline(text, maxLen) {
   return out;
 }
 
-// parts(=マッチ単位の完結した文字列) を欠落させずに
-//   1) embed description (<= EMBED_DESCRIPTION_SAFE) にまとめ
-//   2) さらに message (embed 合計 <= 6000) にまとめる
-// マッチ単位は原則分割しない。
-function splitWarDescriptionMessageGroups(parts, titleLen, footerLen) {
+function partsToEmbedDescriptions(parts) {
   const filtered = parts.filter(Boolean);
   if (filtered.length === 0) {
-    return [['_no matches_']];
+    return [];
   }
 
-  // 1) parts -> embed descriptions
+  // 9マッチ以上は8マッチごとに embed を分割
+  if (filtered.length >= MATCH_COUNT_SPLIT_THRESHOLD) {
+    const embeds = [];
+    for (let i = 0; i < filtered.length; i += MATCHES_PER_EMBED) {
+      const matchChunk = filtered.slice(i, i + MATCHES_PER_EMBED);
+      const combined = matchChunk.join('');
+      if (combined.length > EMBED_DESCRIPTION_SAFE) {
+        embeds.push(...hardSplitByNewline(combined, EMBED_DESCRIPTION_SAFE));
+      } else {
+        embeds.push(combined);
+      }
+    }
+    return embeds;
+  }
+
+  // 8マッチ以下は文字数ベースでまとめる（マッチ単位は途中で切らない）
   const embeds = [];
   let current = '';
   for (const part of filtered) {
@@ -1049,6 +1062,17 @@ function splitWarDescriptionMessageGroups(parts, titleLen, footerLen) {
   }
   if (current) {
     embeds.push(current);
+  }
+  return embeds;
+}
+
+// parts(=マッチ単位の完結した文字列) を欠落させずに
+//   1) embed description にまとめる
+//   2) さらに message (embed 合計 <= 6000) にまとめる
+function splitWarDescriptionMessageGroups(parts, titleLen, footerLen) {
+  const embeds = partsToEmbedDescriptions(parts);
+  if (embeds.length === 0) {
+    return [['_no matches_']];
   }
 
   // 2) embeds -> messages (title/footer 分を引いた安全枠で 6000 を超えないように)
