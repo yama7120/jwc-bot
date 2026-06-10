@@ -580,6 +580,8 @@ let data = new SlashCommandBuilder()
                 { name: '受付完了', value: 'accepted' },
                 { name: '不参加', value: 'declined' },
                 { name: '新規応募', value: 'new' },
+                { name: '⚠️要対応', value: 'warning' },
+                { name: '要対応（解決済）', value: 'warning_resolved' },
                 { name: '初期化（絵文字削除）', value: 'initialize' },
               ),
           ),
@@ -3318,6 +3320,7 @@ async function editChannelEmote(interaction) {
     newChName = newChName.replace('🆕', '');
     newChName = newChName.replace('✅', '');
     newChName = newChName.replace('❌', '');
+    newChName = newChName.replace('⚠️', '');
     message = '*done*';
   } else if (iAction == 'new') {
     newChName = '🆕' + oldCh.name;
@@ -3331,6 +3334,13 @@ async function editChannelEmote(interaction) {
     newChName = newChName.replace('🆕', '');
     newChName = '❌' + newChName;
     message = '❌ *declined*';
+  } else if (iAction == 'warning') {
+    newChName = oldCh.name.replace('⚠️', '');
+    newChName = '⚠️' + newChName;
+    message = '⚠️ *warning*';
+  } else if (iAction == 'warning_resolved') {
+    newChName = oldCh.name.replace('⚠️', '');
+    message = '*warning resolved*';
   }
 
   await interaction.guild.channels.edit(interaction.channelId, {
@@ -3356,7 +3366,8 @@ async function editChannelEmoteAll(interaction) {
         .replace('👤', '')
         .replace('🆕', '')
         .replace('✅', '')
-        .replace('❌', '');
+        .replace('❌', '')
+        .replace('⚠️', '');
       await channel.setName(newChName);
       description += newChName + '\n';
     }
