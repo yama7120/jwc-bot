@@ -124,8 +124,25 @@ async function sendReminder(client, channelId, mongoWar, mongoClanA, mongoClanB)
     `**${mongoClanA.team_name} :vs: ${mongoClanB.team_name}**`,
     ``,
     `:calendar: <t:${mongoWar.deal.unixTime}:F> (<t:${mongoWar.deal.unixTime}:R>)`,
-    `:hourglass_flowing_sand:  ${mongoWar.deal.prep_time}  /  :crossed_swords:  ${mongoWar.deal.battle_time}`
+    `:hourglass_flowing_sand:  ${mongoWar.deal.prep_time}  /  :crossed_swords:  ${mongoWar.deal.battle_time}`,
   ];
+
+  const clanTagA = mongoClanA?.clan_tag;
+  const clanTagB = mongoClanB?.clan_tag;
+  if (clanTagA && clanTagB) {
+    const clanLinkA =
+      'https://link.clashofclans.com/?action=OpenClanProfile&tag=' +
+      clanTagA.slice(1);
+    const clanLinkB =
+      'https://link.clashofclans.com/?action=OpenClanProfile&tag=' +
+      clanTagB.slice(1);
+    descriptionLines.push(
+      ``,
+      `[__**${clanTagA}**__](${clanLinkA}) ${mongoClanA.clan_name}`,
+      `:arrow_down:`,
+      `[__**${clanTagB}**__](${clanLinkB}) ${mongoClanB.clan_name}`,
+    );
+  }
 
   const description = descriptionLines.join('\n');
   const footer = config.footer;
