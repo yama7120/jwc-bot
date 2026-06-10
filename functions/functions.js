@@ -1212,6 +1212,21 @@ function getWarInfoMessageIds(dbValueSch) {
   ].filter(Boolean);
 }
 
+async function deleteWarInfoMessages(client, league, dbValueSch) {
+  const warInfoChannel = client.channels.cache.get(config.leagueCh[league]);
+  if (!warInfoChannel) {
+    return;
+  }
+  for (const messageId of getWarInfoMessageIds(dbValueSch)) {
+    const message = await warInfoChannel.messages
+      .fetch(messageId)
+      .catch(() => null);
+    if (message) {
+      await message.delete().catch(() => {});
+    }
+  }
+}
+
 async function updateWarInfo(client, league, weekStr) {
   const { embedGroups, matchCount } = await getWarInfoEmbedGroups(
     client.clientMongo,
@@ -1254,12 +1269,9 @@ async function updateWarInfo(client, league, weekStr) {
       }
 
       for (let i = embedGroups.length; i < storedMessageIds.length; i++) {
-        const message = await warInfoChannel.messages
-          .fetch(storedMessageIds[i])
-          .catch(() => null);
-        if (message) {
-          await message.delete().catch(() => {});
-        }
+        await deleteWarInfoMessages(client, league, {
+          message_id: storedMessageIds[i],
+        });
       }
 
       const listingUpdate = {
@@ -1290,7 +1302,7 @@ async function updateWarInfo(client, league, weekStr) {
 
   return;
 }
-export { updateWarInfo };
+export { updateWarInfo, deleteWarInfoMessages };
 
 async function updateRankingJwcAttack(client, league, lvTH) {
   const keyAttacks = 'attacks';

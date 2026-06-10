@@ -3653,29 +3653,64 @@ async function warSummary(interaction, client) {
     iWeek = await functions.getWeekNow(iLeague);
   }
 
+  const query = {
+    season: config.season[iLeague],
+    league: iLeague,
+    week: Number(iWeek),
+  };
+  const warInfoColl = client.clientMongo.db('jwc').collection('war_info');
+  const existingList = await warInfoColl.find(query).toArray();
+
+  if (existingList.length > 0) {
+    for (let i = 1; i < existingList.length; i++) {
+      await functions.deleteWarInfoMessages(client, iLeague, existingList[i]);
+    }
+    if (existingList.length > 1) {
+      await warInfoColl.deleteMany({
+        _id: { $in: existingList.slice(1).map((doc) => doc._id) },
+      });
+    }
+    await functions.updateWarInfo(client, iLeague, iWeek);
+    await interaction.followUp({
+      content: `✅ *War summary updated: ${iLeague.toUpperCase()} WEEK ${iWeek}*`,
+    });
+    return;
+  }
+
   const { embedGroups } = await functions.getWarInfoEmbedGroups(
     client.clientMongo,
     iLeague,
     iWeek,
   );
 
+  const warInfoChannel = client.channels.cache.get(config.leagueCh[iLeague]);
+  if (!warInfoChannel) {
+    await interaction.followUp({
+      content: `❌ *War info channel not found for ${iLeague.toUpperCase()}*`,
+      ephemeral: true,
+    });
+    return;
+  }
+
   const messageIds = [];
-  for (let i = 0; i < embedGroups.length; i++) {
-    const message = await interaction.followUp({ embeds: embedGroups[i] });
+  for (const embeds of embedGroups) {
+    const message = await warInfoChannel.send({ embeds });
     messageIds.push(message.id);
   }
 
-  let newListing = {};
-  newListing.name = `info-${functions.seasonToString(config.season[iLeague])}-${iLeague}-w${iWeek}`;
-  newListing.message_id = messageIds[0];
-  newListing.overflow_message_ids = messageIds.slice(1);
-  newListing.season = config.season[iLeague];
-  newListing.league = iLeague;
-  newListing.week = Number(iWeek);
-  await client.clientMongo
-    .db('jwc')
-    .collection('war_info')
-    .insertOne(newListing);
+  const newListing = {
+    name: `info-${functions.seasonToString(config.season[iLeague])}-${iLeague}-w${iWeek}`,
+    message_id: messageIds[0],
+    overflow_message_ids: messageIds.slice(1),
+    season: config.season[iLeague],
+    league: iLeague,
+    week: Number(iWeek),
+  };
+  await warInfoColl.updateOne(query, { $set: newListing }, { upsert: true });
+
+  await interaction.followUp({
+    content: `✅ *War summary posted: ${iLeague.toUpperCase()} WEEK ${iWeek}* (${messageIds.length} message(s))`,
+  });
 
   return;
 }
