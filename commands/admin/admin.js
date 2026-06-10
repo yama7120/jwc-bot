@@ -764,14 +764,14 @@ let data = new SlashCommandBuilder()
         option.setName('league').setDescription('リーグ').setRequired(true),
       )
       .addIntegerOption((option) =>
+        option.setName('week').setDescription('週').setRequired(true),
+      )
+      .addIntegerOption((option) =>
         option
           .setName('match')
           .setDescription('対戦')
           .setRequired(true)
           .setAutocomplete(true),
-      )
-      .addIntegerOption((option) =>
-        option.setName('week').setDescription('週（省略時は weekNow）'),
       ),
   )
   // 7
@@ -863,7 +863,7 @@ config.choices.weekInt.forEach((choice) => {
   data.options[2].options[3].options[1].addChoices(choice);
   data.options[3].options[5].options[0].addChoices(choice);
   data.options[4].options[0].options[1].addChoices(choice);
-  data.options[7].options[2].addChoices(choice);
+  data.options[7].options[1].addChoices(choice);
   data.options[9].options[1].addChoices(choice);
 });
 config.choices.townHallLevelInt.forEach((choice) => {
