@@ -3653,20 +3653,22 @@ async function warSummary(interaction, client) {
     iWeek = await functions.getWeekNow(iLeague);
   }
 
-  const embeds = await functions.getWarInfoEmbeds(
+  const embedGroups = await functions.getWarInfoEmbedGroups(
     client.clientMongo,
     iLeague,
     iWeek,
   );
 
-  let msgId = '';
-  await interaction.followUp({ embeds }).then((message) => {
-    msgId = message.id;
-  });
+  const messageIds = [];
+  for (let i = 0; i < embedGroups.length; i++) {
+    const message = await interaction.followUp({ embeds: embedGroups[i] });
+    messageIds.push(message.id);
+  }
 
   let newListing = {};
   newListing.name = `info-${functions.seasonToString(config.season[iLeague])}-${iLeague}-w${iWeek}`;
-  newListing.message_id = msgId;
+  newListing.message_id = messageIds[0];
+  newListing.overflow_message_ids = messageIds.slice(1);
   newListing.season = config.season[iLeague];
   newListing.league = iLeague;
   newListing.week = Number(iWeek);

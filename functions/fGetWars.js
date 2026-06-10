@@ -1915,16 +1915,21 @@ async function createDescription(clientMongo, mongoWar, league, type) {
     //const dateNow = new Date();
     //const startTimeJstDate = utcToZonedTime(mongoWar.clan_war.startTime, 'Asia/Tokyo');
     //const startTimeJstStr = format(startTimeJstDate, 'M/d HH:mm:ss');
-    const startTimeUnix =
-      new Date(mongoWar.clan_war.startTime).getTime() / 1000;
-    //const endTimeJstDate = utcToZonedTime(mongoWar.clan_war.endTime, 'Asia/Tokyo');
-    //const endTimeJstStr = format(endTimeJstDate, 'M/d HH:mm:ss');
-    const endTimeUnix = new Date(mongoWar.clan_war.endTime).getTime() / 1000;
+    const startTimeUnix = Math.floor(
+      new Date(mongoWar.clan_war.startTime).getTime() / 1000,
+    );
+    const endTimeUnix = Math.floor(
+      new Date(mongoWar.clan_war.endTime).getTime() / 1000,
+    );
 
     if (mongoWar.result.state == 'preparation') {
-      description += `_starts at_ <t:${startTimeUnix}:t> (<t:${startTimeUnix}:R>)\n`;
+      if (Number.isFinite(startTimeUnix)) {
+        description += `_starts at_ <t:${startTimeUnix}:t> (<t:${startTimeUnix}:R>)\n`;
+      }
     } else if (mongoWar.result.state == 'inWar') {
-      description += `_ends at_ <t:${endTimeUnix}:t> (<t:${endTimeUnix}:R>)\n`;
+      if (Number.isFinite(endTimeUnix)) {
+        description += `_ends at_ <t:${endTimeUnix}:t> (<t:${endTimeUnix}:R>)\n`;
+      }
     }
     if (type == 'single') {
       if (mongoWar.result.state == 'warEnded') {

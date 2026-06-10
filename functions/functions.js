@@ -991,39 +991,110 @@ export { scanAcc };
 
 const EMBED_DESCRIPTION_MAX = 4096;
 const EMBED_MESSAGE_TOTAL_MAX = 6000;
-const EMBED_TITLE_RESERVE = 24;
-const EMBED_FOOTER_RESERVE = 48;
 
-function splitWarDescriptions(arrDescription) {
-  const parts = arrDescription.filter(Boolean);
-  if (parts.length === 0) {
-    return ['_no matches_'];
+function getWarInfoTexts(league, weekStr) {
+  const footerText = `${config.footer} ${config.league[league]} S${config.season[league]}`;
+  const title = `**WEEK ${weekStr}**`;
+  return { footerText, title };
+}
+
+function findDescriptionSplitPoint(text, maxLen) {
+  if (text.length <= maxLen) {
+    return text.length;
+  }
+  const slice = text.slice(0, maxLen);
+  const lastNewline = slice.lastIndexOf('\n');
+  if (lastNewline > 0) {
+    return lastNewline + 1;
+  }
+  return maxLen;
+}
+
+function splitWarDescriptionMessageGroups(parts, titleLen, footerLen) {
+  const filtered = parts.filter(Boolean);
+  if (filtered.length === 0) {
+    return [['_no matches_']];
   }
 
-  const chunks = [];
-  let current = '';
-  let usedInMessage = EMBED_TITLE_RESERVE;
+  const messages = [];
+  let embedChunks = [];
+  let currentEmbed = '';
+  let messageIndex = 0;
+  let messageDescUsed = 0;
 
-  for (const part of parts) {
-    const combined = current + part;
-    const exceedsEmbed = combined.length > EMBED_DESCRIPTION_MAX;
-    const exceedsMessage =
-      usedInMessage + combined.length > EMBED_MESSAGE_TOTAL_MAX - EMBED_FOOTER_RESERVE;
+  const messageDescBudget = () => {
+    const overhead =
+      (messageIndex === 0 ? titleLen : 0) + footerLen;
+    return EMBED_MESSAGE_TOTAL_MAX - overhead;
+  };
 
-    if (current && (exceedsEmbed || exceedsMessage)) {
-      chunks.push(current);
-      usedInMessage += current.length;
-      current = part;
-    } else {
-      current = combined;
+  const flushEmbed = () => {
+    if (!currentEmbed) {
+      return;
+    }
+    embedChunks.push(currentEmbed);
+    messageDescUsed += currentEmbed.length;
+    currentEmbed = '';
+  };
+
+  const flushMessage = () => {
+    flushEmbed();
+    if (embedChunks.length === 0) {
+      return;
+    }
+    messages.push(embedChunks);
+    embedChunks = [];
+    messageDescUsed = 0;
+    messageIndex += 1;
+  };
+
+  for (const part of filtered) {
+    let pending = part;
+
+    while (pending.length > 0) {
+      const descBudget = messageDescBudget();
+      const remainingEmbed = EMBED_DESCRIPTION_MAX - currentEmbed.length;
+      const remainingMessage = descBudget - messageDescUsed - currentEmbed.length;
+      const capacity = Math.min(remainingEmbed, remainingMessage);
+
+      if (capacity <= 0) {
+        if (currentEmbed) {
+          flushEmbed();
+          continue;
+        }
+        flushMessage();
+        continue;
+      }
+
+      if (pending.length <= capacity) {
+        currentEmbed += pending;
+        pending = '';
+        continue;
+      }
+
+      const slicePoint = findDescriptionSplitPoint(pending, capacity);
+      currentEmbed += pending.slice(0, slicePoint);
+      pending = pending.slice(slicePoint);
+      flushEmbed();
     }
   }
 
-  if (current) {
-    chunks.push(current);
-  }
+  flushMessage();
+  return messages.length > 0 ? messages : [['_no matches_']];
+}
 
-  return chunks;
+function getEmbedTextLength(embed) {
+  const data = embed.data ?? embed;
+  return (
+    (data.title?.length ?? 0) +
+    (data.description?.length ?? 0) +
+    (data.footer?.text?.length ?? 0) +
+    (data.author?.name?.length ?? 0)
+  );
+}
+
+function getEmbedsTextTotal(embeds) {
+  return embeds.reduce((sum, embed) => sum + getEmbedTextLength(embed), 0);
 }
 
 function summarizeWarInfoEmbeds(embeds) {
@@ -1038,26 +1109,31 @@ function summarizeWarInfoEmbeds(embeds) {
     .join(' ');
 }
 
-function buildWarInfoEmbeds(league, weekStr, descriptionChunks) {
-  const footerText = `${config.footer} ${config.league[league]} S${config.season[league]}`;
-  const title = `**WEEK ${weekStr}**`;
+function buildWarInfoEmbedGroups(league, weekStr, messageGroups) {
+  const { footerText, title } = getWarInfoTexts(league, weekStr);
+  const lastGroupIndex = messageGroups.length - 1;
 
-  return descriptionChunks.map((description, index) => {
-    const embed = new EmbedBuilder()
-      .setColor(config.color[league])
-      .setDescription(description);
+  return messageGroups.map((descriptionChunks, groupIndex) => {
+    const isFirstGroup = groupIndex === 0;
+    const isLastGroup = groupIndex === lastGroupIndex;
 
-    if (index === 0) {
-      embed.setTitle(title);
-    }
+    return descriptionChunks.map((description, chunkIndex) => {
+      const embed = new EmbedBuilder()
+        .setColor(config.color[league])
+        .setDescription(description);
 
-    if (index === descriptionChunks.length - 1) {
-      embed
-        .setFooter({ text: footerText, iconURL: config.urlImage.jwc })
-        .setTimestamp();
-    }
+      if (isFirstGroup && chunkIndex === 0) {
+        embed.setTitle(title);
+      }
 
-    return embed;
+      if (isLastGroup && chunkIndex === descriptionChunks.length - 1) {
+        embed
+          .setFooter({ text: footerText, iconURL: config.urlImage.jwc })
+          .setTimestamp();
+      }
+
+      return embed;
+    });
   });
 }
 
@@ -1084,26 +1160,49 @@ async function getWarDescriptionParts(clientMongo, league, weekStr) {
   return arrDescription;
 }
 
-async function getWarInfoEmbeds(clientMongo, league, weekStr) {
+async function getWarInfoEmbedGroups(clientMongo, league, weekStr) {
   const parts = await getWarDescriptionParts(clientMongo, league, weekStr);
-  const chunks = splitWarDescriptions(parts);
-  const embeds = buildWarInfoEmbeds(league, weekStr, chunks);
-  const totalDescLen = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  if (chunks.length === 1 && totalDescLen > EMBED_DESCRIPTION_MAX) {
-    console.warn(
-      `getWarInfoEmbeds: ${league}-w${weekStr} needs multiple embeds but got 1 chunk (${totalDescLen} chars)`,
-    );
-  }
-  return embeds;
+  const { title, footerText } = getWarInfoTexts(league, weekStr);
+  const messageGroups = splitWarDescriptionMessageGroups(
+    parts,
+    title.length,
+    footerText.length,
+  );
+  const embedGroups = buildWarInfoEmbedGroups(league, weekStr, messageGroups);
+
+  embedGroups.forEach((embeds, groupIndex) => {
+    const total = getEmbedsTextTotal(embeds);
+    if (total > EMBED_MESSAGE_TOTAL_MAX) {
+      console.warn(
+        `getWarInfoEmbedGroups: ${league}-w${weekStr} message #${groupIndex + 1} exceeds ${EMBED_MESSAGE_TOTAL_MAX} chars (${total})`,
+      );
+    }
+  });
+
+  return embedGroups;
+}
+export { getWarInfoEmbedGroups };
+
+async function getWarInfoEmbeds(clientMongo, league, weekStr) {
+  const embedGroups = await getWarInfoEmbedGroups(clientMongo, league, weekStr);
+  return embedGroups.flat();
 }
 export { getWarInfoEmbeds };
 
+function getWarInfoMessageIds(dbValueSch) {
+  return [
+    dbValueSch.message_id,
+    ...(dbValueSch.overflow_message_ids ?? []),
+  ].filter(Boolean);
+}
+
 async function updateWarInfo(client, league, weekStr) {
-  const embeds = await getWarInfoEmbeds(
+  const embedGroups = await getWarInfoEmbedGroups(
     client.clientMongo,
     league,
     weekStr,
   );
+  const flatEmbeds = embedGroups.flat();
 
   const query = {
     season: config.season[league],
@@ -1122,19 +1221,51 @@ async function updateWarInfo(client, league, weekStr) {
       return;
     }
 
-    const message = await warInfoChannel.messages.fetch(dbValueSch.message_id);
-    if (message != null) {
-      try {
-        await message.edit({ embeds });
-        console.log(
-          `updateWarInfo: ${league}-w${weekStr} edited ${embeds.length} embed(s) [${summarizeWarInfoEmbeds(embeds)}]`,
-        );
-      } catch (error) {
-        console.error(
-          `updateWarInfo: failed to edit ${league}-w${weekStr} (${embeds.length} embed(s) [${summarizeWarInfoEmbeds(embeds)}]):`,
-          error.message,
-        );
+    const storedMessageIds = getWarInfoMessageIds(dbValueSch);
+    const updatedMessageIds = [];
+
+    try {
+      for (let i = 0; i < embedGroups.length; i++) {
+        const embeds = embedGroups[i];
+        if (i < storedMessageIds.length) {
+          const message = await warInfoChannel.messages.fetch(storedMessageIds[i]);
+          await message.edit({ embeds });
+          updatedMessageIds.push(storedMessageIds[i]);
+        } else {
+          const message = await warInfoChannel.send({ embeds });
+          updatedMessageIds.push(message.id);
+        }
       }
+
+      for (let i = embedGroups.length; i < storedMessageIds.length; i++) {
+        const message = await warInfoChannel.messages
+          .fetch(storedMessageIds[i])
+          .catch(() => null);
+        if (message) {
+          await message.delete().catch(() => {});
+        }
+      }
+
+      const listingUpdate = {
+        message_id: updatedMessageIds[0],
+        overflow_message_ids: updatedMessageIds.slice(1),
+      };
+      await client.clientMongo
+        .db(config.mongo.nameDatabase)
+        .collection('war_info')
+        .updateOne(query, { $set: listingUpdate });
+
+      const messageTotals = embedGroups
+        .map((embeds) => getEmbedsTextTotal(embeds))
+        .join('+');
+      console.log(
+        `updateWarInfo: ${league}-w${weekStr} edited ${embedGroups.length} message(s), ${flatEmbeds.length} embed(s), total:${messageTotals} [${summarizeWarInfoEmbeds(flatEmbeds)}]`,
+      );
+    } catch (error) {
+      console.error(
+        `updateWarInfo: failed to edit ${league}-w${weekStr} (${embedGroups.length} message(s), ${flatEmbeds.length} embed(s) [${summarizeWarInfoEmbeds(flatEmbeds)}]):`,
+        error.message,
+      );
     }
   }
 
