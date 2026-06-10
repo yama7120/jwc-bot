@@ -1127,6 +1127,7 @@ async function statsPlayer(clientMongo) {
   let j1 = { attacks: attacks, defenses: defenses };
   let j2 = { attacks: attacks, defenses: defenses };
   let swiss = { attacks: attacks, defenses: defenses };
+  let cup = { attacks: attacks, defenses: defenses };
   let mix1 = { attacks: attacks, defenses: defenses };
   let mix2 = { attacks: attacks, defenses: defenses };
   let mix3 = { attacks: attacks, defenses: defenses };
@@ -1135,6 +1136,7 @@ async function statsPlayer(clientMongo) {
     j1: j1,
     j2: j2,
     swiss: swiss,
+    cup: cup,
     mix1: mix1,
     mix2: mix2,
     mix3: mix3,
@@ -1275,9 +1277,12 @@ async function statsPlayer(clientMongo) {
       acc.townHallLevel == config.lvTH &&
       acc.stats.cup.season == config.season.cup
     ) {
-      stats.cup = calcStatsLeague(dbValuePlayerNew.stats.cup, acc.stats.cup);
+      stats.cup = calcStatsLeague(
+        dbValuePlayerNew.stats.cup ?? cup,
+        acc.stats.cup,
+      );
     } else {
-      stats.cup = dbValuePlayerNew.stats.cup;
+      stats.cup = dbValuePlayerNew.stats.cup ?? cup;
     }
     let listing = {};
     listing.stats = stats;
