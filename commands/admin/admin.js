@@ -3642,22 +3642,14 @@ async function warSummary(interaction, client) {
     iWeek = await functions.getWeekNow(iLeague);
   }
 
-  const description = await functions.getDescriptionWarInfo(
+  const embeds = await functions.getWarInfoEmbeds(
     client.clientMongo,
     iLeague,
     iWeek,
   );
-  const footerText = `${config.footer} ${config.league[iLeague]} S${config.season[iLeague]}`;
-
-  const embed = new EmbedBuilder()
-    .setTitle(`**WEEK ${iWeek}**`)
-    .setDescription(description)
-    .setColor(config.color[iLeague])
-    .setFooter({ text: footerText, iconURL: config.urlImage.jwc })
-    .setTimestamp();
 
   let msgId = '';
-  await interaction.followUp({ embeds: [embed] }).then((message) => {
+  await interaction.followUp({ embeds }).then((message) => {
     msgId = message.id;
   });
 

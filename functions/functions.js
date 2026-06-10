@@ -989,20 +989,99 @@ async function scanAcc(clientCoc, playerTag) {
 }
 export { scanAcc };
 
+const EMBED_DESCRIPTION_MAX = 4096;
+const EMBED_MESSAGE_TOTAL_MAX = 6000;
+
+function splitWarDescriptions(arrDescription) {
+  const parts = arrDescription.filter(Boolean);
+  if (parts.length === 0) {
+    return ['_no matches_'];
+  }
+
+  const chunks = [];
+  let current = '';
+  let totalChars = 0;
+
+  for (const part of parts) {
+    const combined = current + part;
+    const fitsInCurrentEmbed = combined.length <= EMBED_DESCRIPTION_MAX;
+    const fitsInMessage = totalChars + combined.length <= EMBED_MESSAGE_TOTAL_MAX;
+
+    if (current && (!fitsInCurrentEmbed || !fitsInMessage)) {
+      chunks.push(current);
+      totalChars += current.length;
+      current = part;
+    } else {
+      current = combined;
+    }
+  }
+
+  if (current) {
+    chunks.push(current);
+  }
+
+  return chunks;
+}
+
+function buildWarInfoEmbeds(league, weekStr, descriptionChunks) {
+  const footerText = `${config.footer} ${config.league[league]} S${config.season[league]}`;
+  const title = `**WEEK ${weekStr}**`;
+
+  return descriptionChunks.map((description, index) => {
+    const embed = new EmbedBuilder()
+      .setColor(config.color[league])
+      .setDescription(description);
+
+    if (index === 0) {
+      embed.setTitle(title);
+    }
+
+    if (index === descriptionChunks.length - 1) {
+      embed
+        .setFooter({ text: footerText, iconURL: config.urlImage.jwc })
+        .setTimestamp();
+    }
+
+    return embed;
+  });
+}
+
+async function getWarDescriptionParts(clientMongo, league, weekStr) {
+  const query = {
+    season: config.season[league],
+    league: league,
+    week: Number(weekStr),
+  };
+  const sort = { match: 1 };
+  const myColl = clientMongo.db(config.mongo.nameDatabase).collection('wars');
+  const cursor = myColl.find(query).sort(sort);
+  const dbValueWars = await cursor.toArray();
+  await cursor.close();
+
+  const arrDescription = [];
+  await Promise.all(
+    dbValueWars.map(async (dbValueWar, index) => {
+      arrDescription[index] =
+        `${await fGetWars.createDescription(clientMongo, dbValueWar, league, 'multi')}`;
+    }),
+  );
+
+  return arrDescription;
+}
+
+async function getWarInfoEmbeds(clientMongo, league, weekStr) {
+  const parts = await getWarDescriptionParts(clientMongo, league, weekStr);
+  const chunks = splitWarDescriptions(parts);
+  return buildWarInfoEmbeds(league, weekStr, chunks);
+}
+export { getWarInfoEmbeds };
+
 async function updateWarInfo(client, league, weekStr) {
-  const description = await getDescriptionWarInfo(
+  const embeds = await getWarInfoEmbeds(
     client.clientMongo,
     league,
     weekStr,
   );
-  const footerText = `${config.footer} ${config.league[league]} S${config.season[league]}`;
-
-  const embed = new EmbedBuilder()
-    .setTitle(`**WEEK ${weekStr}**`)
-    .setDescription(description)
-    .setColor(config.color[league])
-    .setFooter({ text: footerText, iconURL: config.urlImage.jwc })
-    .setTimestamp();
 
   const query = {
     season: config.season[league],
@@ -1023,7 +1102,7 @@ async function updateWarInfo(client, league, weekStr) {
 
     const message = await warInfoChannel.messages.fetch(dbValueSch.message_id);
     if (message != null) {
-      await message.edit({ embeds: [embed] });
+      await message.edit({ embeds });
     }
   }
 
@@ -1101,31 +1180,8 @@ async function updateRankingJwcAttack(client, league, lvTH) {
 export { updateRankingJwcAttack };
 
 async function getDescriptionWarInfo(clientMongo, league, weekStr) {
-  const query = {
-    season: config.season[league],
-    league: league,
-    week: Number(weekStr),
-  };
-  const sort = { match: 1 };
-  const myColl = clientMongo.db(config.mongo.nameDatabase).collection('wars');
-  const cursor = myColl.find(query).sort(sort);
-  let dbValueWars = await cursor.toArray();
-  await cursor.close();
-
-  let arrDescription = [];
-  await Promise.all(
-    dbValueWars.map(async (dbValueWar, index) => {
-      arrDescription[index] =
-        `${await fGetWars.createDescription(clientMongo, dbValueWar, league, 'multi')}`;
-    }),
-  );
-
-  let description = '';
-  arrDescription.forEach(function (value, index) {
-    description += value;
-  });
-
-  return description;
+  const parts = await getWarDescriptionParts(clientMongo, league, weekStr);
+  return parts.filter(Boolean).join('');
 }
 export { getDescriptionWarInfo };
 
