@@ -4514,6 +4514,16 @@ async function warProgress(mongoWar, teamLogos = {}) {
     const apm = mongoWar.clan_war.attacksPerMember;
     const homeMembers = mongoWar.clan_war?.clan?.members ?? [];
     const awayMembers = mongoWar.opponent_war?.clan?.members ?? [];
+    const lineupPos = {
+      nameLeft: pos.h131,
+      nameRight: pos.h132,
+      starsLeft1st: pos.h61,
+      starsLeft2nd: pos.h21,
+      starsLeftOnly: pos.h21,
+      starsRight1st: pos.h22,
+      starsRight2nd: pos.h62,
+      starsRightOnly: pos.h22,
+    };
     // Home team
     await Promise.all(
       homeMembers.map(async (member, index) => {
@@ -4522,7 +4532,7 @@ async function warProgress(mongoWar, teamLogos = {}) {
         ctx.textAlign = 'center';
         ctx.fillText(
           text,
-          pos.h101,
+          lineupPos.nameLeft,
           posLineup + spacing * (member.mapPosition - 1),
         );
 
@@ -4542,7 +4552,7 @@ async function warProgress(mongoWar, teamLogos = {}) {
               ctx,
               starFlag,
               lengthStar,
-              pos.h21,
+              lineupPos.starsLeftOnly,
               'left',
               posLineup,
               spacing,
@@ -4558,7 +4568,7 @@ async function warProgress(mongoWar, teamLogos = {}) {
               ctx,
               starFlag,
               lengthStar,
-              pos.h51,
+              lineupPos.starsLeft1st,
               'left',
               posLineup,
               spacing,
@@ -4574,7 +4584,7 @@ async function warProgress(mongoWar, teamLogos = {}) {
                 ctx,
                 starFlag2,
                 lengthStar,
-                pos.h21,
+                lineupPos.starsLeft2nd,
                 'left',
                 posLineup,
                 spacing,
@@ -4597,7 +4607,7 @@ async function warProgress(mongoWar, teamLogos = {}) {
         ctx.textAlign = 'center';
         ctx.fillText(
           text,
-          pos.h102,
+          lineupPos.nameRight,
           posLineup + spacing * (member.mapPosition - 1),
         );
 
@@ -4608,7 +4618,7 @@ async function warProgress(mongoWar, teamLogos = {}) {
               ctx,
               starFlag,
               lengthStar,
-              pos.h22,
+              lineupPos.starsRightOnly,
               'right',
               posLineup,
               spacing,
@@ -4624,7 +4634,7 @@ async function warProgress(mongoWar, teamLogos = {}) {
               ctx,
               starFlag,
               lengthStar,
-              pos.h22,
+              lineupPos.starsRight1st,
               'right',
               posLineup,
               spacing,
@@ -4640,7 +4650,7 @@ async function warProgress(mongoWar, teamLogos = {}) {
                 ctx,
                 starFlag2,
                 lengthStar,
-                pos.h52,
+                lineupPos.starsRight2nd,
                 'right',
                 posLineup,
                 spacing,
