@@ -760,28 +760,11 @@ let data = new SlashCommandBuilder()
       .setDescription(
         config.adminCommand[nameCommand].subCommand['send_message_war_ended'],
       )
-      .addStringOption((option) =>
+      .addChannelOption((option) =>
         option
-          .setName('league')
-          .setDescription('リーグ')
-          .setRequired(true)
-          .addChoices(
-            { name: 'J1', value: 'j1' },
-            { name: 'J2', value: 'j2' },
-            { name: 'SWISS', value: 'swiss' },
-            { name: 'MIX', value: 'mix' },
-            { name: 'CUP', value: 'cup' },
-          ),
-      )
-      .addIntegerOption((option) =>
-        option.setName('week').setDescription('週（省略時は weekNow）'),
-      )
-      .addIntegerOption((option) =>
-        option
-          .setName('match')
-          .setDescription('対戦')
-          .setRequired(true)
-          .setAutocomplete(true),
+          .setName('channel')
+          .setDescription('チャンネル')
+          .setRequired(true),
       ),
   )
   // 7
@@ -3759,43 +3742,16 @@ async function rankingSummary(interaction, client) {
 }
 
 async function sendEndMessage(interaction, client) {
-  const iLeague = await interaction.options.getString('league');
-  const iMatch = await interaction.options.getInteger('match');
+  const iCh = await interaction.options.getChannel('channel');
 
-  let iWeek = await interaction.options.getInteger('week');
-  if (iWeek == null || iWeek == 99) {
-    iWeek = await functions.getWeekNow(iLeague);
-  }
-
-  const query = {
-    season: config.season[iLeague],
-    league: iLeague,
-    week: iWeek,
-    match: iMatch,
-  };
-
-  const mongoWar = await client.clientMongo
+  let mongoWar = await client.clientMongo
     .db('jwc')
     .collection('wars')
-    .findOne(query);
-
-  if (!mongoWar) {
-    await interaction.followUp({
-      content: `:exclamation: War not found: ${config.league[iLeague]} - Week ${iWeek} - Match ${iMatch}`,
-      ephemeral: true,
-    });
-    return;
-  }
+    .findOne({ nego_channel: iCh.id });
 
   try {
     await fGetWars.sendEnd(client, mongoWar);
-    const negoCh = mongoWar.nego_channel
-      ? `<#${mongoWar.nego_channel}>`
-      : '(nego channel unset)';
-    await interaction.followUp({
-      content: `送信完了: ${mongoWar.clan_abbr} vs ${mongoWar.opponent_abbr} → ${negoCh}`,
-      ephemeral: true,
-    });
+    await interaction.followUp({ content: `送信完了: <#${iCh.id}>`, ephemeral: true });
   } catch (e) {
     console.error('sendEndMessage error:', e);
     await interaction.followUp({ content: `送信失敗: ${e.message}`, ephemeral: true });
