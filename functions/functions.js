@@ -990,8 +990,10 @@ async function scanAcc(clientCoc, playerTag) {
 export { scanAcc };
 
 const EMBED_DESCRIPTION_MAX = 4096;
-const EMBED_DESCRIPTION_SOFT_MAX = 2800;
 const EMBED_MESSAGE_TOTAL_MAX = 6000;
+// 4096/6000 の上限ギリギリは避け、安全マージンを残す
+const EMBED_DESCRIPTION_SAFE = 4000;
+const MESSAGE_TOTAL_SAFE_RESERVE = 100;
 
 function getWarInfoTexts(league, weekStr) {
   const footerText = `${config.footer} ${config.league[league]} S${config.season[league]}`;
@@ -999,111 +1001,76 @@ function getWarInfoTexts(league, weekStr) {
   return { footerText, title };
 }
 
-function findDescriptionSplitPoint(text, maxLen) {
-  if (text.length <= maxLen) {
-    return text.length;
+// 1マッチ分の description が単体で上限を超える例外時のみ、改行境界で機械的に分割
+function hardSplitByNewline(text, maxLen) {
+  const out = [];
+  let rest = text;
+  while (rest.length > maxLen) {
+    const slice = rest.slice(0, maxLen);
+    const lastNewline = slice.lastIndexOf('\n');
+    const cut = lastNewline > 0 ? lastNewline + 1 : maxLen;
+    out.push(rest.slice(0, cut));
+    rest = rest.slice(cut);
   }
-  const slice = text.slice(0, maxLen);
-  const lastNewline = slice.lastIndexOf('\n');
-  if (lastNewline > 0) {
-    return lastNewline + 1;
+  if (rest) {
+    out.push(rest);
   }
-  return maxLen;
+  return out;
 }
 
+// parts(=マッチ単位の完結した文字列) を欠落させずに
+//   1) embed description (<= EMBED_DESCRIPTION_SAFE) にまとめ
+//   2) さらに message (embed 合計 <= 6000) にまとめる
+// マッチ単位は原則分割しない。
 function splitWarDescriptionMessageGroups(parts, titleLen, footerLen) {
   const filtered = parts.filter(Boolean);
   if (filtered.length === 0) {
     return [['_no matches_']];
   }
 
-  const messages = [];
-  let embedChunks = [];
-  let currentEmbed = '';
-  let messageIndex = 0;
-  let messageDescUsed = 0;
-
-  const messageDescBudget = () => {
-    const overhead =
-      (messageIndex === 0 ? titleLen : 0) + footerLen;
-    return EMBED_MESSAGE_TOTAL_MAX - overhead;
-  };
-
-  const flushEmbed = () => {
-    if (!currentEmbed) {
-      return;
-    }
-    embedChunks.push(currentEmbed);
-    messageDescUsed += currentEmbed.length;
-    currentEmbed = '';
-  };
-
-  const flushMessage = () => {
-    flushEmbed();
-    if (embedChunks.length === 0) {
-      return;
-    }
-    messages.push(embedChunks);
-    embedChunks = [];
-    messageDescUsed = 0;
-    messageIndex += 1;
-  };
-
-  const appendText = (text) => {
-    let pending = text;
-
-    while (pending.length > 0) {
-      const descBudget = messageDescBudget();
-      const remainingEmbed =
-        Math.min(EMBED_DESCRIPTION_MAX, EMBED_DESCRIPTION_SOFT_MAX) -
-        currentEmbed.length;
-      const remainingMessage =
-        descBudget - messageDescUsed - currentEmbed.length;
-      const capacity = Math.min(remainingEmbed, remainingMessage);
-
-      if (capacity <= 0) {
-        if (currentEmbed) {
-          flushEmbed();
-          continue;
-        }
-        flushMessage();
-        continue;
-      }
-
-      if (pending.length <= capacity) {
-        currentEmbed += pending;
-        pending = '';
-        continue;
-      }
-
-      const slicePoint = findDescriptionSplitPoint(pending, capacity);
-      currentEmbed += pending.slice(0, slicePoint);
-      pending = pending.slice(slicePoint);
-      flushEmbed();
-    }
-  };
-
+  // 1) parts -> embed descriptions
+  const embeds = [];
+  let current = '';
   for (const part of filtered) {
-    const tryCombined = currentEmbed + part;
-    const descBudget = messageDescBudget();
-    const exceedsSoft =
-      currentEmbed.length > 0 &&
-      tryCombined.length > EMBED_DESCRIPTION_SOFT_MAX;
-    const exceedsEmbed = tryCombined.length > EMBED_DESCRIPTION_MAX;
-    const exceedsMessage =
-      messageDescUsed + tryCombined.length > descBudget;
-
-    if (currentEmbed && (exceedsSoft || exceedsEmbed || exceedsMessage)) {
-      flushEmbed();
-      if (messageDescUsed >= descBudget) {
-        flushMessage();
+    if (part.length > EMBED_DESCRIPTION_SAFE) {
+      if (current) {
+        embeds.push(current);
+        current = '';
       }
+      embeds.push(...hardSplitByNewline(part, EMBED_DESCRIPTION_SAFE));
+      continue;
     }
-
-    appendText(part);
+    if (current && current.length + part.length > EMBED_DESCRIPTION_SAFE) {
+      embeds.push(current);
+      current = part;
+    } else {
+      current += part;
+    }
+  }
+  if (current) {
+    embeds.push(current);
   }
 
-  flushMessage();
+  // 2) embeds -> messages (title/footer 分を引いた安全枠で 6000 を超えないように)
+  const messageLimit =
+    EMBED_MESSAGE_TOTAL_MAX - titleLen - footerLen - MESSAGE_TOTAL_SAFE_RESERVE;
+  const messages = [];
+  let group = [];
+  let groupLen = 0;
+  for (const embedDesc of embeds) {
+    if (group.length && groupLen + embedDesc.length > messageLimit) {
+      messages.push(group);
+      group = [embedDesc];
+      groupLen = embedDesc.length;
+    } else {
+      group.push(embedDesc);
+      groupLen += embedDesc.length;
+    }
+  }
+  if (group.length) {
+    messages.push(group);
+  }
+
   return messages.length > 0 ? messages : [['_no matches_']];
 }
 
@@ -1283,8 +1250,11 @@ async function updateWarInfo(client, league, weekStr) {
       const messageTotals = embedGroups
         .map((embeds) => getEmbedsTextTotal(embeds))
         .join('+');
+      const lastDesc =
+        flatEmbeds[flatEmbeds.length - 1]?.data?.description ?? '';
+      const tail = lastDesc.slice(-80).replace(/\n/g, '\u23ce');
       console.log(
-        `updateWarInfo: ${league}-w${weekStr} edited ${embedGroups.length} message(s), ${flatEmbeds.length} embed(s), matches:${matchCount}, total:${messageTotals} [${summarizeWarInfoEmbeds(flatEmbeds)}]`,
+        `updateWarInfo: ${league}-w${weekStr} edited ${embedGroups.length} message(s), ${flatEmbeds.length} embed(s), matches:${matchCount}, total:${messageTotals} [${summarizeWarInfoEmbeds(flatEmbeds)}] tail:"${tail}"`,
       );
     } catch (error) {
       console.error(
