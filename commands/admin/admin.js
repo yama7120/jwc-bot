@@ -760,11 +760,18 @@ let data = new SlashCommandBuilder()
       .setDescription(
         config.adminCommand[nameCommand].subCommand['send_message_war_ended'],
       )
-      .addChannelOption((option) =>
+      .addStringOption((option) =>
+        option.setName('league').setDescription('リーグ').setRequired(true),
+      )
+      .addIntegerOption((option) =>
+        option.setName('week').setDescription('週（省略時は weekNow）'),
+      )
+      .addIntegerOption((option) =>
         option
-          .setName('channel')
-          .setDescription('チャンネル')
-          .setRequired(true),
+          .setName('match')
+          .setDescription('対戦')
+          .setRequired(true)
+          .setAutocomplete(true),
       ),
   )
   // 7
@@ -842,7 +849,8 @@ config.choices.league4.forEach((choice) => {
   // roster
   //data.options[5].options[0].options[0].addChoices(choice);
   data.options[5].options[1].options[0].addChoices(choice);
-  // subcommands
+  // subcommands (options[7]=send_message_war_ended, [8]=scan_clan, [9]=mention_reps)
+  data.options[7].options[0].addChoices(choice);
   data.options[8].options[0].addChoices(choice);
   data.options[9].options[0].addChoices(choice);
 });
@@ -855,6 +863,7 @@ config.choices.weekInt.forEach((choice) => {
   data.options[2].options[3].options[1].addChoices(choice);
   data.options[3].options[5].options[0].addChoices(choice);
   data.options[4].options[0].options[1].addChoices(choice);
+  data.options[7].options[1].addChoices(choice);
   data.options[9].options[1].addChoices(choice);
 });
 config.choices.townHallLevelInt.forEach((choice) => {
@@ -3742,16 +3751,43 @@ async function rankingSummary(interaction, client) {
 }
 
 async function sendEndMessage(interaction, client) {
-  const iCh = await interaction.options.getChannel('channel');
+  const iLeague = await interaction.options.getString('league');
+  const iMatch = await interaction.options.getInteger('match');
 
-  let mongoWar = await client.clientMongo
+  let iWeek = await interaction.options.getInteger('week');
+  if (iWeek == null || iWeek == 99) {
+    iWeek = await functions.getWeekNow(iLeague);
+  }
+
+  const query = {
+    season: config.season[iLeague],
+    league: iLeague,
+    week: iWeek,
+    match: iMatch,
+  };
+
+  const mongoWar = await client.clientMongo
     .db('jwc')
     .collection('wars')
-    .findOne({ nego_channel: iCh.id });
+    .findOne(query);
+
+  if (!mongoWar) {
+    await interaction.followUp({
+      content: `:exclamation: War not found: ${config.league[iLeague]} - Week ${iWeek} - Match ${iMatch}`,
+      ephemeral: true,
+    });
+    return;
+  }
 
   try {
     await fGetWars.sendEnd(client, mongoWar);
-    await interaction.followUp({ content: `送信完了: <#${iCh.id}>`, ephemeral: true });
+    const negoCh = mongoWar.nego_channel
+      ? `<#${mongoWar.nego_channel}>`
+      : '(nego channel unset)';
+    await interaction.followUp({
+      content: `送信完了: ${mongoWar.clan_abbr} vs ${mongoWar.opponent_abbr} → ${negoCh}`,
+      ephemeral: true,
+    });
   } catch (e) {
     console.error('sendEndMessage error:', e);
     await interaction.followUp({ content: `送信失敗: ${e.message}`, ephemeral: true });
