@@ -50,7 +50,7 @@ async function autoUpdateWar(client, league, week) {
   );
 
   if (sumFlagUpdate > 0) {
-    functions.updateWarInfo(client, league, week);
+    await functions.updateWarInfo(client, league, week);
   }
 
   const cursor2 = client.clientMongo.db('jwc').collection('wars')

@@ -991,6 +991,8 @@ export { scanAcc };
 
 const EMBED_DESCRIPTION_MAX = 4096;
 const EMBED_MESSAGE_TOTAL_MAX = 6000;
+const EMBED_TITLE_RESERVE = 24;
+const EMBED_FOOTER_RESERVE = 48;
 
 function splitWarDescriptions(arrDescription) {
   const parts = arrDescription.filter(Boolean);
@@ -1000,16 +1002,17 @@ function splitWarDescriptions(arrDescription) {
 
   const chunks = [];
   let current = '';
-  let totalChars = 0;
+  let usedInMessage = EMBED_TITLE_RESERVE;
 
   for (const part of parts) {
     const combined = current + part;
-    const fitsInCurrentEmbed = combined.length <= EMBED_DESCRIPTION_MAX;
-    const fitsInMessage = totalChars + combined.length <= EMBED_MESSAGE_TOTAL_MAX;
+    const exceedsEmbed = combined.length > EMBED_DESCRIPTION_MAX;
+    const exceedsMessage =
+      usedInMessage + combined.length > EMBED_MESSAGE_TOTAL_MAX - EMBED_FOOTER_RESERVE;
 
-    if (current && (!fitsInCurrentEmbed || !fitsInMessage)) {
+    if (current && (exceedsEmbed || exceedsMessage)) {
       chunks.push(current);
-      totalChars += current.length;
+      usedInMessage += current.length;
       current = part;
     } else {
       current = combined;
@@ -1021,6 +1024,18 @@ function splitWarDescriptions(arrDescription) {
   }
 
   return chunks;
+}
+
+function summarizeWarInfoEmbeds(embeds) {
+  return embeds
+    .map((embed, index) => {
+      const data = embed.data ?? embed;
+      const descriptionLen = data.description?.length ?? 0;
+      const titleLen = data.title?.length ?? 0;
+      const footerLen = data.footer?.text?.length ?? 0;
+      return `#${index + 1}{desc:${descriptionLen},title:${titleLen},footer:${footerLen}}`;
+    })
+    .join(' ');
 }
 
 function buildWarInfoEmbeds(league, weekStr, descriptionChunks) {
@@ -1072,7 +1087,14 @@ async function getWarDescriptionParts(clientMongo, league, weekStr) {
 async function getWarInfoEmbeds(clientMongo, league, weekStr) {
   const parts = await getWarDescriptionParts(clientMongo, league, weekStr);
   const chunks = splitWarDescriptions(parts);
-  return buildWarInfoEmbeds(league, weekStr, chunks);
+  const embeds = buildWarInfoEmbeds(league, weekStr, chunks);
+  const totalDescLen = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  if (chunks.length === 1 && totalDescLen > EMBED_DESCRIPTION_MAX) {
+    console.warn(
+      `getWarInfoEmbeds: ${league}-w${weekStr} needs multiple embeds but got 1 chunk (${totalDescLen} chars)`,
+    );
+  }
+  return embeds;
 }
 export { getWarInfoEmbeds };
 
@@ -1102,7 +1124,17 @@ async function updateWarInfo(client, league, weekStr) {
 
     const message = await warInfoChannel.messages.fetch(dbValueSch.message_id);
     if (message != null) {
-      await message.edit({ embeds });
+      try {
+        await message.edit({ embeds });
+        console.log(
+          `updateWarInfo: ${league}-w${weekStr} edited ${embeds.length} embed(s) [${summarizeWarInfoEmbeds(embeds)}]`,
+        );
+      } catch (error) {
+        console.error(
+          `updateWarInfo: failed to edit ${league}-w${weekStr} (${embeds.length} embed(s) [${summarizeWarInfoEmbeds(embeds)}]):`,
+          error.message,
+        );
+      }
     }
   }
 
