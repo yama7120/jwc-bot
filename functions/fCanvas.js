@@ -122,13 +122,42 @@ function getOrientation(imageDomWidth, imageDomHeight) {
 
 const JWC_LOGO_PATH = './image/JWC.png';
 
+async function fetchImageBuffer(url) {
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'image/*,*/*',
+      'User-Agent': 'Mozilla/5.0 (compatible; JWC-Bot/1.0)',
+    },
+    redirect: 'follow',
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  return Buffer.from(await response.arrayBuffer());
+}
+
 async function loadTeamLogo(logoUrl) {
   const url = typeof logoUrl === 'string' ? logoUrl.trim() : '';
   if (url) {
     try {
       return await Canvas.loadImage(url);
-    } catch (error) {
-      // logo_url 取得失敗時は JWC ロゴへフォールバック
+    } catch (directError) {
+      if (/^https?:\/\//i.test(url)) {
+        try {
+          const buffer = await fetchImageBuffer(url);
+          return await Canvas.loadImage(buffer);
+        } catch (fetchError) {
+          console.warn(
+            `[loadTeamLogo] failed to load ${url}:`,
+            fetchError?.message ?? fetchError,
+          );
+        }
+      } else {
+        console.warn(
+          `[loadTeamLogo] failed to load ${url}:`,
+          directError?.message ?? directError,
+        );
+      }
     }
   }
   return await Canvas.loadImage(JWC_LOGO_PATH);
