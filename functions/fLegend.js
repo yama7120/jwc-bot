@@ -1179,11 +1179,14 @@ function formatSignedInt(n) {
   return v >= 0 ? `+${v}` : `${v}`;
 }
 
-/** 連続通知時は最新1件だけ総トロフィーをタイトルに出す */
-function formatRankedBattleLogTitle(eventData) {
+/** 連続通知時は最新1件だけ。event の trophiesCurrent が API プロフィールと一致するときだけ総トロフィーを表示 */
+function formatRankedBattleLogTitle(eventData, scPlayer) {
   const titleEmote = eventData.diffTrophies >= 0 ? config.emote.up : config.emote.down;
   const diffPart = `${titleEmote}**${formatSignedInt(eventData.diffTrophies)}**`;
-  if (eventData.showTrophiesInTitle === false) {
+  if (
+    eventData.showTrophiesInTitle === false
+    || !shouldShowLegendRankingForEvent(scPlayer, eventData)
+  ) {
     return diffPart;
   }
   return `${diffPart} :trophy: **${eventData.trophiesCurrent}**`;
@@ -2092,7 +2095,7 @@ async function createLogLegendAttack(
   result = null,
 ) {
   const myEmbed = new EmbedBuilder();
-  myEmbed.setTitle(formatRankedBattleLogTitle(eventData));
+  myEmbed.setTitle(formatRankedBattleLogTitle(eventData, scPlayer));
   let footer = '';
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     footer =
@@ -2152,7 +2155,7 @@ async function createLogLegendDefense(
   result = null,
 ) {
   const myEmbed = new EmbedBuilder();
-  myEmbed.setTitle(formatRankedBattleLogTitle(eventData));
+  myEmbed.setTitle(formatRankedBattleLogTitle(eventData, scPlayer));
   let footer = '';
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     footer =
@@ -2214,7 +2217,7 @@ function findRankInLegends200List(players, tag) {
   return parsePositiveRank(hit?.rank);
 }
 
-/** 通知のトロフィーとプロフィールが一致するときだけ順位を出す（一括通知の中間戦闘で古い順位を出さない） */
+/** event の trophiesCurrent が scPlayer API のトロフィーと一致するときだけ順位・タイトル総トロフィーを出す */
 function shouldShowLegendRankingForEvent(scPlayer, eventData) {
   const profileTrophies = Number(scPlayer?.trophies);
   const eventTrophies = Number(eventData?.trophiesCurrent);
