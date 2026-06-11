@@ -575,9 +575,7 @@ async function accountList(interaction, client) {
   await cursor.close();
 
   let title = '**ACCOUNTS**';
-  let description = ['', '', '', '', '', '', '', '', '', ''];
-
-  let nAccPerPage = 10;
+  let embedDescriptions = [];
 
   let flagWar = 'true';
   let flagHero = 'false';
@@ -587,36 +585,32 @@ async function accountList(interaction, client) {
   let flagAccData = 'false';
 
   if (accountsAll.length == 0) {
-    description[0] += '*no linked account*\n';
-    description[0] += '\n';
-    description[0] += `* Please run </link_account_to_discord new:${config.command.link_account_to_discord.id}> to link your account.\n`;
+    embedDescriptions = [
+      '*no linked account*\n\n' +
+      `* Please run </link_account_to_discord new:${config.command.link_account_to_discord.id}> to link your account.\n`,
+    ];
   }
   else {
     let optionItem = await interaction.options.getString('item');
     if (optionItem == 'hero') {
       flagHero = 'true';
       flagWar = 'false';
-      nAccPerPage = 2;
     }
     else if (optionItem == 'super_troops') {
       flagSuperTroops = 'true';
       flagWar = 'false';
-      nAccPerPage = 20;
     }
     else if (optionItem == 'ranked_battles') {
       flagRankedBattles = 'true';
       flagWar = 'false';
-      nAccPerPage = 10;
     }
     else if (optionItem == 'trophies') {
       flagTrophies = 'true';
       flagWar = 'false';
-      nAccPerPage = 20;
     }
     else if (optionItem == 'acc_data') {
       flagAccData = 'true';
       flagWar = 'false';
-      nAccPerPage = 5;
     };
 
     let arrDescription = [];
@@ -667,34 +661,23 @@ async function accountList(interaction, client) {
       }
     }));
 
-    arrDescription.forEach(function(value, index) {
-      for (let i = 0; i < 10; i++) {
-        if (nAccPerPage * i <= index && index < nAccPerPage * (i + 1)) {
-          description[i] += value;
-          break;
-        };
-      };
-    });
+    embedDescriptions = functions.packEmbedDescriptionParts(arrDescription);
   };
 
-  if (description[0] == '') {
-    description[0] += '*no account*\n';
+  if (embedDescriptions.length == 0) {
+    embedDescriptions = ['*no account*\n'];
   };
 
   let embed = new EmbedBuilder()
     .setTitle(title)
-    .setDescription(description[0])
     .setColor(config.color.main)
     .setFooter({ text: config.footer, iconURL: config.urlImage.jwc })
     .setTimestamp()
   embed.setAuthor({ name: pilotDc.username, iconURL: avatarUrl });
-  await interaction.followUp({ embeds: [embed] });
 
-  for (let i = 1; i < 10; i++) {
-    if (description[i] != '') {
-      embed.setDescription(description[i])
-      await interaction.followUp({ embeds: [embed] });
-    };
+  for (const description of embedDescriptions) {
+    embed.setDescription(description);
+    await interaction.followUp({ embeds: [embed] });
   };
 };
 

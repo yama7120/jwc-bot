@@ -1020,6 +1020,33 @@ function hardSplitByNewline(text, maxLen) {
   return out;
 }
 
+function packEmbedDescriptionParts(parts) {
+  const filtered = parts.filter(Boolean);
+  const embeds = [];
+  let current = '';
+  for (const part of filtered) {
+    if (part.length > EMBED_DESCRIPTION_SAFE) {
+      if (current) {
+        embeds.push(current);
+        current = '';
+      }
+      embeds.push(...hardSplitByNewline(part, EMBED_DESCRIPTION_SAFE));
+      continue;
+    }
+    if (current && current.length + part.length > EMBED_DESCRIPTION_SAFE) {
+      embeds.push(current);
+      current = part;
+    } else {
+      current += part;
+    }
+  }
+  if (current) {
+    embeds.push(current);
+  }
+  return embeds;
+}
+export { packEmbedDescriptionParts };
+
 function partsToEmbedDescriptions(parts) {
   const filtered = parts.filter(Boolean);
   if (filtered.length === 0) {
