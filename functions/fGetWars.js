@@ -29,6 +29,27 @@ function setNegoChannelStatusPrefix(channelName, statusPrefix) {
   return `${statusPrefix}${stripNegoChannelStatusPrefix(channelName)}`;
 }
 
+function getRepDiscordId(rep) {
+  if (rep == null || rep === 'non-registered') {
+    return null;
+  }
+  return rep.id ?? null;
+}
+
+function formatRepMentions(rep1stId, rep2ndId, rep3rdId) {
+  let mentions = '';
+  if (rep1stId) {
+    mentions += `<@!${rep1stId}> `;
+  }
+  if (rep2ndId) {
+    mentions += `<@!${rep2ndId}> `;
+  }
+  if (rep3rdId) {
+    mentions += `<@!${rep3rdId}> `;
+  }
+  return mentions.trim();
+}
+
 /** post.js 初期値の空文字と未設定を同じ「未登録」扱いにする */
 function warResultIsUnset(mongoWar) {
   const result = mongoWar?.result;
@@ -533,19 +554,25 @@ async function sendEnd(client, mongoWar) {
     .collection('clans')
     .findOne({ clan_abbr: mongoWar.opponent_abbr });
 
+  if (!mongoClan || !mongoClanOpp) {
+    console.warn(
+      `[sendEnd] clan not found: ${mongoWar.clan_abbr} vs ${mongoWar.opponent_abbr}`,
+    );
+    return;
+  }
+
   let myContent = ``;
-  myContent += `<@!${mongoClan.rep_1st.id}> <@!${mongoClan.rep_2nd.id}>`;
-  if (mongoClan.rep_3rd != null && mongoClan.rep_3rd != 'non-registered') {
-    myContent += ` <@!${mongoClan.rep_3rd.id}>`;
-  }
+  myContent += formatRepMentions(
+    getRepDiscordId(mongoClan.rep_1st),
+    getRepDiscordId(mongoClan.rep_2nd),
+    getRepDiscordId(mongoClan.rep_3rd),
+  );
   myContent += `\n`;
-  myContent += `<@!${mongoClanOpp.rep_1st.id}> <@!${mongoClanOpp.rep_2nd.id}>`;
-  if (
-    mongoClanOpp.rep_3rd != null &&
-    mongoClanOpp.rep_3rd != 'non-registered'
-  ) {
-    myContent += ` <@!${mongoClanOpp.rep_3rd.id}>`;
-  }
+  myContent += formatRepMentions(
+    getRepDiscordId(mongoClanOpp.rep_1st),
+    getRepDiscordId(mongoClanOpp.rep_2nd),
+    getRepDiscordId(mongoClanOpp.rep_3rd),
+  );
   myContent += `\n`;
   myContent += `対戦お疲れ様でした！\n`;
   myContent += `両チーム、JWC 本部サーバーの結果報告チャンネルに対戦結果のスクリーンショットの投稿をお願いいたします。\n`;
