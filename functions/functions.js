@@ -251,6 +251,15 @@ function formatTeamAutocompleteName(clanAbbr, teamName) {
 }
 export { formatTeamAutocompleteName };
 
+/** Discord autocomplete label for war match (result.state を [inWar] 形式で付与). */
+function formatMatchAutocompleteName(war) {
+  const base = `${war.name_match || war.match} - ${war.clan_abbr.toUpperCase()} vs. ${war.opponent_abbr.toUpperCase()}`;
+  const state = war.result?.state;
+  if (state) return `${base} [${state}]`;
+  return base;
+}
+export { formatMatchAutocompleteName };
+
 /** チーム autocomplete 用の部分一致（大文字小文字を区別しない）. */
 function teamMatchesAutocompleteFilter(team, focusedValue) {
   const q = String(focusedValue ?? '').trim().toLowerCase();

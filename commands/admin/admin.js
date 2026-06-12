@@ -1015,6 +1015,7 @@ export default {
             clan_abbr: 1,
             opponent_abbr: 1,
             name_match: 1,
+            'result.state': 1,
           },
         };
         const sort = { match: 1 };
@@ -1029,7 +1030,7 @@ export default {
         if (mongoWars.length > 0) {
           await interaction.respond(
             mongoWars.map((war) => ({
-              name: `${war.name_match || war.match} - ${war.clan_abbr.toUpperCase()} vs. ${war.opponent_abbr.toUpperCase()}`,
+              name: functions.formatMatchAutocompleteName(war),
               value: war.match,
             })),
           );
