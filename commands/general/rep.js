@@ -1288,8 +1288,10 @@ async function editTeamInformation(client, interaction) {
         iLogoFile.url,
         client.token,
       );
-      listing.logo_url = iLogoFile.url;
       listing.logo_data = logoBuffer;
+      if (iUrlLogo) {
+        listing.logo_url = iUrlLogo;
+      }
     } catch (error) {
       await interaction.followUp({
         content: `:exclamation: 添付ロゴの取得に失敗しました: ${error?.message ?? error}`,

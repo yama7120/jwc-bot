@@ -152,6 +152,27 @@ function getImageSize(img) {
   };
 }
 
+function toLogoBuffer(logoData) {
+  if (logoData == null) return null;
+  if (Buffer.isBuffer(logoData)) return logoData;
+  if (logoData instanceof Uint8Array) return Buffer.from(logoData);
+  if (typeof logoData.value === 'function') {
+    const value = logoData.value(true);
+    if (Buffer.isBuffer(value)) return value;
+    if (value instanceof Uint8Array) return Buffer.from(value);
+  }
+  if (logoData.buffer instanceof Buffer) return logoData.buffer;
+  if (logoData.buffer instanceof ArrayBuffer) {
+    return Buffer.from(logoData.buffer);
+  }
+  return null;
+}
+
+function getLogoDataByteLength(logoData) {
+  const buffer = toLogoBuffer(logoData);
+  return buffer?.length ?? 0;
+}
+
 async function fetchImageBuffer(url) {
   const response = await fetch(url, {
     headers: {
@@ -209,12 +230,15 @@ export { fetchTeamLogoBuffer, fetchDiscordAttachmentBuffer };
 async function loadTeamLogo(logoUrl, label = '', logoData = null) {
   const raw = typeof logoUrl === 'string' ? logoUrl.trim() : '';
   const tag = label ? ` ${label}` : '';
+  const cachedLogo = toLogoBuffer(logoData);
 
-  if (logoData instanceof Buffer && logoData.length > 0) {
+  if (cachedLogo && cachedLogo.length > 0) {
     try {
-      const img = await Canvas.loadImage(logoData);
+      const img = await Canvas.loadImage(cachedLogo);
       const { w, h } = getImageSize(img);
-      console.log(`[loadTeamLogo${tag}] ok via logo_data (${w}x${h})`);
+      console.log(
+        `[loadTeamLogo${tag}] ok via logo_data (${w}x${h}, ${cachedLogo.length} bytes)`,
+      );
       return img;
     } catch (error) {
       console.warn(
@@ -222,6 +246,10 @@ async function loadTeamLogo(logoUrl, label = '', logoData = null) {
         error?.message ?? error,
       );
     }
+  } else if (logoData != null) {
+    console.warn(
+      `[loadTeamLogo${tag}] logo_data exists but is not a usable buffer`,
+    );
   }
 
   if (!raw) {
@@ -4905,10 +4933,10 @@ async function warProgress(mongoWar, teamLogos = {}) {
   console.log('[warProgress] team logos', {
     clan: mongoWar.clan_abbr,
     clanLogoUrl: teamLogos.clanLogoUrl ?? '(missing)',
-    clanHasLogoData: Boolean(teamLogos.clanLogoData?.length),
+    clanLogoDataBytes: getLogoDataByteLength(teamLogos.clanLogoData),
     opponent: mongoWar.opponent_abbr,
     opponentLogoUrl: teamLogos.opponentLogoUrl ?? '(missing)',
-    opponentHasLogoData: Boolean(teamLogos.opponentLogoData?.length),
+    opponentLogoDataBytes: getLogoDataByteLength(teamLogos.opponentLogoData),
   });
   ctx = await drawTeamLogo(
     ctx,
