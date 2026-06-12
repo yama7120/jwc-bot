@@ -3320,7 +3320,6 @@ async function editChannelEmote(interaction) {
     newChName = newChName.replace('🆕', '');
     newChName = newChName.replace('✅', '');
     newChName = newChName.replace('❌', '');
-    newChName = newChName.replace('⚠️', '');
     message = '*done*';
   } else if (iAction == 'new') {
     newChName = '🆕' + oldCh.name;
@@ -3366,8 +3365,7 @@ async function editChannelEmoteAll(interaction) {
         .replace('👤', '')
         .replace('🆕', '')
         .replace('✅', '')
-        .replace('❌', '')
-        .replace('⚠️', '');
+        .replace('❌', '');
       await channel.setName(newChName);
       description += newChName + '\n';
     }

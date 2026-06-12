@@ -29,6 +29,11 @@ function setNegoChannelStatusPrefix(channelName, statusPrefix) {
   return `${statusPrefix}${stripNegoChannelStatusPrefix(channelName)}`;
 }
 
+/** ⚠️ は warning_resolved 以外では触らない。終戦時のみ ⚔️ を名前全体から除去する */
+function removeNegoChannelSwordEmoji(channelName) {
+  return String(channelName ?? '').replaceAll('⚔️', '');
+}
+
 function getRepDiscordId(rep) {
   if (rep == null || rep === 'non-registered') {
     return null;
@@ -642,7 +647,8 @@ async function sendEnd(client, mongoWar) {
 
   try {
     const negoChannel = await client.channels.fetch(mongoWar.nego_channel);
-    const newChName = setNegoChannelStatusPrefix(negoChannel.name, '🏁');
+    const nameWithoutSword = removeNegoChannelSwordEmoji(negoChannel.name);
+    const newChName = setNegoChannelStatusPrefix(nameWithoutSword, '🏁');
     const guild = await client.guilds.fetch(config.guildId.jwcReps);
     await guild.channels.edit(mongoWar.nego_channel, { name: newChName });
   } catch (error) {
@@ -1870,17 +1876,28 @@ async function createResult(arrAttacks, arrPlayers, state, resultOld) {
   return [arrAttacksPlus, resultClan, resultOpponent];
 }
 
-async function createDescription(clientMongo, mongoWar, league, type) {
+async function createDescription(
+  clientMongo,
+  mongoWar,
+  league,
+  type,
+  mongoClanA = null,
+  mongoClanB = null,
+) {
   let clanAbbr = mongoWar.clan_abbr;
   let clanAbbrOpp = mongoWar.opponent_abbr;
-  let mongoClanA = await clientMongo
-    .db('jwc')
-    .collection('clans')
-    .findOne({ clan_abbr: clanAbbr });
-  let mongoClanB = await clientMongo
-    .db('jwc')
-    .collection('clans')
-    .findOne({ clan_abbr: clanAbbrOpp });
+  if (!mongoClanA) {
+    mongoClanA = await clientMongo
+      .db('jwc')
+      .collection('clans')
+      .findOne({ clan_abbr: clanAbbr });
+  }
+  if (!mongoClanB) {
+    mongoClanB = await clientMongo
+      .db('jwc')
+      .collection('clans')
+      .findOne({ clan_abbr: clanAbbrOpp });
+  }
 
   let stateStr = '';
   if (mongoWar.result != null) {
@@ -2122,14 +2139,26 @@ async function createDescriptionLive(clientMongo, mongoWar) {
 export { createDescriptionLive };
 
 async function sendWarStats(interaction, clientMongo, league, mongoWar) {
-  const mongoClanA = await clientMongo
-    .db('jwc')
-    .collection('clans')
-    .findOne({ clan_abbr: mongoWar.clan_abbr });
-  const mongoClanB = await clientMongo
-    .db('jwc')
-    .collection('clans')
-    .findOne({ clan_abbr: mongoWar.opponent_abbr });
+  const [mongoClanA, mongoClanB] = await Promise.all([
+    clientMongo
+      .db('jwc')
+      .collection('clans')
+      .findOne({ clan_abbr: mongoWar.clan_abbr }),
+    clientMongo
+      .db('jwc')
+      .collection('clans')
+      .findOne({ clan_abbr: mongoWar.opponent_abbr }),
+  ]);
+
+  const teamLogos = {
+    clanLogoUrl: mongoClanA?.logo_url,
+    clanLogoData: mongoClanA?.logo_data,
+    opponentLogoUrl: mongoClanB?.logo_url,
+    opponentLogoData: mongoClanB?.logo_data,
+  };
+
+  const canvasPromise =
+    mongoWar.result != '' ? fCanvas.warProgress(mongoWar, teamLogos) : null;
 
   const embed = await createEmbedWarStats(
     clientMongo,
@@ -2140,13 +2169,8 @@ async function sendWarStats(interaction, clientMongo, league, mongoWar) {
   );
   await interaction.followUp({ embeds: [embed] });
 
-  if (mongoWar.result != '') {
-    let attachment = await fCanvas.warProgress(mongoWar, {
-      clanLogoUrl: mongoClanA.logo_url,
-      clanLogoData: mongoClanA.logo_data,
-      opponentLogoUrl: mongoClanB.logo_url,
-      opponentLogoData: mongoClanB.logo_data,
-    });
+  if (canvasPromise) {
+    const attachment = await canvasPromise;
     await interaction.followUp({ files: [attachment] });
   }
 
@@ -2173,6 +2197,8 @@ async function createEmbedWarStats(
     mongoWar,
     league,
     'single',
+    mongoClanA,
+    mongoClanB,
   );
 
   let embed = new EmbedBuilder();
