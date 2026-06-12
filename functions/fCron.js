@@ -139,7 +139,6 @@ async function sendReminder(client, channelId, mongoWar, mongoClanA, mongoClanB)
     descriptionLines.push(
       ``,
       `[__**${clanTagA}**__](${clanLinkA}) ${mongoClanA.clan_name}`,
-      `:arrow_down:`,
       `[__**${clanTagB}**__](${clanLinkB}) ${mongoClanB.clan_name}`,
     );
   }
