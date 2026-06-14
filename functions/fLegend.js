@@ -301,7 +301,7 @@ function createRankedWeekEndReminderEmbed(mongoAcc, weekEndUnix) {
     leagueTier: mongoAcc.leagueTier,
   };
   const myEmbed = new EmbedBuilder();
-  myEmbed.setTitle('**⏰ TOURNAMENT ENDS IN 12 HOURS**');
+  myEmbed.setTitle('**⏰ TOURNAMENT ENDS IN 6 HOURS**');
   myEmbed.setFooter({
     text: `${getLeagueTierDisplayName(playerLike)}${leagueFooterCapSuffix(playerLike)}`,
     iconURL: getRankedBattleLogFooterIconUrl(playerLike),
@@ -313,16 +313,43 @@ function createRankedWeekEndReminderEmbed(mongoAcc, weekEndUnix) {
   let description = '';
   description += `<t:${nowUnix}:t> :trophy: **${mongoAcc.trophies ?? 0}** `;
   description += `${config.emote.thn[mongoAcc.townHallLevel]} **${mongoAcc.name}**\n\n`;
-  description += `The weekly tournament ends in **12 hours**.\n`;
+  description += `The weekly tournament ends in **6 hours**.\n`;
   description += `Reset: <t:${weekEndUnix}:F> (<t:${weekEndUnix}:R>)\n`;
   description += formatWeeklyTournamentSection(getLatestLegendWeek(mongoAcc), 'THIS WEEK');
   myEmbed.setDescription(description);
   return myEmbed;
 }
 
+/** Legend I 以外の週次トーナメント終了時刻: 月曜 14:00 JST (= 月曜 05:00 UTC) */
+function getRankedWeekTournamentEndUnix(nowMs = Date.now()) {
+  const jstMs = nowMs + 9 * 60 * 60 * 1000;
+  const jstDate = new Date(jstMs);
+  const jstDay = jstDate.getUTCDay(); // 0=Sun, 1=Mon, ...
+  const jstHour = jstDate.getUTCHours();
+
+  let daysUntilMonday = (1 - jstDay + 7) % 7;
+  if (jstDay === 1) {
+    daysUntilMonday = jstHour >= 14 ? 7 : 0;
+  }
+
+  const monday14JstUtcMs = Date.UTC(
+    jstDate.getUTCFullYear(),
+    jstDate.getUTCMonth(),
+    jstDate.getUTCDate() + daysUntilMonday,
+    5,
+    0,
+    0,
+    0,
+  );
+
+  return Math.floor(monday14JstUtcMs / 1000);
+}
+
 async function cronRankedWeekEndReminder(client) {
   const seasonData = functions.calculateSeasonValues(client, new Date(), 17);
-  const { startUnix, weekEndUnix } = getWeeklyTournamentUnixBounds(seasonData, Date.now());
+  const nowMs = Date.now();
+  const { startUnix } = getWeeklyTournamentUnixBounds(seasonData, nowMs);
+  const weekEndUnix = getRankedWeekTournamentEndUnix(nowMs);
   const weekId = weeklyTournamentIdFromStartUnix(startUnix);
   if (!weekId) {
     console.warn('[cronRankedWeekEndReminder] invalid weekId');

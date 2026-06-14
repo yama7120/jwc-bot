@@ -73,10 +73,10 @@ export default {
       console.log('END: fCron.cronUpdate2pmLegend1');
     });
 
-    // 日曜 14:00 JST (= 日曜 05:00 UTC) — ranked week end reminder (12h before Mon 02:00 JST reset)
+    // 月曜 08:00 JST (= 日曜 23:00 UTC) — ranked week end reminder (6h before Mon 14:00 JST reset)
     scheduleCronWithGuard(
       'rankedWeekEndReminder',
-      '00 00 05 * * 0',
+      '00 00 23 * * 0',
       async () => {
         await fLegend.cronRankedWeekEndReminder(client);
         console.log('END: fLegend.cronRankedWeekEndReminder');
