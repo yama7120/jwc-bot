@@ -1030,7 +1030,7 @@ export default {
       },
       {
         id: 923, name: 'Monolith Arrow', hero: 'Archer Queen', type: 'epic',
-        emote: ':question:'
+        emote: '<:eqMonolithArrow:1515694674931617833>'
       },
       {
         id: 2, name: 'Archer Puppet', hero: 'Archer Queen', type: 'common',
