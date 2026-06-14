@@ -475,25 +475,25 @@ export default {
 
     if (subcommandGroup == 'account') {
       if (subcommand == 'list') {
-        accountList(interaction, client);
+        await accountList(interaction, client);
       }
       else if (subcommand == 'battlelog') {
-        accountBattlelog(interaction, client);
+        await accountBattlelog(interaction, client);
       }
       else if (subcommand == 'own' || subcommand == 'single' || subcommand == 'any') {
-        accountSingle(interaction, client, subcommand);
+        await accountSingle(interaction, client, subcommand);
       };
     }
     else if (subcommandGroup == 'team') {
       if (subcommand == 'list') {
-        teamList(interaction, client);
+        await teamList(interaction, client);
       }
       else if (subcommand == 'single') {
-        teamSingle(interaction, client);
+        await teamSingle(interaction, client);
       };
     }
     else if (subcommand == 'league_standings') {
-      leagueStandings(interaction, client);
+      await leagueStandings(interaction, client);
     }
     else if (subcommandGroup == 'roster') {
       const iLeague = await interaction.options.getString('league');
@@ -517,19 +517,19 @@ export default {
       };
     }
     else if (subcommand == 'zap_quake') {
-      zapQuake(interaction, client);
+      await zapQuake(interaction, client);
     }
     else if (subcommand == 'fireball') {
-      fireball(interaction, client);
+      await fireball(interaction, client);
     }
     else if (subcommand == 'useful_links') {
-      usefulLinks(interaction, client);
+      await usefulLinks(interaction, client);
     }
     else if (subcommand == 'champions') {
       await champions(interaction, client);
     }
     else if (subcommand == 'streamer') {
-      streamer(interaction, client);
+      await streamer(interaction, client);
     }
     else if (subcommand == 'bot_status') {
       const embed = await functions.getEmbedStatusInfo(client.clientMongo);

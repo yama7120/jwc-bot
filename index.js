@@ -20,6 +20,7 @@ import * as fMongo from './functions/fMongo.js';
 import { loadWeekNowFromDb, getWeekNowSnapshot } from './functions/weekNow.js';
 import { fetchBattleLogItems } from './functions/fBattleLog.js';
 import { post } from './functions/post.js';
+import { handleGithubWebhook } from './functions/githubWebhook.js';
 import {
   Client as ClientCoc,
   PollingClient,
@@ -63,9 +64,29 @@ if (!TOKEN) {
 
 // --- Web server (healthcheck must respond before heavy init) ---
 const app = express();
-app.use(express.json());
 app.get('/', (_, res) => res.status(200).send('OK'));
 app.get('/ok', (_, res) => res.status(200).json({ ok: true, ts: Date.now() }));
+
+// GitHub Webhook（署名検証のため raw body が必要 — express.json より前に登録）
+app.post(
+  '/github/webhook',
+  express.raw({ type: 'application/json' }),
+  async (req, res) => {
+    try {
+      await handleGithubWebhook(req, res, client);
+    } catch (e) {
+      console.error('Error in /github/webhook:', e);
+      if (client?.isReady?.()) {
+        reportError(client, e, { source: 'http:github-webhook' }).catch(() => {});
+      }
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    }
+  },
+);
+
+app.use(express.json());
 
 // /post は POST のみ許可（他メソッドは 405）
 app.all('/post', (req, res, next) => {

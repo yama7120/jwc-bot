@@ -667,6 +667,13 @@ export default {
       cup: '1505723746890027138',
     },
     calendar: '1268907406746849323',
+    githubPush: '1515681273673420860',
+  },
+  github: {
+    channel: '1515681273673420860',
+    repo: 'jwc-bot',
+    branch: 'main',
+    secret: process.env.GITHUB_WEBHOOK_SECRET,
   },
   warlogch: {
     j1: '1097839675588223046',
