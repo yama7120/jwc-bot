@@ -776,6 +776,14 @@ export default {
             th16: 4, th17: 5, th18: 6,
           },
         },
+        {
+          id: 103, name: 'Angry Spell',
+          maxLevel: {
+            th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 0,
+            th11: 0, th12: 0, th13: 0, th14: 0, th15: 1, 
+            th16: 2, th17: 3, th18: 4,
+          },
+        },
       ],
     },
     pets: [
