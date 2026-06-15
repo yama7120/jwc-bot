@@ -444,8 +444,9 @@ async function getClanWarUpdateDB(client, mongoWar) {
         }
       }
     } else {
-      console.warn(
-        `[${league}-w${week}-m${match}] opponent tag mismatch: ${teamName} (${clanWar.clan?.tag} vs ${clanWar.opponent?.tag}) / ${teamNameOpp} (${clanWarOpp.clan?.tag} vs ${clanWarOpp.opponent?.tag})`,
+      // 登録済み対戦枠と CoC 上の現在のクラン戦が一致しない（他戦争中など）— 想定内でスキップ
+      console.log(
+        `[${league}-w${week}-m${match}] skip registered matchup (not current war): ${teamName} vs ${teamNameOpp}`,
       );
     }
   }

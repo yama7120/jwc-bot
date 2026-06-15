@@ -15,6 +15,10 @@ import appConfig from './config/config.js';
 import config_coc from './config/config_coc.js';
 import * as functions from './functions/functions.js';
 import { reportError } from './functions/errorReport.js';
+import {
+  isHeavyCronRunning,
+  getHeavyCronJob,
+} from './functions/heavyCronGuard.js';
 import * as fLegend from './functions/fLegend.js';
 import * as fMongo from './functions/fMongo.js';
 import { loadWeekNowFromDb, getWeekNowSnapshot } from './functions/weekNow.js';
@@ -683,6 +687,12 @@ class PollingSystem {
   // 5分ごとにアカウントを更新
   startAccountUpdateInterval() {
     const id = setInterval(() => {
+      if (isHeavyCronRunning()) {
+        console.log(
+          `⏭️ monitoring accounts update deferred (heavy cron: ${getHeavyCronJob()})`,
+        );
+        return;
+      }
       this.updateMonitoringAccounts().catch((e) =>
         reportError(this.client, e, { source: 'polling:updateAccounts' }),
       );

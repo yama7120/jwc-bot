@@ -11,11 +11,24 @@ import * as fGetWars from './fGetWars.js';
 import * as fRanking from './fRanking.js';
 import * as fCanvas from './fCanvas.js';
 import { reportError } from './errorReport.js';
+import {
+  isHeavyCronRunning,
+  getHeavyCronJob,
+  runHeavyCron,
+} from './heavyCronGuard.js';
 
 const WAR_UPDATE_CONCURRENCY = 4;
+const ACC_UPDATE_CONCURRENCY = 10;
+const ACC_UPDATE_BATCH_DELAY_MS = 1500;
 
 
 async function cronWarAutoUpdate(client, league) {
+  if (isHeavyCronRunning()) {
+    console.log(
+      `⏭️ cronWar skipped: ${league} (heavy cron: ${getHeavyCronJob()})`,
+    );
+    return;
+  }
   const unixTime = Math.floor(Date.now() / 1000);
   const status = config.cronWarStatus[league];
   const weekNow = getWeekNow(league);
@@ -208,35 +221,39 @@ async function sendReminder(client, channelId, mongoWar, mongoClanA, mongoClanB)
 }
 
 async function cronUpdate2am(client) {
-  const startedAt = Date.now();
-  const currentDate = new Date();
-  // cronUpdate2am は「JST 02:00 切替」側の処理（Legend I 以外）
-  const seasonData = functions.calculateSeasonValues(client, currentDate, 17);
-  const nAccs = await autoUpdateAcc(client);
+  return runHeavyCron('cronUpdate2am', async () => {
+    const startedAt = Date.now();
+    const currentDate = new Date();
+    // cronUpdate2am は「JST 02:00 切替」側の処理（Legend I 以外）
+    const seasonData = functions.calculateSeasonValues(client, currentDate, 17);
+    const nAccs = await autoUpdateAcc(client);
 
-  await fRanking.rankingMain(client.clientMongo);
-  console.log(`[cronUpdate2am] elapsed=${Date.now() - startedAt}ms accounts=${nAccs}`);
+    await fRanking.rankingMain(client.clientMongo);
+    console.log(`[cronUpdate2am] elapsed=${Date.now() - startedAt}ms accounts=${nAccs}`);
+  });
 }
 export { cronUpdate2am };
 
 async function cronUpdate2pmLegend1(client) {
-  const startedAt = Date.now();
-  const currentDate = new Date();
-  // Legend I の日境界: JST 14:00 (= UTC 05:00)
-  const seasonData = functions.calculateSeasonValues(client, currentDate, 5);
+  return runHeavyCron('cronUpdate2pmLegend1', async () => {
+    const startedAt = Date.now();
+    const currentDate = new Date();
+    // Legend I の日境界: JST 14:00 (= UTC 05:00)
+    const seasonData = functions.calculateSeasonValues(client, currentDate, 5);
 
-  // 14:00 に全体更新・ランキング更新も集約する
-  const nAccs = await autoUpdateAcc(client);
-  await fRanking.rankingMain(client.clientMongo);
+    // 14:00 に全体更新・ランキング更新も集約する
+    const nAccs = await autoUpdateAcc(client);
+    await fRanking.rankingMain(client.clientMongo);
 
-  // Legend I の日次サマリ（TOP10 / day start / result / day entry）
-  await sendLogUpdated(client, nAccs, seasonData);
-  await sendLogLegendDay(client, seasonData);
-  await sendLegendResult(client, seasonData);
-  await functions.updateStatusInfoLegend(client, seasonData);
-  await addNewDayToLegendAccounts(client, seasonData);
+    // Legend I の日次サマリ（TOP10 / day start / result / day entry）
+    await sendLogUpdated(client, nAccs, seasonData);
+    await sendLogLegendDay(client, seasonData);
+    await sendLegendResult(client, seasonData);
+    await functions.updateStatusInfoLegend(client, seasonData);
+    await addNewDayToLegendAccounts(client, seasonData);
 
-  console.log(`[cronUpdate2pmLegend1] elapsed=${Date.now() - startedAt}ms accounts=${nAccs}`);
+    console.log(`[cronUpdate2pmLegend1] elapsed=${Date.now() - startedAt}ms accounts=${nAccs}`);
+  });
 }
 export { cronUpdate2pmLegend1 };
 
@@ -354,8 +371,9 @@ async function autoUpdateAcc(client) {
   await cursor.close();
   console.log(`accountsAll: ${accountsAll.length}`);
 
-  const nAccPerLoop = 30;
+  const nAccPerLoop = ACC_UPDATE_CONCURRENCY;
   const nLoop = Math.ceil(accountsAll.length / nAccPerLoop);
+  const failedTags = [];
 
   for (let i = 0; i < nLoop; i++) {
     const min = nAccPerLoop * i;
@@ -363,11 +381,28 @@ async function autoUpdateAcc(client) {
     const accs = accountsAll.slice(min, max);
 
     await Promise.all(accs.map(acc =>
-      fMongo.updateAcc(client, acc.tag).catch(error => console.error(error))
+      fMongo.updateAcc(client, acc.tag).catch(error => {
+        console.error(`[autoUpdateAcc] ${acc.tag}:`, error?.message ?? error);
+        if (functions.isThrottleError(error)) {
+          failedTags.push(acc.tag);
+        }
+      })
     ));
 
     console.log(`${max} / ${accountsAll.length}`);
-    await functions.sleep(1000);
+    await functions.sleep(ACC_UPDATE_BATCH_DELAY_MS);
+  }
+
+  if (failedTags.length > 0) {
+    console.log(`[autoUpdateAcc] retrying ${failedTags.length} throttled accounts sequentially`);
+    for (const tag of failedTags) {
+      try {
+        await fMongo.updateAcc(client, tag);
+      } catch (error) {
+        console.error(`[autoUpdateAcc] retry failed ${tag}:`, error?.message ?? error);
+      }
+      await functions.sleep(ACC_UPDATE_BATCH_DELAY_MS);
+    }
   }
 
   return accountsAll.length;
@@ -391,7 +426,7 @@ async function autoUpdateAccLegend1(client) {
   await cursor.close();
   console.log(`accountsLegend1: ${accountsAll.length}`);
 
-  const nAccPerLoop = 30;
+  const nAccPerLoop = ACC_UPDATE_CONCURRENCY;
   const nLoop = Math.ceil(accountsAll.length / nAccPerLoop);
 
   for (let i = 0; i < nLoop; i++) {
@@ -404,7 +439,7 @@ async function autoUpdateAccLegend1(client) {
     ));
 
     console.log(`${max} / ${accountsAll.length}`);
-    await functions.sleep(1000);
+    await functions.sleep(ACC_UPDATE_BATCH_DELAY_MS);
   }
 
   return accountsAll.length;

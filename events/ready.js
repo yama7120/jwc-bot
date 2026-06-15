@@ -71,7 +71,7 @@ export default {
     scheduleCronWithGuard('cronUpdate2pmLegend1', '00 00 05 * * *', async () => {
       await fCron.cronUpdate2pmLegend1(client);
       console.log('END: fCron.cronUpdate2pmLegend1');
-    });
+    }, { timeoutMs: 45 * 60 * 1000 });
 
     // 月曜 08:00 JST (= 日曜 23:00 UTC) — ranked week end reminder (6h before Mon 14:00 JST reset)
     scheduleCronWithGuard(
