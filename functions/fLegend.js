@@ -238,7 +238,7 @@ function formatWeekHitRateSuffix(triples, total) {
     return '';
   }
   const pct = Math.round((n / t) * 100);
-  return ` · :boom: **${pct}%** (**${n}**/${t})`;
+  return ` · :boom: **${pct}%** (${n}/${t})`;
 }
 
 function getWeeklyTournamentLeagueLabel(week, playerLike = null) {
@@ -332,40 +332,6 @@ function createRankedWeekEndReminderEmbed(mongoAcc, weekEndUnix) {
   return myEmbed;
 }
 
-function createRankedWeekEndNoticeEmbed(mongoAcc, tournamentStartUnix) {
-  const playerLike = {
-    townHallLevel: mongoAcc.townHallLevel,
-    name: mongoAcc.name,
-    leagueTier: mongoAcc.leagueTier,
-  };
-  const myEmbed = new EmbedBuilder();
-  myEmbed.setTitle('**🏁 WEEKLY TOURNAMENT ENDED**');
-  myEmbed.setFooter({
-    text: `${getLeagueTierDisplayName(playerLike)}${leagueFooterCapSuffix(playerLike)}`,
-    iconURL: getRankedBattleLogFooterIconUrl(playerLike),
-  });
-  myEmbed.setColor(config.color.main);
-  myEmbed.setTimestamp();
-
-  const nowUnix = Math.floor(Date.now() / 1000);
-  const hoursUntilStart = Math.max(
-    1,
-    Math.round((tournamentStartUnix - nowUnix) / 3600),
-  );
-  let description = '';
-  description += `<t:${nowUnix}:t> :trophy: **${mongoAcc.trophies ?? 0}** `;
-  description += `${config.emote.thn[mongoAcc.townHallLevel]} **${mongoAcc.name}**\n\n`;
-  description += `The weekly tournament starts in **${hoursUntilStart} hours**.\n`;
-  description += `<t:${tournamentStartUnix}:F> (<t:${tournamentStartUnix}:R>)\n`;
-  description += formatWeeklyTournamentSection(
-    getLatestLegendWeek(mongoAcc),
-    'LAST TOURNAMENT',
-    playerLike,
-  );
-  myEmbed.setDescription(description);
-  return myEmbed;
-}
-
 const rankedWeekNotificationQuery = {
   status: true,
   'leagueTier.id': { $ne: config_coc.leagueId.legend },
@@ -412,26 +378,6 @@ function getRankedWeekTournamentEndUnix(nowMs = Date.now()) {
     jstDate.getUTCFullYear(),
     jstDate.getUTCMonth(),
     jstDate.getUTCDate() + daysUntilMonday,
-    5,
-    0,
-    0,
-    0,
-  );
-
-  return Math.floor(monday14JstUtcMs / 1000);
-}
-
-/** 今週の月曜 14:00 JST（cron 終了通知用。月曜 15:00 実行時は直前に終了した週） */
-function getThisMonday14JstEndUnix(nowMs = Date.now()) {
-  const jstMs = nowMs + 9 * 60 * 60 * 1000;
-  const jstDate = new Date(jstMs);
-  const jstDay = jstDate.getUTCDay(); // 0=Sun, 1=Mon, ...
-  const daysSinceMonday = (jstDay + 6) % 7;
-
-  const monday14JstUtcMs = Date.UTC(
-    jstDate.getUTCFullYear(),
-    jstDate.getUTCMonth(),
-    jstDate.getUTCDate() - daysSinceMonday,
     5,
     0,
     0,
@@ -508,67 +454,6 @@ async function cronRankedWeekEndReminder(client) {
 
   console.log(
     `[cronRankedWeekEndReminder] done sent=${sent} `
-    + `skippedAlreadySent=${skippedAlreadySent} skippedNoNotifications=${skippedNoNotifications}`,
-  );
-}
-
-async function cronRankedWeekEndNotice(client) {
-  const seasonData = functions.calculateSeasonValues(client, new Date(), 17);
-  const nowMs = Date.now();
-  const weekEndUnix = getThisMonday14JstEndUnix(nowMs);
-  const noticeId = rankedWeekEndReminderIdFromEndUnix(weekEndUnix);
-  const tournamentStartUnix = getNextTournamentStartUnixFromReset(weekEndUnix, seasonData);
-  if (!noticeId || !Number.isFinite(tournamentStartUnix) || tournamentStartUnix <= 0) {
-    console.warn('[cronRankedWeekEndNotice] invalid noticeId or tournamentStartUnix');
-    return;
-  }
-
-  const accounts = await fetchRankedWeekNotificationAccounts(client);
-
-  console.log(`[cronRankedWeekEndNotice] noticeId=${noticeId} accounts=${accounts.length}`);
-
-  let sent = 0;
-  let skippedNoNotifications = 0;
-  let skippedAlreadySent = 0;
-
-  for (const mongoAcc of accounts) {
-    if (!rankedAccountHasNotifications(mongoAcc.legend?.logSettings)) {
-      skippedNoNotifications += 1;
-      continue;
-    }
-    if (mongoAcc.legend?.lastWeekEndNoticeWeekId === noticeId) {
-      skippedAlreadySent += 1;
-      continue;
-    }
-
-    try {
-      await updateLegendWeeksFromEvents(
-        client,
-        mongoAcc,
-        mongoAcc.legend?.events,
-        seasonData,
-        mongoAcc.leagueTier,
-      );
-
-      const embed = createRankedWeekEndNoticeEmbed(mongoAcc, tournamentStartUnix);
-      await sendLogEmbedToUser(client, mongoAcc, embed);
-
-      await client.clientMongo
-        .db('jwc')
-        .collection('accounts')
-        .updateOne(
-          { tag: mongoAcc.tag },
-          { $set: { 'legend.lastWeekEndNoticeWeekId': noticeId } },
-        );
-      sent += 1;
-      await functions.sleep(200);
-    } catch (error) {
-      console.error(`[cronRankedWeekEndNotice] failed ${mongoAcc.tag}:`, error);
-    }
-  }
-
-  console.log(
-    `[cronRankedWeekEndNotice] done sent=${sent} `
     + `skippedAlreadySent=${skippedAlreadySent} skippedNoNotifications=${skippedNoNotifications}`,
   );
 }
@@ -2705,7 +2590,7 @@ async function autoUpdateLegendReset(client) {
 
   return;
 }
-export { autoUpdateLegendReset, cronRankedWeekEndReminder, cronRankedWeekEndNotice };
+export { autoUpdateLegendReset, cronRankedWeekEndReminder };
 
 async function updateLegendPreviousSeason(clientMongo, clientCoc, playerTag) {
   try {
