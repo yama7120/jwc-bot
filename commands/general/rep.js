@@ -394,14 +394,14 @@ export default {
       }
 
       const focusedValue = interaction.options.getFocused();
-      const mongoTeam = await client.clientMongo
-        .db('jwc')
-        .collection('clans')
-        .findOne({ rep_channel: interaction.channel.id });
+      const mongoTeam = await fMongo.findClanByRepChannel(
+        client.clientMongo,
+        interaction.channel.id,
+      );
 
       if (!mongoTeam) {
         await safeAutocompleteRespond(interaction, []);
-        await reportAutocompleteIssue(
+        void reportAutocompleteIssue(
           client,
           interaction,
           `rep team_information: no team found for channel ${interaction.channel.id}`,
@@ -412,7 +412,7 @@ export default {
       const abbr = mongoTeam.clan_abbr;
       if (abbr == null || String(abbr).trim() === '') {
         await safeAutocompleteRespond(interaction, []);
-        await reportAutocompleteIssue(
+        void reportAutocompleteIssue(
           client,
           interaction,
           `rep team_information: team missing clan_abbr for channel ${interaction.channel.id}`,
@@ -475,14 +475,14 @@ export default {
       }
     } else if (subcommandGroup == 'roster') {
       if (subcommand == 'delete') {
-        const mongoTeam = await client.clientMongo
-          .db('jwc')
-          .collection('clans')
-          .findOne({ rep_channel: interaction.channel.id });
+        const mongoTeam = await fMongo.findClanByRepChannel(
+          client.clientMongo,
+          interaction.channel.id,
+        );
 
         if (!mongoTeam) {
           await safeAutocompleteRespond(interaction, []);
-          await reportAutocompleteIssue(
+          void reportAutocompleteIssue(
             client,
             interaction,
             `rep roster delete: no team found for channel ${interaction.channel.id}`,
@@ -493,7 +493,7 @@ export default {
         const leagueM = config.leagueM[mongoTeam.league];
         if (!leagueM) {
           await safeAutocompleteRespond(interaction, []);
-          await reportAutocompleteIssue(
+          void reportAutocompleteIssue(
             client,
             interaction,
             `rep roster delete: invalid league "${mongoTeam.league}" for team ${mongoTeam.clan_abbr}`,

@@ -931,6 +931,56 @@ async function teamList(clientMongo, league) {
 }
 export { teamList };
 
+const REP_CHANNEL_LOOKUP_PROJECTION = {
+  _id: 0,
+  clan_abbr: 1,
+  team_name: 1,
+  league: 1,
+};
+
+/** @type {Map<string, { data: Record<string, unknown> | null, at: number }>} */
+const repChannelCache = new Map();
+const REP_CHANNEL_CACHE_MS = 120_000;
+
+async function ensureClansIndexes(clientMongo) {
+  const coll = clientMongo.db('jwc').collection('clans');
+  await coll.createIndex({ rep_channel: 1 }, { sparse: true, background: true });
+  await coll.createIndex({ clan_abbr: 1 }, { background: true });
+}
+
+async function findClanByRepChannel(clientMongo, channelId, options = {}) {
+  const { projection = REP_CHANNEL_LOOKUP_PROJECTION, useCache = true } = options;
+  if (!channelId) return null;
+
+  const cacheKey = String(channelId);
+  if (useCache) {
+    const cached = repChannelCache.get(cacheKey);
+    if (cached && Date.now() - cached.at < REP_CHANNEL_CACHE_MS) {
+      return cached.data;
+    }
+  }
+
+  const data = await clientMongo
+    .db('jwc')
+    .collection('clans')
+    .findOne({ rep_channel: cacheKey }, { projection });
+
+  if (useCache) {
+    repChannelCache.set(cacheKey, { data, at: Date.now() });
+  }
+  return data;
+}
+
+function invalidateRepChannelCache(channelId) {
+  if (channelId != null && channelId !== '') {
+    repChannelCache.delete(String(channelId));
+    return;
+  }
+  repChannelCache.clear();
+}
+
+export { ensureClansIndexes, findClanByRepChannel, invalidateRepChannelCache };
+
 async function jwcAttacks(clientMongo, league) {
   const name = 'jwcAttacks';
   let listing = {};

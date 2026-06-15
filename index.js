@@ -849,6 +849,10 @@ class PollingSystem {
     console.log('✅ connected to the Mongo database');
     client.clientMongo = clientMongo;
 
+    t = logStartupBegin('mongo indexes');
+    await fMongo.ensureClansIndexes(clientMongo);
+    logStartupPhase('mongo indexes', t);
+
     t = logStartupBegin('weekNow load');
     const weekNowLoaded = await loadWeekNowFromDb(clientMongo);
     logStartupPhase('weekNow load', t);
