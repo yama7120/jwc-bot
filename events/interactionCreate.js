@@ -3,6 +3,7 @@ import * as functions from '../functions/functions.js';
 import {
   interactionToContext,
   reportError,
+  runAutocompleteHandler,
   runWithErrorContext,
 } from '../functions/errorReport.js';
 import { Events, EmbedBuilder, MessageFlags } from 'discord.js';
@@ -16,6 +17,11 @@ export default {
         if (functions.maintenance(interaction)) return;
       } else {
         // 非チャットコマンド（autocomplete等）は応答せず遮断
+        if (interaction.isAutocomplete()) {
+          console.warn(
+            `[autocomplete] Blocked during maintenance: ${interaction.commandName}`,
+          );
+        }
         return;
       }
     }
@@ -27,14 +33,9 @@ export default {
     }
 
     if (interaction.isAutocomplete()) {
-      try {
-        await runWithErrorContext(interactionToContext(interaction), () =>
-          command.autocomplete(interaction, client),
-        );
-      } catch (error) {
-        if (error?.code === 10062) return; // Unknown interaction (timeout/expired)
-        await reportError(client, error, { source: 'autocomplete' });
-      }
+      await runAutocompleteHandler(client, interaction, (ia, c) =>
+        command.autocomplete(ia, c),
+      );
     } else if (interaction.isChatInputCommand()) {
       try {
         if (!interaction.deferred && !interaction.replied) {

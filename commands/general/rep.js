@@ -4,6 +4,10 @@ import * as functions from '../../functions/functions.js';
 import * as fMongo from '../../functions/fMongo.js';
 import * as fRoster from '../../functions/fRoster.js';
 import * as fCanvas from '../../functions/fCanvas.js';
+import {
+  reportAutocompleteIssue,
+  safeAutocompleteRespond,
+} from '../../functions/errorReport.js';
 
 const nameCommand = 'rep';
 let data = new SlashCommandBuilder()
@@ -303,8 +307,8 @@ export default {
   data: data,
 
   async autocomplete(interaction, client) {
-    const subcommandGroup = interaction.options.getSubcommandGroup();
-    const subcommand = interaction.options.getSubcommand();
+    const subcommandGroup = interaction.options.getSubcommandGroup(false);
+    const subcommand = interaction.options.getSubcommand(false);
 
     if (subcommand == 'deal_war') {
       let focusedOption = interaction.options.getFocused(true);
@@ -382,10 +386,10 @@ export default {
           choices.map((choice) => ({ name: choice, value: choice })),
         );
       }
-    } else if (subcommand == 'team_information') {
+    } else if (subcommandGroup === 'edit' && subcommand === 'team_information') {
       const focusedOption = interaction.options.getFocused(true);
       if (focusedOption.name !== 'team') {
-        await interaction.respond([]);
+        await safeAutocompleteRespond(interaction, []);
         return;
       }
 
@@ -396,28 +400,32 @@ export default {
         .findOne({ rep_channel: interaction.channel.id });
 
       if (!mongoTeam) {
-        await interaction.respond([]);
-        console.error(
-          `rep autocomplete: no team found for channel ${interaction.channel.id}`,
+        await safeAutocompleteRespond(interaction, []);
+        await reportAutocompleteIssue(
+          client,
+          interaction,
+          `rep team_information: no team found for channel ${interaction.channel.id}`,
         );
         return;
       }
 
       const abbr = mongoTeam.clan_abbr;
       if (abbr == null || String(abbr).trim() === '') {
-        await interaction.respond([]);
-        console.error(
-          `rep autocomplete: team missing clan_abbr for channel ${interaction.channel.id}`,
+        await safeAutocompleteRespond(interaction, []);
+        await reportAutocompleteIssue(
+          client,
+          interaction,
+          `rep team_information: team missing clan_abbr for channel ${interaction.channel.id}`,
         );
         return;
       }
 
       if (!functions.teamMatchesAutocompleteFilter(mongoTeam, focusedValue)) {
-        await interaction.respond([]);
+        await safeAutocompleteRespond(interaction, []);
         return;
       }
 
-      await interaction.respond([
+      await safeAutocompleteRespond(interaction, [
         {
           name: functions.formatTeamAutocompleteName(
             mongoTeam.clan_abbr,
@@ -473,18 +481,22 @@ export default {
           .findOne({ rep_channel: interaction.channel.id });
 
         if (!mongoTeam) {
-          await interaction.respond([]);
-          console.error(
-            `rep autocomplete: no team found for channel ${interaction.channel.id}`,
+          await safeAutocompleteRespond(interaction, []);
+          await reportAutocompleteIssue(
+            client,
+            interaction,
+            `rep roster delete: no team found for channel ${interaction.channel.id}`,
           );
           return;
         }
 
         const leagueM = config.leagueM[mongoTeam.league];
         if (!leagueM) {
-          await interaction.respond([]);
-          console.error(
-            `rep autocomplete: invalid league "${mongoTeam.league}" for team ${mongoTeam.clan_abbr}`,
+          await safeAutocompleteRespond(interaction, []);
+          await reportAutocompleteIssue(
+            client,
+            interaction,
+            `rep roster delete: invalid league "${mongoTeam.league}" for team ${mongoTeam.clan_abbr}`,
           );
           return;
         }

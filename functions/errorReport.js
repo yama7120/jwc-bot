@@ -4,6 +4,8 @@ import config from '../config/config.js';
 
 const contextStorage = new AsyncLocalStorage();
 
+const AUTOCOMPLETE_EXPIRED_CODES = new Set([10062, 40060]);
+
 /** @returns {Record<string, unknown>} */
 export function getErrorContext() {
   return contextStorage.getStore() ?? {};
@@ -219,4 +221,102 @@ function ctxSourceFromContext(ctx) {
   if (ctx.type === 'command') return 'command';
   if (ctx.type === 'autocomplete') return 'autocomplete';
   return null;
+}
+
+/**
+ * Respond to autocomplete; return false when the interaction already expired.
+ * @param {import('discord.js').AutocompleteInteraction} interaction
+ * @param {import('discord.js').ApplicationCommandOptionChoiceData[]} choices
+ */
+export async function safeAutocompleteRespond(interaction, choices) {
+  try {
+    await interaction.respond(choices);
+    return true;
+  } catch (error) {
+    if (AUTOCOMPLETE_EXPIRED_CODES.has(error?.code)) {
+      const ctx = interactionToContext(interaction);
+      console.warn(
+        `[autocomplete] Interaction expired before respond (code ${error.code}): ${interaction.commandName}${ctx.subcommand ? ` / ${ctx.subcommand}` : ''}`,
+      );
+      return false;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Log an autocomplete data/flow issue to console and the error channel.
+ * @param {import('discord.js').Client} client
+ * @param {import('discord.js').AutocompleteInteraction} interaction
+ * @param {string} message
+ * @param {Record<string, unknown>} [extra]
+ */
+export async function reportAutocompleteIssue(
+  client,
+  interaction,
+  message,
+  extra = {},
+) {
+  const ctx = interactionToContext(interaction);
+  console.error(`[autocomplete] ${message}`, ctx);
+  await reportError(client, new Error(message), {
+    source: 'autocomplete',
+    extra,
+    context: ctx,
+  });
+}
+
+/**
+ * Run an autocomplete handler and detect silent failures (no respond / timeout).
+ * @param {import('discord.js').Client} client
+ * @param {import('discord.js').AutocompleteInteraction} interaction
+ * @param {(interaction: import('discord.js').AutocompleteInteraction, client: import('discord.js').Client) => Promise<void>} handler
+ */
+export async function runAutocompleteHandler(client, interaction, handler) {
+  let responded = false;
+  const originalRespond = interaction.respond.bind(interaction);
+  interaction.respond = async (choices) => {
+    responded = true;
+    return originalRespond(choices);
+  };
+
+  const ctx = interactionToContext(interaction);
+
+  try {
+    await runWithErrorContext(ctx, () => handler(interaction, client));
+
+    if (!responded) {
+      const message = `Autocomplete handler returned without respond: ${interaction.commandName}${ctx.subcommand ? ` / ${ctx.subcommand}` : ''}`;
+      console.error(message, ctx);
+      await reportError(client, new Error(message), {
+        source: 'autocomplete',
+        context: ctx,
+      });
+      try {
+        await originalRespond([]);
+      } catch (fallbackError) {
+        if (!AUTOCOMPLETE_EXPIRED_CODES.has(fallbackError?.code)) {
+          await reportError(client, fallbackError, {
+            source: 'autocomplete',
+            extra: { note: 'fallback respond([]) failed' },
+            context: ctx,
+          });
+        } else {
+          console.warn(
+            `[autocomplete] Timed out before fallback respond (code ${fallbackError.code}): ${interaction.commandName}${ctx.subcommand ? ` / ${ctx.subcommand}` : ''}`,
+            ctx,
+          );
+        }
+      }
+    }
+  } catch (error) {
+    if (AUTOCOMPLETE_EXPIRED_CODES.has(error?.code)) {
+      console.warn(
+        `[autocomplete] Timed out (code ${error.code}): ${interaction.commandName}${ctx.subcommand ? ` / ${ctx.subcommand}` : ''}`,
+        ctx,
+      );
+      return;
+    }
+    await reportError(client, error, { source: 'autocomplete' });
+  }
 }
