@@ -1520,7 +1520,7 @@ async function getEmbedStatusInfoLegend(client, seasonData) {
   description += `Day ${seasonData.daysNow}\n`;
 
   description += '* **Days Remaining**\n';
-  description += `${seasonData.daysEnd} ${seasonData.daysEnd === 1 ? 'day' : 'days'}\n`;
+  description += `${formatLegendDaysRemaining(seasonData.daysEnd)}\n`;
 
   description += '\n';
   description += '* **Last Update**\n';
@@ -2319,7 +2319,7 @@ function calculateSeasonValues(client, now = new Date(), opts = undefined) {
   );
   const daysEnd = Math.max(
     0,
-    Math.floor((seasonEndDayStartMs - nowDayStartMs) / MS) + 1,
+    Math.floor((seasonEndDayStartMs - nowDayStartMs) / MS),
   );
 
   return {
@@ -2334,3 +2334,23 @@ function calculateSeasonValues(client, now = new Date(), opts = undefined) {
 }
 export { calculateSeasonValues };
 export { snapToRankedBattleDayStartMs };
+
+/**
+ * Legend 残り日数の表示テキスト。
+ * @param {'plain'|'toGo'|'footer'} style
+ */
+function formatLegendDaysRemaining(daysEnd, style = 'plain') {
+  const n = Number(daysEnd);
+  if (!Number.isFinite(n) || n < 0) {
+    return style === 'footer' ? 'N/A' : 'N/A';
+  }
+  if (n === 1) {
+    if (style === 'toGo') return '24 hours to go';
+    if (style === 'footer') return '24 HOURS TO GO';
+    return '24 hours';
+  }
+  if (style === 'toGo') return `${n} days to go`;
+  if (style === 'footer') return `${n} DAYS TO GO`;
+  return n === 0 ? '0 days' : `${n} days`;
+}
+export { formatLegendDaysRemaining };

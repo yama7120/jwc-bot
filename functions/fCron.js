@@ -445,6 +445,60 @@ async function autoUpdateAccLegend1(client) {
   return accountsAll.length;
 }
 
+function getPreviousSeasonId(seasonId) {
+  const [y, m] = String(seasonId).split('-').map(Number);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) {
+    return null;
+  }
+  const d = new Date(Date.UTC(y, m - 2, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+function inferPreviousSeasonLastDay(currentSeasonId, accountsAll) {
+  const prevSeason = getPreviousSeasonId(currentSeasonId);
+  if (!prevSeason) {
+    return { targetSeason: currentSeasonId, targetDay: 0 };
+  }
+
+  let maxDay = 0;
+  for (const acc of accountsAll) {
+    for (const d of acc.legend?.days ?? []) {
+      const day = Number(d?.day);
+      if (d?.season === prevSeason && Number.isFinite(day) && day > maxDay) {
+        maxDay = day;
+      }
+    }
+  }
+  return { targetSeason: prevSeason, targetDay: maxDay };
+}
+
+/**
+ * TOP10 表示対象の season/day を決める。
+ * 新シーズン初日 (daysNow === 1) は前シーズン最終日（sendLegendResult と同様）。
+ */
+function resolveLegendTop10Target(seasonData, rankedBattlesConfig, accountsAll) {
+  if (seasonData.daysNow > 1) {
+    return {
+      targetSeason: seasonData.seasonId,
+      targetDay: seasonData.daysNow - 1,
+    };
+  }
+
+  if (
+    rankedBattlesConfig?.seasonId
+    && rankedBattlesConfig.seasonId !== seasonData.seasonId
+    && Number.isFinite(rankedBattlesConfig.currentDay)
+    && rankedBattlesConfig.currentDay > 0
+  ) {
+    return {
+      targetSeason: rankedBattlesConfig.seasonId,
+      targetDay: rankedBattlesConfig.currentDay,
+    };
+  }
+
+  return inferPreviousSeasonLastDay(seasonData.seasonId, accountsAll);
+}
+
 function findLegendDayStats(acc, targetSeason, targetDay) {
   const daysArr = Array.isArray(acc.legend?.days) ? acc.legend.days : [];
   return (
@@ -469,10 +523,7 @@ function pickTop10ByLegendDayTrophies(accountsAll, targetSeason, targetDay) {
 }
 
 async function sendLogUpdated(client, nAccs, seasonData) {
-  // cron は JST 14:00 起動。表示・ソート対象は終了した日 (daysNow - 1) の日次サマリ
-  const targetSeason = seasonData.seasonId;
-  const targetDay = seasonData.daysNow - 1;
-
+  // cron は JST 14:00 起動。表示・ソート対象は終了した日の日次サマリ
   const query = { status: true, 'legend.days': { $ne: null } };
   const options = {
     projection: {
@@ -489,6 +540,17 @@ async function sendLogUpdated(client, nAccs, seasonData) {
   const cursor = client.clientMongo.db('jwc').collection('accounts').find(query, options);
   const accountsAll = await cursor.toArray();
   await cursor.close();
+
+  const rankedBattlesConfig = await client.clientMongo
+    .db('jwc')
+    .collection('config')
+    .findOne({ name: 'rankedBattlesSeason' });
+
+  const { targetSeason, targetDay } = resolveLegendTop10Target(
+    seasonData,
+    rankedBattlesConfig,
+    accountsAll,
+  );
 
   const top10 = pickTop10ByLegendDayTrophies(accountsAll, targetSeason, targetDay);
   const legends200 = await client.clientMongo
@@ -667,7 +729,7 @@ async function sendLogLegendDay(client, seasonData) {
   const descriptionLines = [
     `<t:${Math.round(Date.now() / 1000)}:t> (<t:${Math.round(Date.now() / 1000)}:R>)`,
     `*Day ${seasonData.daysNow} has started.*`,
-    `*${seasonData.daysEnd} days to go.*`
+    `*${functions.formatLegendDaysRemaining(seasonData.daysEnd, 'toGo')}*`
   ];
 
   const description = descriptionLines.join('\n');
@@ -822,7 +884,7 @@ async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo 
   }
   embed.setDescription(description);
   embed.setColor(config.color.legend);
-  const footer = `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
+  const footer = `DAY ${seasonData.daysNow} | ${functions.formatLegendDaysRemaining(seasonData.daysEnd, 'footer')} | SEASON ${seasonData.seasonId}`;
   embed.setFooter({ text: footer, iconURL: config.urlImage.legend });
 
   const attachmentHistory = await fCanvas.legendHistory(mongoAcc);
@@ -975,7 +1037,7 @@ function createLegendSummaryEmbed(items, seasonData) {
   const title = `${config.emote.legend} SUMMARY OF ${seasonData.daysNow == 1 ? 'THE LAST DAY' : `DAY ${seasonData.daysNow - 1}`}`;
   embed.setTitle(title);
   embed.setColor(config.color.legend);
-  const footer = `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
+  const footer = `DAY ${seasonData.daysNow} | ${functions.formatLegendDaysRemaining(seasonData.daysEnd, 'footer')} | SEASON ${seasonData.seasonId}`;
   embed.setFooter({ text: footer, iconURL: config.urlImage.legend });
 
   const lines = [];

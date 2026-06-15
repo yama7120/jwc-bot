@@ -535,7 +535,7 @@ async function createLogLegendNewSeason(
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     footer =
       `${getLeagueTierDisplayName(scPlayer)}${leagueFooterCapSuffix(scPlayer)} | ` +
-      `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
+      `DAY ${seasonData.daysNow} | ${functions.formatLegendDaysRemaining(seasonData.daysEnd, 'footer')} | SEASON ${seasonData.seasonId}`;
   } else {
     footer = `${getLeagueTierDisplayName(scPlayer)}${leagueFooterCapSuffix(scPlayer)}`;
   }
@@ -2158,7 +2158,7 @@ async function createLogLegendAttack(
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     footer =
       `${getLeagueTierDisplayName(scPlayer)}${leagueFooterCapSuffix(scPlayer)} | ` +
-      `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO`;
+      `DAY ${seasonData.daysNow} | ${functions.formatLegendDaysRemaining(seasonData.daysEnd, 'footer')}`;
   } else {
     footer = `${getLeagueTierDisplayName(scPlayer)}${leagueFooterCapSuffix(scPlayer)}`;
   }
@@ -2218,7 +2218,7 @@ async function createLogLegendDefense(
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     footer =
       `${getLeagueTierDisplayName(scPlayer)}${leagueFooterCapSuffix(scPlayer)} | ` +
-      `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO`;
+      `DAY ${seasonData.daysNow} | ${functions.formatLegendDaysRemaining(seasonData.daysEnd, 'footer')}`;
   } else {
     footer = `${getLeagueTierDisplayName(scPlayer)}${leagueFooterCapSuffix(scPlayer)}`;
   }
@@ -2420,7 +2420,7 @@ async function createLogLegendBoth(scPlayer, diffTrophies, seasonData) {
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     footer =
       `${getLeagueTierDisplayName(scPlayer)}${leagueFooterCapSuffix(scPlayer)} | ` +
-      `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
+      `DAY ${seasonData.daysNow} | ${functions.formatLegendDaysRemaining(seasonData.daysEnd, 'footer')} | SEASON ${seasonData.seasonId}`;
   } else {
     footer = `${getLeagueTierDisplayName(scPlayer)}${leagueFooterCapSuffix(scPlayer)}`;
   }
@@ -2447,7 +2447,7 @@ async function createLogLegendWarning(scPlayer, diffTrophies, seasonData) {
   if (scPlayer.leagueTier.id == config_coc.leagueId.legend) {
     footer =
       `${getLeagueTierDisplayName(scPlayer)}${leagueFooterCapSuffix(scPlayer)} | ` +
-      `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
+      `DAY ${seasonData.daysNow} | ${functions.formatLegendDaysRemaining(seasonData.daysEnd, 'footer')} | SEASON ${seasonData.seasonId}`;
   } else {
     footer = `${getLeagueTierDisplayName(scPlayer)}${leagueFooterCapSuffix(scPlayer)}`;
   }
@@ -2521,7 +2521,7 @@ function createDescriptionNonLegend(diffTrophies, destructionPercentage = null) 
 /*async function createLogLegendNonLegend(scPlayer, diffTrophies, seasonData) {
   const myEmbed = new EmbedBuilder();
   myEmbed.setTitle(`**RANKED BATTLES LOG**`);
-  const footer = `DAY ${seasonData.daysNow} | ${seasonData.daysEnd} DAYS TO GO | SEASON ${seasonData.seasonId}`;
+  const footer = `DAY ${seasonData.daysNow} | ${functions.formatLegendDaysRemaining(seasonData.daysEnd, 'footer')} | SEASON ${seasonData.seasonId}`;
   myEmbed.setFooter({ text: footer, iconURL: scPlayer.leagueTier.icon.url });
   myEmbed.setColor(config.color.legend);
   myEmbed.setTimestamp();
