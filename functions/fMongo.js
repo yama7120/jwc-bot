@@ -668,6 +668,7 @@ async function standings(clientMongo, league) {
       division: 1,
       score: 1,
       logo_url: 1,
+      logo_data: 1,
     },
   };
   let sort = {};
@@ -748,6 +749,7 @@ async function standings(clientMongo, league) {
     teamStats.clan_abbr = team.clan_abbr;
     teamStats.team_name = team.team_name;
     teamStats.logo_url = team.logo_url;
+    teamStats.logo_data = team.logo_data;
     teamStats.division = team.division;
     teamStatsAbove = teamStats;
     arrStandings.push(teamStats);
@@ -778,6 +780,7 @@ async function standingsGroupStage(clientMongo, league, div1, div2) {
       division: 1,
       score: 1,
       logo_url: 1,
+      logo_data: 1,
     },
   };
   let sort = {};
@@ -833,6 +836,7 @@ async function standingsGroupStage(clientMongo, league, div1, div2) {
     teamStats.clan_abbr = team.clan_abbr;
     teamStats.team_name = team.team_name;
     teamStats.logo_url = team.logo_url;
+    teamStats.logo_data = team.logo_data;
     teamStats.division = team.division;
     teamStatsAbove = teamStats;
     arrStandings.push(teamStats);

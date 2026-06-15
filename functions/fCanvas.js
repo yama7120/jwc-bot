@@ -403,6 +403,8 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
     lengthLogo,
     posLogo.x,
     posLogo.y,
+    mongoTeam.clan_abbr,
+    mongoTeam.logo_data,
   );
 
   // team name
@@ -1606,7 +1608,15 @@ async function standings(league, standings, leagueStats) {
       const lengthLogo = spacing * 0.5;
       let dxA = posH.logo - lengthLogo / 2;
       let dyA = pos0 - lengthLogo * 0.5;
-      ctx = await drawTeamLogo(ctx, team.logo_url, lengthLogo, dxA, dyA);
+      ctx = await drawTeamLogo(
+        ctx,
+        team.logo_url,
+        lengthLogo,
+        dxA,
+        dyA,
+        team.clan_abbr,
+        team.logo_data,
+      );
 
       text = team.clan_abbr.toUpperCase();
       setFont(ctx, config.canvasFontSize.small);
@@ -2480,7 +2490,15 @@ async function standingsLandscape(league, standings, leagueStats, strRound) {
       const lengthLogo = spacing[posSide[index]] * 0.5;
       let dxA = posH.logo[posSide[index]] - lengthLogo / 2;
       let dyA = pos0[index] - lengthLogo * 0.5;
-      ctx = await drawTeamLogo(ctx, team.logo_url, lengthLogo, dxA, dyA);
+      ctx = await drawTeamLogo(
+        ctx,
+        team.logo_url,
+        lengthLogo,
+        dxA,
+        dyA,
+        team.clan_abbr,
+        team.logo_data,
+      );
 
       // team abbr
       text = team.clan_abbr.toUpperCase();
