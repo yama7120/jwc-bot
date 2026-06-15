@@ -345,14 +345,24 @@ function getRankedWeekTournamentEndUnix(nowMs = Date.now()) {
   return Math.floor(monday14JstUtcMs / 1000);
 }
 
+/** 週次終了リマインダーの重複防止 ID（月曜 14:00 JST の日付） */
+function rankedWeekEndReminderIdFromEndUnix(weekEndUnix) {
+  if (!Number.isFinite(weekEndUnix) || weekEndUnix <= 0) return null;
+  const jstMs = weekEndUnix * 1000 + 9 * 60 * 60 * 1000;
+  const jstDate = new Date(jstMs);
+  const y = jstDate.getUTCFullYear();
+  const m = String(jstDate.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(jstDate.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 async function cronRankedWeekEndReminder(client) {
   const seasonData = functions.calculateSeasonValues(client, new Date(), 17);
   const nowMs = Date.now();
-  const { startUnix } = getWeeklyTournamentUnixBounds(seasonData, nowMs);
   const weekEndUnix = getRankedWeekTournamentEndUnix(nowMs);
-  const weekId = weeklyTournamentIdFromStartUnix(startUnix);
-  if (!weekId) {
-    console.warn('[cronRankedWeekEndReminder] invalid weekId');
+  const reminderId = rankedWeekEndReminderIdFromEndUnix(weekEndUnix);
+  if (!reminderId) {
+    console.warn('[cronRankedWeekEndReminder] invalid reminderId');
     return;
   }
 
@@ -383,18 +393,19 @@ async function cronRankedWeekEndReminder(client) {
     .find(query, { projection })
     .toArray();
 
-  console.log(`[cronRankedWeekEndReminder] weekId=${weekId} accounts=${accounts.length}`);
+  console.log(`[cronRankedWeekEndReminder] reminderId=${reminderId} accounts=${accounts.length}`);
 
   let sent = 0;
-  let skipped = 0;
+  let skippedNoNotifications = 0;
+  let skippedAlreadySent = 0;
 
   for (const mongoAcc of accounts) {
     if (!rankedAccountHasNotifications(mongoAcc.legend?.logSettings)) {
-      skipped += 1;
+      skippedNoNotifications += 1;
       continue;
     }
-    if (mongoAcc.legend?.lastWeekEndReminderWeekId === weekId) {
-      skipped += 1;
+    if (mongoAcc.legend?.lastWeekEndReminderWeekId === reminderId) {
+      skippedAlreadySent += 1;
       continue;
     }
 
@@ -415,7 +426,7 @@ async function cronRankedWeekEndReminder(client) {
         .collection('accounts')
         .updateOne(
           { tag: mongoAcc.tag },
-          { $set: { 'legend.lastWeekEndReminderWeekId': weekId } },
+          { $set: { 'legend.lastWeekEndReminderWeekId': reminderId } },
         );
       sent += 1;
       await functions.sleep(200);
@@ -424,7 +435,10 @@ async function cronRankedWeekEndReminder(client) {
     }
   }
 
-  console.log(`[cronRankedWeekEndReminder] done sent=${sent} skipped=${skipped}`);
+  console.log(
+    `[cronRankedWeekEndReminder] done sent=${sent} `
+    + `skippedAlreadySent=${skippedAlreadySent} skippedNoNotifications=${skippedNoNotifications}`,
+  );
 }
 
 function getNextTournamentStartUnixFromReset(resetUnixSeconds, seasonData) {
