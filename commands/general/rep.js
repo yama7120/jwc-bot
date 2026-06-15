@@ -119,13 +119,8 @@ let data = new SlashCommandBuilder()
                 'チーム名（未記入の場合はクラン名がチーム名になります）',
               ),
           )
-          .addStringOption((option) =>
-            option.setName('logo_url').setDescription('クランロゴのURL'),
-          )
           .addAttachmentOption((option) =>
-            option
-              .setName('logo_file')
-              .setDescription('クランロゴ画像（Canvas用・URLより確実）'),
+            option.setName('logo_file').setDescription('クランロゴ画像'),
           )
           .addUserOption((option) =>
             option.setName('rep_1st').setDescription('代表者1'),
@@ -1162,7 +1157,6 @@ async function editTeamInformation(client, interaction) {
   const iTeamName = await interaction.options.getString('team_name');
   //let league = interaction.options.getString('league');
   const iDivision = await interaction.options.getString('division');
-  const iUrlLogo = await interaction.options.getString('logo_url');
   const iLogoFile = interaction.options.getAttachment('logo_file');
   const iRep1st = await interaction.options.getUser('rep_1st');
   const iRep2nd = await interaction.options.getUser('rep_2nd');
@@ -1289,28 +1283,13 @@ async function editTeamInformation(client, interaction) {
         client.token,
       );
       listing.logo_data = logoBuffer;
-      if (iUrlLogo) {
-        listing.logo_url = iUrlLogo;
-      }
+      listing.logo_url = iLogoFile.url;
     } catch (error) {
       await interaction.followUp({
         content: `:exclamation: 添付ロゴの取得に失敗しました: ${error?.message ?? error}`,
         ephemeral: true,
       });
       return;
-    }
-  } else if (iUrlLogo) {
-    listing.logo_url = iUrlLogo;
-    try {
-      const logoBuffer = await fCanvas.fetchTeamLogoBuffer(iUrlLogo);
-      if (logoBuffer) {
-        listing.logo_data = logoBuffer;
-      }
-    } catch (error) {
-      await interaction.followUp({
-        content: `:warning: logo_url は保存しましたが、画像の取得に失敗しました（Canvas 用）。Discord 上では表示されても Bot から直接取得できない URL の可能性があります。\n\`${error?.message ?? error}\``,
-        ephemeral: true,
-      });
     }
   }
 
