@@ -383,25 +383,49 @@ export default {
         );
       }
     } else if (subcommand == 'team_information') {
-      let focusedOption = interaction.options.getFocused(true);
-      if (focusedOption.name === 'team') {
-        const mongoTeam = await client.clientMongo
-          .db('jwc')
-          .collection('clans')
-          .findOne({ rep_channel: interaction.channel.id });
-
-        if (mongoTeam) {
-          await interaction.respond([
-            {
-              name: functions.formatTeamAutocompleteName(
-                mongoTeam.clan_abbr,
-                mongoTeam.team_name,
-              ),
-              value: mongoTeam.clan_abbr,
-            },
-          ]);
-        }
+      const focusedOption = interaction.options.getFocused(true);
+      if (focusedOption.name !== 'team') {
+        await interaction.respond([]);
+        return;
       }
+
+      const focusedValue = interaction.options.getFocused();
+      const mongoTeam = await client.clientMongo
+        .db('jwc')
+        .collection('clans')
+        .findOne({ rep_channel: interaction.channel.id });
+
+      if (!mongoTeam) {
+        await interaction.respond([]);
+        console.error(
+          `rep autocomplete: no team found for channel ${interaction.channel.id}`,
+        );
+        return;
+      }
+
+      const abbr = mongoTeam.clan_abbr;
+      if (abbr == null || String(abbr).trim() === '') {
+        await interaction.respond([]);
+        console.error(
+          `rep autocomplete: team missing clan_abbr for channel ${interaction.channel.id}`,
+        );
+        return;
+      }
+
+      if (!functions.teamMatchesAutocompleteFilter(mongoTeam, focusedValue)) {
+        await interaction.respond([]);
+        return;
+      }
+
+      await interaction.respond([
+        {
+          name: functions.formatTeamAutocompleteName(
+            mongoTeam.clan_abbr,
+            mongoTeam.team_name,
+          ),
+          value: mongoTeam.clan_abbr,
+        },
+      ]);
     } else if (subcommand == 'my_channel') {
       const focusedValue = interaction.options.getFocused();
       const iLeague = await interaction.options.getString('league');
