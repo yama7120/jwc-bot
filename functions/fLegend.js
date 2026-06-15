@@ -2554,7 +2554,7 @@ async function autoUpdateLegendReset(client) {
   let accountsAll = await cursor.toArray();
   await cursor.close();
 
-  const nAccLoop = 30;
+  const nAccLoop = 10;
   let nLoop = Math.floor(accountsAll.length / nAccLoop) + 1;
 
   for (let i = 0; i < nLoop; i++) {
@@ -2577,7 +2577,7 @@ async function autoUpdateLegendReset(client) {
     );
 
     console.log(`${max} / ${accountsAll.length}`);
-    await functions.sleep(1000);
+    await functions.sleep(1500);
   }
 
   // legend [previous season]

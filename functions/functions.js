@@ -2215,6 +2215,36 @@ function sleep(milliseconds) {
 }
 export { sleep };
 
+function isThrottleError(error) {
+  return error?.reason === 'requestThrottled' || error?.status === 429;
+}
+export { isThrottleError };
+
+async function retryOnThrottle(fn, options = {}) {
+  const maxRetries = options.maxRetries ?? 3;
+  const baseDelayMs = options.baseDelayMs ?? 2000;
+  const maxDelayMs = options.maxDelayMs ?? 60_000;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (!isThrottleError(error) || attempt === maxRetries) {
+        throw error;
+      }
+      const maxAge = Number(error?.maxAge);
+      const delayMs = Math.min(
+        maxDelayMs,
+        Number.isFinite(maxAge) && maxAge > 0
+          ? maxAge
+          : baseDelayMs * 2 ** attempt,
+      );
+      await sleep(delayMs);
+    }
+  }
+}
+export { retryOnThrottle };
+
 // 小数のseasonを文字列に変換する関数（ピリオドをアンダースコアに変換）
 function seasonToString(seasonValue) {
   return Number.isInteger(seasonValue)

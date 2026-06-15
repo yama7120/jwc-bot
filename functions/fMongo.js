@@ -7,22 +7,24 @@ import { setWeekNowLeague } from './weekNow.js';
 
 async function fetchPlayerLeagueHistory(clientCoc, playerTag) {
   try {
-    if (typeof clientCoc?.getPlayerLeagueHistory === 'function') {
-      const res = await clientCoc.getPlayerLeagueHistory(playerTag);
-      if (Array.isArray(res?.items)) {
-        return res.items;
+    return await functions.retryOnThrottle(async () => {
+      if (typeof clientCoc?.getPlayerLeagueHistory === 'function') {
+        const res = await clientCoc.getPlayerLeagueHistory(playerTag);
+        if (Array.isArray(res?.items)) {
+          return res.items;
+        }
+        return Array.isArray(res) ? res : [];
       }
-      return Array.isArray(res) ? res : [];
-    }
 
-    if (typeof clientCoc?.rest?.requestHandler?.request === 'function') {
-      const response = await clientCoc.rest.requestHandler.request(
-        `/players/${encodeURIComponent(playerTag)}/leaguehistory`,
-      );
-      return Array.isArray(response?.body?.items) ? response.body.items : [];
-    }
+      if (typeof clientCoc?.rest?.requestHandler?.request === 'function') {
+        const response = await clientCoc.rest.requestHandler.request(
+          `/players/${encodeURIComponent(playerTag)}/leaguehistory`,
+        );
+        return Array.isArray(response?.body?.items) ? response.body.items : [];
+      }
 
-    return [];
+      return [];
+    });
   } catch (error) {
     if (error?.reason === 'notFound') {
       return [];
@@ -160,9 +162,10 @@ async function updateAcc(client, tagAccount) {
 
   let scPlayer = null;
   try {
-    scPlayer = await client.clientCoc.getPlayer(tagAccount);
+    scPlayer = await functions.retryOnThrottle(() =>
+      client.clientCoc.getPlayer(tagAccount),
+    );
   } catch (error) {
-    console.log(error);
     if (error.reason == 'notFound') {
       let myEmbed = new EmbedBuilder();
       let title = `**ERROR**`;
@@ -174,8 +177,9 @@ async function updateAcc(client, tagAccount) {
       myEmbed.setColor(config.color.red);
       myEmbed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
       await functions.safeSend(client, config.logch.freeBotRoom, { embeds: [myEmbed] }, 'legends200:error');
+      return;
     }
-    return;
+    throw error;
   }
 
   let listing = {};
