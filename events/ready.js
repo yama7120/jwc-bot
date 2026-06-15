@@ -84,11 +84,18 @@ export default {
       { timeoutMs: 30 * 60 * 1000 },
     );
 
-    // 毎週月曜 15:00 JST (= 月曜 06:00 UTC) — leaguehistory を一括取得
-    scheduleCronWithGuard('syncLeagueHistory', '00 00 06 * * 1', async () => {
-      await fMongo.syncLeagueHistoryAll(client);
-      console.log('END: fMongo.syncLeagueHistoryAll');
-    });
+    // 毎週月曜 15:00 JST (= 月曜 06:00 UTC) — leaguehistory + ranked week end notice
+    scheduleCronWithGuard(
+      'syncLeagueHistory',
+      '00 00 06 * * 1',
+      async () => {
+        await fMongo.syncLeagueHistoryAll(client);
+        console.log('END: fMongo.syncLeagueHistoryAll');
+        await fLegend.cronRankedWeekEndNotice(client);
+        console.log('END: fLegend.cronRankedWeekEndNotice');
+      },
+      { timeoutMs: 30 * 60 * 1000 },
+    );
 
     // legend reset day
     /*
