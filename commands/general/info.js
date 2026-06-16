@@ -972,13 +972,29 @@ async function leagueStandings(interaction, client) {
 
   // 画像
   if (iLeague == 'j1') {
-    const attachment = await fCanvas.standings(iLeague, mongoLeagueStats.standings, mongoLeagueStats);
+    const attachment = await fCanvas.standings(
+      client.clientMongo,
+      iLeague,
+      mongoLeagueStats.standings,
+      mongoLeagueStats,
+    );
     await interaction.followUp({ files: [attachment] });
-    const attachment2 = await fCanvas.standingsLandscape(iLeague, mongoLeagueStats.standings_gs, mongoLeagueStats, null);
+    const attachment2 = await fCanvas.standingsLandscape(
+      client.clientMongo,
+      iLeague,
+      mongoLeagueStats.standings_gs,
+      mongoLeagueStats,
+      null,
+    );
     await interaction.followUp({ files: [attachment2] });
   }
   else {
-    const attachment = await fCanvas.standings(iLeague, mongoLeagueStats.standings, mongoLeagueStats);
+    const attachment = await fCanvas.standings(
+      client.clientMongo,
+      iLeague,
+      mongoLeagueStats.standings,
+      mongoLeagueStats,
+    );
     await interaction.followUp({ files: [attachment] });
   };
 

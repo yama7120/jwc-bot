@@ -317,6 +317,36 @@ async function drawTeamLogo(
   return reflectImage2Canvas(ctx, img, lengthLogo, lengthLogo, dx, dy);
 }
 
+async function hydrateStandingsLogos(clientMongo, standings) {
+  if (!standings?.length) return standings;
+
+  const abbrs = [
+    ...new Set(standings.map((team) => team.clan_abbr).filter(Boolean)),
+  ];
+  if (abbrs.length === 0) return standings;
+
+  const cursor = clientMongo
+    .db('jwc')
+    .collection('clans')
+    .find(
+      { clan_abbr: { $in: abbrs } },
+      { projection: { _id: 0, clan_abbr: 1, logo_url: 1, logo_data: 1 } },
+    );
+  const teams = await cursor.toArray();
+  await cursor.close();
+
+  const logoByAbbr = new Map(teams.map((team) => [team.clan_abbr, team]));
+  return standings.map((team) => {
+    const logos = logoByAbbr.get(team.clan_abbr);
+    if (!logos) return team;
+    return {
+      ...team,
+      logo_url: logos.logo_url ?? team.logo_url,
+      logo_data: logos.logo_data ?? team.logo_data,
+    };
+  });
+}
+
 async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
   const widthCanvas = config.canvasSize.width;
   const heightCanvas = config.canvasSize.height;
@@ -1370,7 +1400,9 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
 }
 export { teamStats };
 
-async function standings(league, standings, leagueStats) {
+async function standings(clientMongo, league, standings, leagueStats) {
+  standings = await hydrateStandingsLogos(clientMongo, standings);
+
   const widthCanvas = config.canvasSize.width;
   const heightCanvas = config.canvasSize.height;
   let myCanvas = Canvas.createCanvas(
@@ -2259,7 +2291,15 @@ async function standings(league, standings, leagueStats) {
 }
 export { standings };
 
-async function standingsLandscape(league, standings, leagueStats, strRound) {
+async function standingsLandscape(
+  clientMongo,
+  league,
+  standings,
+  leagueStats,
+  strRound,
+) {
+  standings = await hydrateStandingsLogos(clientMongo, standings);
+
   // ***** background image ***** //
   const bgUrl = `./image/bg/bg_landscape_${league}.png`;
   const bgImage = await Canvas.loadImage(bgUrl);
