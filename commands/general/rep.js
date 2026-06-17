@@ -1318,7 +1318,7 @@ async function editTeamInformation(client, interaction) {
         iLogoFile.url,
         client.token,
       );
-      listing.logo_data = logoBuffer;
+      listing.logo_data = await fCanvas.normalizeTeamLogoBuffer(logoBuffer);
       listing.logo_url = iLogoFile.url;
     } catch (error) {
       await interaction.followUp({

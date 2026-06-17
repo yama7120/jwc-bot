@@ -227,7 +227,45 @@ async function fetchDiscordAttachmentBuffer(url, botToken) {
 }
 export { fetchTeamLogoBuffer, fetchDiscordAttachmentBuffer };
 
+const TEAM_LOGO_CANVAS_MAX_PX = 256;
+const TEAM_LOGO_STORE_MAX_PX = 512;
 const teamLogoImageCache = new Map();
+const teamLogoLoadPromises = new Map();
+
+function downscaleTeamLogoImage(
+  img,
+  tag = '',
+  maxPx = TEAM_LOGO_CANVAS_MAX_PX,
+) {
+  const { w, h } = getImageSize(img);
+  if (w <= maxPx && h <= maxPx) return img;
+
+  const ratio = Math.min(maxPx / w, maxPx / h);
+  const nw = Math.max(1, Math.round(w * ratio));
+  const nh = Math.max(1, Math.round(h * ratio));
+  const canvas = Canvas.createCanvas(nw, nh);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, nw, nh);
+  if (tag) {
+    console.log(`[loadTeamLogo ${tag}] downscaled ${w}x${h} -> ${nw}x${nh}`);
+  }
+  return canvas;
+}
+
+async function normalizeTeamLogoBuffer(
+  buffer,
+  maxPx = TEAM_LOGO_STORE_MAX_PX,
+) {
+  const img = await Canvas.loadImage(buffer);
+  const { w, h } = getImageSize(img);
+  if (w <= maxPx && h <= maxPx && buffer.length <= 512 * 1024) {
+    return buffer;
+  }
+  const downscaled = downscaleTeamLogoImage(img, '', maxPx);
+  if (downscaled === img) return buffer;
+  return await downscaled.encode('png');
+}
+export { normalizeTeamLogoBuffer };
 
 function getTeamLogoCacheKey(label, logoUrl, logoData) {
   if (!label) return null;
@@ -248,19 +286,34 @@ async function loadTeamLogo(logoUrl, label = '', logoData = null) {
   if (cacheKey) {
     const cached = teamLogoImageCache.get(cacheKey);
     if (cached) return cached;
+    const inFlight = teamLogoLoadPromises.get(cacheKey);
+    if (inFlight) return inFlight;
   }
 
+  const promise = loadTeamLogoInner(logoUrl, label, logoData, cacheKey);
+  if (cacheKey) teamLogoLoadPromises.set(cacheKey, promise);
+  try {
+    return await promise;
+  } finally {
+    if (cacheKey) teamLogoLoadPromises.delete(cacheKey);
+  }
+}
+
+async function loadTeamLogoInner(logoUrl, label = '', logoData = null, cacheKey = null) {
   const raw = typeof logoUrl === 'string' ? logoUrl.trim() : '';
   const tag = label ? ` ${label}` : '';
   const cachedLogo = toLogoBuffer(logoData);
 
   if (cachedLogo && cachedLogo.length > 0) {
     try {
-      const img = await Canvas.loadImage(cachedLogo);
-      const { w, h } = getImageSize(img);
-      console.log(
-        `[loadTeamLogo${tag}] ok via logo_data (${w}x${h}, ${cachedLogo.length} bytes)`,
-      );
+      const imgRaw = await Canvas.loadImage(cachedLogo);
+      const { w, h } = getImageSize(imgRaw);
+      const img = downscaleTeamLogoImage(imgRaw, tag);
+      if (img === imgRaw) {
+        console.log(
+          `[loadTeamLogo${tag}] ok via logo_data (${w}x${h}, ${cachedLogo.length} bytes)`,
+        );
+      }
       return cacheTeamLogoImage(cacheKey, img);
     } catch (error) {
       console.warn(
@@ -296,8 +349,9 @@ async function loadTeamLogo(logoUrl, label = '', logoData = null) {
   for (const url of getLogoUrlCandidates(raw)) {
     try {
       const buffer = await fetchImageBuffer(url);
-      const img = await Canvas.loadImage(buffer);
-      const { w, h } = getImageSize(img);
+      const imgRaw = await Canvas.loadImage(buffer);
+      const { w, h } = getImageSize(imgRaw);
+      const img = downscaleTeamLogoImage(imgRaw, tag);
       console.log(
         `[loadTeamLogo${tag}] ok via fetch (${w}x${h}, ${buffer.length} bytes) ${url.slice(0, 120)}`,
       );
@@ -311,8 +365,9 @@ async function loadTeamLogo(logoUrl, label = '', logoData = null) {
     }
 
     try {
-      const img = await Canvas.loadImage(url);
-      const { w, h } = getImageSize(img);
+      const imgRaw = await Canvas.loadImage(url);
+      const { w, h } = getImageSize(imgRaw);
+      const img = downscaleTeamLogoImage(imgRaw, tag);
       console.log(
         `[loadTeamLogo${tag}] ok via direct (${w}x${h}) ${url.slice(0, 120)}`,
       );
@@ -356,6 +411,7 @@ async function hydrateStandingsLogos(clientMongo, standings) {
   ];
   if (abbrs.length === 0) return standings;
 
+  const t0 = Date.now();
   const cursor = clientMongo
     .db('jwc')
     .collection('clans')
@@ -365,8 +421,29 @@ async function hydrateStandingsLogos(clientMongo, standings) {
     );
   const teams = await cursor.toArray();
   await cursor.close();
+  const logoBytes = teams.reduce(
+    (sum, team) => sum + getLogoDataByteLength(team.logo_data),
+    0,
+  );
+  console.log(
+    `[hydrateStandingsLogos] fetched ${teams.length} logos (${Math.round(logoBytes / 1024)} KiB) in ${Date.now() - t0}ms`,
+  );
 
   const logoByAbbr = new Map(teams.map((team) => [team.clan_abbr, team]));
+
+  const t1 = Date.now();
+  await Promise.all(
+    abbrs.map(async (abbr) => {
+      const logos = logoByAbbr.get(abbr);
+      if (logos) {
+        await loadTeamLogo(logos.logo_url, abbr, logos.logo_data);
+      }
+    }),
+  );
+  console.log(
+    `[hydrateStandingsLogos] preloaded ${abbrs.length} logos in ${Date.now() - t1}ms`,
+  );
+
   return standings.map((team) => {
     const logos = logoByAbbr.get(team.clan_abbr);
     if (!logos) return team;
