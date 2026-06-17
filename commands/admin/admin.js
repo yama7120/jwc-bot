@@ -2066,24 +2066,27 @@ async function updateLogoThumbs(interaction, client) {
   const iLeague = interaction.options.getString('league');
   const iTeam = interaction.options.getString('team');
   const clanAbbr = iTeam?.toLowerCase();
-  const scope = clanAbbr
-    ? `${config.league[iLeague]} / ${clanAbbr.toUpperCase()}`
-    : `${config.league[iLeague]} (all teams)`;
-
-  await interaction.followUp({
-    content: `:hourglass: *Generating logo thumbnails for ${scope}...*`,
-  });
 
   const result = await fCanvas.backfillTeamLogoThumbs(client.clientMongo, {
     league: iLeague,
     clanAbbr,
+    onTeamDone: async (teamAbbr, done, total) => {
+      await interaction.followUp({
+        content: `:white_check_mark: \`${teamAbbr.toUpperCase()}\` サムネイル作成 (${done}/${total})`,
+      });
+    },
+    onTeamFailed: async (teamAbbr, error) => {
+      await interaction.followUp({
+        content: `:x: \`${teamAbbr.toUpperCase()}\` 失敗 — ${error?.message ?? error}`,
+      });
+    },
   });
 
-  let message = `:white_check_mark: *Logo thumbnails updated: ${result.updated}/${result.total}* (${scope})`;
-  if (result.failed.length > 0) {
-    message += `\n:warning: Failed: ${result.failed.join(', ')}`;
+  if (result.total === 0) {
+    await interaction.followUp({
+      content: '*logo_data があるチームが見つかりませんでした。*',
+    });
   }
-  await interaction.followUp({ content: message });
 
   return;
 }

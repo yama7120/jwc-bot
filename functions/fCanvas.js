@@ -310,6 +310,7 @@ async function backfillTeamLogoThumbs(clientMongo, options = {}) {
 
   let updated = 0;
   const failed = [];
+  const total = teams.length;
   for (const team of teams) {
     const buffer = toLogoBuffer(team.logo_data);
     if (!buffer?.length) continue;
@@ -320,16 +321,22 @@ async function backfillTeamLogoThumbs(clientMongo, options = {}) {
         .collection('clans')
         .updateOne({ clan_abbr: team.clan_abbr }, { $set: { logo_data_thumb } });
       updated += 1;
+      if (options.onTeamDone) {
+        await options.onTeamDone(team.clan_abbr, updated, total);
+      }
     } catch (error) {
       failed.push(team.clan_abbr);
       console.warn(
         `[backfillTeamLogoThumbs] failed for ${team.clan_abbr}:`,
         error?.message ?? error,
       );
+      if (options.onTeamFailed) {
+        await options.onTeamFailed(team.clan_abbr, error);
+      }
     }
   }
 
-  return { total: teams.length, updated, failed };
+  return { total, updated, failed };
 }
 
 export {
