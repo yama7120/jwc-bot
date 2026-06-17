@@ -103,6 +103,39 @@ function battleLogItemTimestampRaw(item) {
   return null;
 }
 
+/** battleTimestamp ("YYYYMMDDTHHMMSS.SSSZ") を unix seconds に変換。失敗時は null */
+function battleTimestampToUnixSeconds(battleTimestampRaw) {
+  if (typeof battleTimestampRaw !== 'string') return null;
+  const s = battleTimestampRaw.trim();
+  const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(?:\.(\d{1,3}))?Z$/.exec(s);
+  if (!m) return null;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  const hour = Number(m[4]);
+  const minute = Number(m[5]);
+  const second = Number(m[6]);
+  const ms = m[7] != null ? Number(String(m[7]).padEnd(3, '0')) : 0;
+  if (
+    !Number.isFinite(year)
+    || !Number.isFinite(month)
+    || !Number.isFinite(day)
+    || !Number.isFinite(hour)
+    || !Number.isFinite(minute)
+    || !Number.isFinite(second)
+    || !Number.isFinite(ms)
+  ) {
+    return null;
+  }
+  const utcMs = Date.UTC(year, month - 1, day, hour, minute, second, ms);
+  if (!Number.isFinite(utcMs)) return null;
+  return Math.floor(utcMs / 1000);
+}
+
+function battleLogItemToUnixSeconds(item) {
+  return battleTimestampToUnixSeconds(battleLogItemTimestampRaw(item));
+}
+
 async function fetchBattleLogItems(clientCoc, playerTag) {
   if (typeof clientCoc?.rest?.requestHandler?.request === 'function') {
     const response = await clientCoc.rest.requestHandler.request(
@@ -128,6 +161,8 @@ async function fetchBattleLogItems(clientCoc, playerTag) {
 export {
   battleLogItemMatchesStoredRankedBattle,
   battleLogItemTimestampRaw,
+  battleLogItemToUnixSeconds,
+  battleTimestampToUnixSeconds,
   fetchBattleLogItems,
   fingerprintRankedBattleItem,
   filterRankedBattleItems,

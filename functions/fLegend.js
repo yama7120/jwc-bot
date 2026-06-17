@@ -7,7 +7,7 @@ import * as functions from './functions.js';
 import * as fRanking from './fRanking.js';
 import {
   battleLogItemMatchesStoredRankedBattle,
-  battleLogItemTimestampRaw,
+  battleLogItemToUnixSeconds,
   filterRankedBattleItems,
   hasLegendRankedOpponentEvent,
   isLegendRankedEventsSeeded,
@@ -1349,37 +1349,26 @@ function calcDefenseTrophies(stars, destruction) {
   return 40 - attacker;
 }
 
-/**
- * CoC battleTime ("YYYYMMDDTHHMMSS.SSSZ") を unix seconds に変換。
- * パースできない場合は null.
- */
-function battleTimeToUnixSeconds(battleTimeRaw) {
-  if (typeof battleTimeRaw !== 'string') return null;
-  const s = battleTimeRaw.trim();
-  // Example: "20260527T165501.000Z"
-  const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(?:\.(\d{1,3}))?Z$/.exec(s);
-  if (!m) return null;
-  const year = Number(m[1]);
-  const month = Number(m[2]);
-  const day = Number(m[3]);
-  const hour = Number(m[4]);
-  const minute = Number(m[5]);
-  const second = Number(m[6]);
-  const ms = m[7] != null ? Number(String(m[7]).padEnd(3, '0')) : 0;
-  if (
-    !Number.isFinite(year)
-    || !Number.isFinite(month)
-    || !Number.isFinite(day)
-    || !Number.isFinite(hour)
-    || !Number.isFinite(minute)
-    || !Number.isFinite(second)
-    || !Number.isFinite(ms)
-  ) {
-    return null;
+function resolveRankedBattleEventUnixSeconds(eventData) {
+  const unix = Number(eventData?.unixTimeSeconds);
+  if (Number.isFinite(unix) && unix > 0) return unix;
+  return null;
+}
+
+/** 攻防通知の Discord 時刻表示（battleTimestamp 由来の unixTimeSeconds） */
+function formatRankedBattleEventTimeDiscord(eventData) {
+  const unix = resolveRankedBattleEventUnixSeconds(eventData);
+  if (unix == null) return '';
+  return `<t:${unix}:t> `;
+}
+
+function applyRankedBattleEventTimestamp(embed, eventData) {
+  const unix = resolveRankedBattleEventUnixSeconds(eventData);
+  if (unix != null) {
+    embed.setTimestamp(unix * 1000);
+    return;
   }
-  const utcMs = Date.UTC(year, month - 1, day, hour, minute, second, ms);
-  if (!Number.isFinite(utcMs)) return null;
-  return Math.floor(utcMs / 1000);
+  embed.setTimestamp();
 }
 
 /** Legend / Ranked の「日」境界: JST 02:00 (= UTC 17:00) にスナップ */
@@ -1603,7 +1592,7 @@ async function bootstrapLegendRankedEvents(
       item?.destructionPercentage,
       afterPlayerStats.leagueTier.id,
     );
-    const battleUnix = battleTimeToUnixSeconds(battleLogItemTimestampRaw(item));
+    const battleUnix = battleLogItemToUnixSeconds(item);
     const seasonDataAtBattle = battleUnix
       ? functions.calculateSeasonValues(client, new Date(battleUnix * 1000))
       : seasonDataGrace;
@@ -1683,7 +1672,7 @@ async function ingestLegendRankedBattleLogSilent(
       item?.destructionPercentage,
       afterPlayerStats.leagueTier.id,
     );
-    const battleUnix = battleTimeToUnixSeconds(battleLogItemTimestampRaw(item));
+    const battleUnix = battleLogItemToUnixSeconds(item);
     const seasonDataAtBattle = battleUnix
       ? functions.calculateSeasonValues(client, new Date(battleUnix * 1000))
       : seasonDataGrace;
@@ -1795,11 +1784,11 @@ async function processLegendRankedBattleLog(
     return;
   }
 
-  // battleTime が取れる場合はそれでソート。取れない場合は API の順序を保持する。
+  // battleTimestamp が取れる場合はそれでソート。取れない場合は API の順序を保持する。
   const mapped = newItems.map((item, idx) => ({
     item,
     idx,
-    unix: battleTimeToUnixSeconds(battleLogItemTimestampRaw(item)),
+    unix: battleLogItemToUnixSeconds(item),
   }));
   const hasAnyUnix = mapped.some((m) => typeof m.unix === 'number');
   const chronological = hasAnyUnix
@@ -1836,7 +1825,7 @@ async function processLegendRankedBattleLog(
     const isAttack = item?.attack === true;
     const legendEventType = isAttack ? 'attack' : 'defense';
     const diffT = diffsChronological[idx];
-    const battleUnix = battleTimeToUnixSeconds(battleLogItemTimestampRaw(item));
+    const battleUnix = battleLogItemToUnixSeconds(item);
     const unixTimeSeconds =
       battleUnix ?? (baseUnixTimeSeconds + (idx * spacedStepSeconds));
     const seasonDataAtBattle = battleUnix
@@ -2165,11 +2154,11 @@ async function createLogLegendAttack(
   }
   myEmbed.setFooter({ text: footer, iconURL: getRankedBattleLogFooterIconUrl(scPlayer) });
   myEmbed.setColor(config.color.attack);
-  myEmbed.setTimestamp();
+  applyRankedBattleEventTimestamp(myEmbed, eventData);
 
   const urlPlayer = `https://link.clashofclans.com/jp?action=OpenPlayerProfile&tag=${scPlayer.tag.slice(1)}`;
   let description = `${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}** [${scPlayer.tag}](${urlPlayer})\n`;
-  description += `<t:${eventData.unixTimeSeconds}:t> ${buildRankedBattleStarsAndDestText(scPlayer, eventData)}\n`;
+  description += `${formatRankedBattleEventTimeDiscord(eventData)}${buildRankedBattleStarsAndDestText(scPlayer, eventData)}\n`;
 
   // legend1 は当日集計、それ以外は週次集計
   if (scPlayer?.leagueTier?.id == config_coc.leagueId.legend) {
@@ -2225,10 +2214,10 @@ async function createLogLegendDefense(
   }
   myEmbed.setFooter({ text: footer, iconURL: getRankedBattleLogFooterIconUrl(scPlayer) });
   myEmbed.setColor(config.color.defense);
-  myEmbed.setTimestamp();
+  applyRankedBattleEventTimestamp(myEmbed, eventData);
   const urlPlayer = `https://link.clashofclans.com/jp?action=OpenPlayerProfile&tag=${scPlayer.tag.slice(1)}`;
   let description = `${config.emote.thn[scPlayer.townHallLevel]} **${scPlayer.name}** [${scPlayer.tag}](${urlPlayer})\n`;
-  description += `<t:${eventData.unixTimeSeconds}:t> ${buildRankedBattleStarsAndDestText(scPlayer, eventData)}\n`;
+  description += `${formatRankedBattleEventTimeDiscord(eventData)}${buildRankedBattleStarsAndDestText(scPlayer, eventData)}\n`;
 
   // legend1 は当日集計、それ以外は週次集計
   if (scPlayer?.leagueTier?.id == config_coc.leagueId.legend) {
