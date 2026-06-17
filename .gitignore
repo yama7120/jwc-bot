@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Secrets / local env (Replit Secrets で管理)
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Google Drive の競合・一時ファイル
+*conflicted copy*
+*.tmp
+.~lock.*
+
+# Test / coverage
+coverage/
+.nyc_output/
