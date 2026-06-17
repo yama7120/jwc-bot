@@ -206,7 +206,7 @@ export default {
           season_score: 'シーズンスコアリセット（開幕前）',
           single_account_data: 'アカウントデータ強制更新（1アカウント）',
           all_account_data: '全アカウントデータ（13:58の更新失敗時）',
-          logo_thumbs: 'チームロゴサムネイル生成（順位表用）',
+          logo_thumbs: 'チームロゴサムネイル生成（リーグ内全チーム）',
         },
         edit: {
           attack_result: '攻撃結果編集',

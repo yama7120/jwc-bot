@@ -291,6 +291,11 @@ async function backfillTeamLogoThumbs(clientMongo, options = {}) {
     logo_data: { $exists: true, $ne: null },
     $or: [{ logo_data_thumb: { $exists: false } }, { logo_data_thumb: null }],
   };
+  if (options.league) {
+    query.league = options.league;
+    query[`status.${functions.seasonToString(config.season[options.league])}`] =
+      'true';
+  }
   if (options.clanAbbr) {
     query.clan_abbr = options.clanAbbr;
   }

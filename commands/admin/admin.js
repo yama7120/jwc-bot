@@ -212,9 +212,12 @@ let data = new SlashCommandBuilder()
             ],
           )
           .addStringOption((option) =>
+            option.setName('league').setDescription('リーグ').setRequired(true),
+          )
+          .addStringOption((option) =>
             option
               .setName('team')
-              .setDescription('チーム（省略時は全チーム）')
+              .setDescription('チーム（省略時はリーグ内全チーム）')
               .setAutocomplete(true),
           ),
       ),
@@ -853,6 +856,7 @@ config.choices.league4.forEach((choice) => {
   data.options[1].options[1].options[0].addChoices(choice);
   data.options[1].options[2].options[0].addChoices(choice);
   data.options[1].options[3].options[0].addChoices(choice);
+  data.options[1].options[6].options[0].addChoices(choice);
   // edit
   data.options[2].options[0].options[0].addChoices(choice);
   data.options[2].options[1].options[0].addChoices(choice);
@@ -954,14 +958,17 @@ export default {
       subcommand == 'logo_thumbs' &&
       focusedOption.name === 'team'
     ) {
+      const iLeague = interaction.options.getString('league');
       const focusedValue = interaction.options.getFocused();
+      const query = {
+        logo_data: { $exists: true, $ne: null },
+        league: iLeague,
+        [`status.${functions.seasonToString(config.season[iLeague])}`]: 'true',
+      };
       const cursor = client.clientMongo
         .db('jwc')
         .collection('clans')
-        .find(
-          { logo_data: { $exists: true, $ne: null } },
-          { projection: { clan_abbr: 1, team_name: 1, _id: 0 } },
-        );
+        .find(query, { projection: { clan_abbr: 1, team_name: 1, _id: 0 } });
       let clans = await cursor.toArray();
       await cursor.close();
 
@@ -2056,18 +2063,23 @@ async function updateLeagueStandings(interaction, client) {
 }
 
 async function updateLogoThumbs(interaction, client) {
+  const iLeague = interaction.options.getString('league');
   const iTeam = interaction.options.getString('team');
   const clanAbbr = iTeam?.toLowerCase();
+  const scope = clanAbbr
+    ? `${config.league[iLeague]} / ${clanAbbr.toUpperCase()}`
+    : `${config.league[iLeague]} (all teams)`;
 
   await interaction.followUp({
-    content: `:hourglass: *Generating logo thumbnails${clanAbbr ? ` for ${clanAbbr}` : ''}...*`,
+    content: `:hourglass: *Generating logo thumbnails for ${scope}...*`,
   });
 
   const result = await fCanvas.backfillTeamLogoThumbs(client.clientMongo, {
+    league: iLeague,
     clanAbbr,
   });
 
-  let message = `:white_check_mark: *Logo thumbnails updated: ${result.updated}/${result.total}*`;
+  let message = `:white_check_mark: *Logo thumbnails updated: ${result.updated}/${result.total}* (${scope})`;
   if (result.failed.length > 0) {
     message += `\n:warning: Failed: ${result.failed.join(', ')}`;
   }
