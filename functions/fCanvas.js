@@ -227,7 +227,7 @@ async function fetchDiscordAttachmentBuffer(url, botToken) {
 }
 export { fetchTeamLogoBuffer, fetchDiscordAttachmentBuffer };
 
-const TEAM_LOGO_CANVAS_MAX_PX = 256;
+const TEAM_LOGO_CANVAS_MAX_PX = 128;
 const TEAM_LOGO_STORE_MAX_PX = 512;
 const teamLogoImageCache = new Map();
 const teamLogoLoadPromises = new Map();
@@ -272,7 +272,7 @@ async function createTeamLogoThumbBuffer(
 ) {
   const img = await Canvas.loadImage(buffer);
   const { w, h } = getImageSize(img);
-  if (w <= maxPx && h <= maxPx && buffer.length <= 128 * 1024) {
+  if (w <= maxPx && h <= maxPx && buffer.length <= 64 * 1024) {
     return buffer;
   }
   const downscaled = downscaleTeamLogoImage(img, '', maxPx);
@@ -289,7 +289,6 @@ async function prepareTeamLogoForStorage(buffer) {
 async function backfillTeamLogoThumbs(clientMongo, options = {}) {
   const query = {
     logo_data: { $exists: true, $ne: null },
-    $or: [{ logo_data_thumb: { $exists: false } }, { logo_data_thumb: null }],
   };
   if (options.league) {
     query.league = options.league;
