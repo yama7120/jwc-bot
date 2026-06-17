@@ -7,8 +7,15 @@ function normalizePlayerTag(tag) {
   return s;
 }
 
+/** Legend I の battlelog は battleType が "legend"。下位帯は "ranked" のまま */
+function isLegendRankedBattleType(battleType) {
+  return battleType === 'ranked' || battleType === 'legend';
+}
+
 function fingerprintRankedBattleItem(item) {
-  const battleType = item?.battleType ?? '';
+  const battleType = isLegendRankedBattleType(item?.battleType)
+    ? 'ranked'
+    : (item?.battleType ?? '');
   const atk = item?.attack === true ? '1' : '0';
   const opp = normalizePlayerTag(item?.opponentPlayerTag);
   const stars = Math.min(3, Math.max(0, Number(item?.stars ?? 0)));
@@ -86,7 +93,14 @@ function filterRankedBattleItems(items) {
   if (!Array.isArray(items)) {
     return [];
   }
-  return items.filter((i) => i?.battleType === 'ranked');
+  return items.filter((i) => isLegendRankedBattleType(i?.battleType));
+}
+
+/** API により battleTime は秒数、battleTimestamp が実時刻文字列のことがある */
+function battleLogItemTimestampRaw(item) {
+  if (typeof item?.battleTimestamp === 'string') return item.battleTimestamp;
+  if (typeof item?.battleTime === 'string') return item.battleTime;
+  return null;
 }
 
 async function fetchBattleLogItems(clientCoc, playerTag) {
@@ -113,10 +127,12 @@ async function fetchBattleLogItems(clientCoc, playerTag) {
 
 export {
   battleLogItemMatchesStoredRankedBattle,
+  battleLogItemTimestampRaw,
   fetchBattleLogItems,
   fingerprintRankedBattleItem,
   filterRankedBattleItems,
   hasLegendRankedOpponentEvent,
+  isLegendRankedBattleType,
   isLegendRankedEventsSeeded,
   legendRankedOpponentKey,
 };

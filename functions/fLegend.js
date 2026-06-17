@@ -7,6 +7,7 @@ import * as functions from './functions.js';
 import * as fRanking from './fRanking.js';
 import {
   battleLogItemMatchesStoredRankedBattle,
+  battleLogItemTimestampRaw,
   filterRankedBattleItems,
   hasLegendRankedOpponentEvent,
   isLegendRankedEventsSeeded,
@@ -1602,7 +1603,7 @@ async function bootstrapLegendRankedEvents(
       item?.destructionPercentage,
       afterPlayerStats.leagueTier.id,
     );
-    const battleUnix = battleTimeToUnixSeconds(item?.battleTime);
+    const battleUnix = battleTimeToUnixSeconds(battleLogItemTimestampRaw(item));
     const seasonDataAtBattle = battleUnix
       ? functions.calculateSeasonValues(client, new Date(battleUnix * 1000))
       : seasonDataGrace;
@@ -1682,7 +1683,7 @@ async function ingestLegendRankedBattleLogSilent(
       item?.destructionPercentage,
       afterPlayerStats.leagueTier.id,
     );
-    const battleUnix = battleTimeToUnixSeconds(item?.battleTime);
+    const battleUnix = battleTimeToUnixSeconds(battleLogItemTimestampRaw(item));
     const seasonDataAtBattle = battleUnix
       ? functions.calculateSeasonValues(client, new Date(battleUnix * 1000))
       : seasonDataGrace;
@@ -1726,7 +1727,7 @@ async function ingestLegendRankedBattleLogSilent(
 }
 
 /**
- * battleType ranked のみを legend.events に記録し、新規行だけ通知する。
+ * battleType ranked / legend を legend.events に記録し、新規行だけ通知する。
  * 同日・同 action では opponentPlayerTag は一意（API に battleTime は無い想定）。
  * CoC API の battle log は古い戦闘ほど先頭・新しいほど末尾（下）の並び想定。
  */
@@ -1798,7 +1799,7 @@ async function processLegendRankedBattleLog(
   const mapped = newItems.map((item, idx) => ({
     item,
     idx,
-    unix: battleTimeToUnixSeconds(item?.battleTime),
+    unix: battleTimeToUnixSeconds(battleLogItemTimestampRaw(item)),
   }));
   const hasAnyUnix = mapped.some((m) => typeof m.unix === 'number');
   const chronological = hasAnyUnix
@@ -1835,7 +1836,7 @@ async function processLegendRankedBattleLog(
     const isAttack = item?.attack === true;
     const legendEventType = isAttack ? 'attack' : 'defense';
     const diffT = diffsChronological[idx];
-    const battleUnix = battleTimeToUnixSeconds(item?.battleTime);
+    const battleUnix = battleTimeToUnixSeconds(battleLogItemTimestampRaw(item));
     const unixTimeSeconds =
       battleUnix ?? (baseUnixTimeSeconds + (idx * spacedStepSeconds));
     const seasonDataAtBattle = battleUnix
