@@ -227,7 +227,29 @@ async function fetchDiscordAttachmentBuffer(url, botToken) {
 }
 export { fetchTeamLogoBuffer, fetchDiscordAttachmentBuffer };
 
+const teamLogoImageCache = new Map();
+
+function getTeamLogoCacheKey(label, logoUrl, logoData) {
+  if (!label) return null;
+  const bytes = getLogoDataByteLength(logoData);
+  const url = typeof logoUrl === 'string' ? logoUrl.trim() : '';
+  return `${label}:${bytes}:${url}`;
+}
+
+function cacheTeamLogoImage(cacheKey, img) {
+  if (cacheKey) {
+    teamLogoImageCache.set(cacheKey, img);
+  }
+  return img;
+}
+
 async function loadTeamLogo(logoUrl, label = '', logoData = null) {
+  const cacheKey = getTeamLogoCacheKey(label, logoUrl, logoData);
+  if (cacheKey) {
+    const cached = teamLogoImageCache.get(cacheKey);
+    if (cached) return cached;
+  }
+
   const raw = typeof logoUrl === 'string' ? logoUrl.trim() : '';
   const tag = label ? ` ${label}` : '';
   const cachedLogo = toLogoBuffer(logoData);
@@ -239,7 +261,7 @@ async function loadTeamLogo(logoUrl, label = '', logoData = null) {
       console.log(
         `[loadTeamLogo${tag}] ok via logo_data (${w}x${h}, ${cachedLogo.length} bytes)`,
       );
-      return img;
+      return cacheTeamLogoImage(cacheKey, img);
     } catch (error) {
       console.warn(
         `[loadTeamLogo${tag}] logo_data decode failed:`,
@@ -254,14 +276,20 @@ async function loadTeamLogo(logoUrl, label = '', logoData = null) {
 
   if (!raw) {
     console.warn(`[loadTeamLogo${tag}] logo_url is empty, using JWC fallback`);
-    return await Canvas.loadImage(JWC_LOGO_PATH);
+    return cacheTeamLogoImage(
+      cacheKey,
+      await Canvas.loadImage(JWC_LOGO_PATH),
+    );
   }
 
   if (raw === config.urlImage.jwc) {
     console.warn(
       `[loadTeamLogo${tag}] logo_url is default JWC URL in DB, using JWC fallback`,
     );
-    return await Canvas.loadImage(JWC_LOGO_PATH);
+    return cacheTeamLogoImage(
+      cacheKey,
+      await Canvas.loadImage(JWC_LOGO_PATH),
+    );
   }
 
   let lastError = null;
@@ -273,7 +301,7 @@ async function loadTeamLogo(logoUrl, label = '', logoData = null) {
       console.log(
         `[loadTeamLogo${tag}] ok via fetch (${w}x${h}, ${buffer.length} bytes) ${url.slice(0, 120)}`,
       );
-      return img;
+      return cacheTeamLogoImage(cacheKey, img);
     } catch (fetchError) {
       lastError = fetchError;
       console.warn(
@@ -288,7 +316,7 @@ async function loadTeamLogo(logoUrl, label = '', logoData = null) {
       console.log(
         `[loadTeamLogo${tag}] ok via direct (${w}x${h}) ${url.slice(0, 120)}`,
       );
-      return img;
+      return cacheTeamLogoImage(cacheKey, img);
     } catch (directError) {
       lastError = directError;
       console.warn(
@@ -301,7 +329,10 @@ async function loadTeamLogo(logoUrl, label = '', logoData = null) {
   console.warn(
     `[loadTeamLogo${tag}] all methods failed${lastError ? `: ${lastError.message}` : ''}, using JWC fallback`,
   );
-  return await Canvas.loadImage(JWC_LOGO_PATH);
+  return cacheTeamLogoImage(
+    cacheKey,
+    await Canvas.loadImage(JWC_LOGO_PATH),
+  );
 }
 
 async function drawTeamLogo(
@@ -341,8 +372,8 @@ async function hydrateStandingsLogos(clientMongo, standings) {
     if (!logos) return team;
     return {
       ...team,
-      logo_url: logos.logo_url ?? team.logo_url,
-      logo_data: logos.logo_data ?? team.logo_data,
+      logo_url: logos.logo_url,
+      logo_data: logos.logo_data,
     };
   });
 }
