@@ -265,7 +265,75 @@ async function normalizeTeamLogoBuffer(
   if (downscaled === img) return buffer;
   return await downscaled.encode('png');
 }
-export { normalizeTeamLogoBuffer };
+
+async function createTeamLogoThumbBuffer(
+  buffer,
+  maxPx = TEAM_LOGO_CANVAS_MAX_PX,
+) {
+  const img = await Canvas.loadImage(buffer);
+  const { w, h } = getImageSize(img);
+  if (w <= maxPx && h <= maxPx && buffer.length <= 128 * 1024) {
+    return buffer;
+  }
+  const downscaled = downscaleTeamLogoImage(img, '', maxPx);
+  if (downscaled === img) return buffer;
+  return await downscaled.encode('png');
+}
+
+async function prepareTeamLogoForStorage(buffer) {
+  const logo_data = await normalizeTeamLogoBuffer(buffer);
+  const logo_data_thumb = await createTeamLogoThumbBuffer(logo_data);
+  return { logo_data, logo_data_thumb };
+}
+
+async function backfillTeamLogoThumbs(clientMongo, options = {}) {
+  const query = {
+    logo_data: { $exists: true, $ne: null },
+    $or: [{ logo_data_thumb: { $exists: false } }, { logo_data_thumb: null }],
+  };
+  if (options.clanAbbr) {
+    query.clan_abbr = options.clanAbbr;
+  }
+
+  const cursor = clientMongo
+    .db('jwc')
+    .collection('clans')
+    .find(query, {
+      projection: { _id: 0, clan_abbr: 1, logo_data: 1 },
+    });
+  const teams = await cursor.toArray();
+  await cursor.close();
+
+  let updated = 0;
+  const failed = [];
+  for (const team of teams) {
+    const buffer = toLogoBuffer(team.logo_data);
+    if (!buffer?.length) continue;
+    try {
+      const logo_data_thumb = await createTeamLogoThumbBuffer(buffer);
+      await clientMongo
+        .db('jwc')
+        .collection('clans')
+        .updateOne({ clan_abbr: team.clan_abbr }, { $set: { logo_data_thumb } });
+      updated += 1;
+    } catch (error) {
+      failed.push(team.clan_abbr);
+      console.warn(
+        `[backfillTeamLogoThumbs] failed for ${team.clan_abbr}:`,
+        error?.message ?? error,
+      );
+    }
+  }
+
+  return { total: teams.length, updated, failed };
+}
+
+export {
+  normalizeTeamLogoBuffer,
+  prepareTeamLogoForStorage,
+  createTeamLogoThumbBuffer,
+  backfillTeamLogoThumbs,
+};
 
 function getTeamLogoCacheKey(label, logoUrl, logoData) {
   if (!label) return null;
@@ -403,6 +471,10 @@ async function drawTeamLogo(
   return reflectImage2Canvas(ctx, img, lengthLogo, lengthLogo, dx, dy);
 }
 
+function getStandingsLogoData(team) {
+  return team.logo_data_thumb ?? team.logo_data ?? null;
+}
+
 async function hydrateStandingsLogos(clientMongo, standings) {
   if (!standings?.length) return standings;
 
@@ -417,26 +489,61 @@ async function hydrateStandingsLogos(clientMongo, standings) {
     .collection('clans')
     .find(
       { clan_abbr: { $in: abbrs } },
-      { projection: { _id: 0, clan_abbr: 1, logo_url: 1, logo_data: 1 } },
+      {
+        projection: {
+          _id: 0,
+          clan_abbr: 1,
+          logo_url: 1,
+          logo_data_thumb: 1,
+        },
+      },
     );
   const teams = await cursor.toArray();
   await cursor.close();
-  const logoBytes = teams.reduce(
-    (sum, team) => sum + getLogoDataByteLength(team.logo_data),
-    0,
-  );
-  console.log(
-    `[hydrateStandingsLogos] fetched ${teams.length} logos (${Math.round(logoBytes / 1024)} KiB) in ${Date.now() - t0}ms`,
-  );
 
   const logoByAbbr = new Map(teams.map((team) => [team.clan_abbr, team]));
+  const missingThumbAbbrs = abbrs.filter(
+    (abbr) => !getLogoDataByteLength(logoByAbbr.get(abbr)?.logo_data_thumb),
+  );
+  if (missingThumbAbbrs.length > 0) {
+    const fallbackCursor = clientMongo
+      .db('jwc')
+      .collection('clans')
+      .find(
+        { clan_abbr: { $in: missingThumbAbbrs } },
+        { projection: { _id: 0, clan_abbr: 1, logo_data: 1 } },
+      );
+    const fallbackTeams = await fallbackCursor.toArray();
+    await fallbackCursor.close();
+    fallbackTeams.forEach((team) => {
+      const existing = logoByAbbr.get(team.clan_abbr);
+      if (existing) {
+        logoByAbbr.set(team.clan_abbr, { ...existing, logo_data: team.logo_data });
+      }
+    });
+    console.warn(
+      `[hydrateStandingsLogos] ${missingThumbAbbrs.length} teams missing logo_data_thumb (fallback to logo_data)`,
+    );
+  }
+
+  const teamsResolved = [...logoByAbbr.values()];
+  const logoBytes = teamsResolved.reduce(
+    (sum, team) => sum + getLogoDataByteLength(getStandingsLogoData(team)),
+    0,
+  );
+  const thumbCount = teamsResolved.filter((team) => team.logo_data_thumb != null)
+    .length;
+  console.log(
+    `[hydrateStandingsLogos] fetched ${teamsResolved.length} logos (${Math.round(logoBytes / 1024)} KiB, ${thumbCount} thumbs) in ${Date.now() - t0}ms`,
+  );
 
   const t1 = Date.now();
   await Promise.all(
     abbrs.map(async (abbr) => {
       const logos = logoByAbbr.get(abbr);
       if (logos) {
-        await loadTeamLogo(logos.logo_url, abbr, logos.logo_data);
+        const canvasLogoData = getStandingsLogoData(logos);
+        await loadTeamLogo(logos.logo_url, abbr, canvasLogoData);
       }
     }),
   );
@@ -450,7 +557,7 @@ async function hydrateStandingsLogos(clientMongo, standings) {
     return {
       ...team,
       logo_url: logos.logo_url,
-      logo_data: logos.logo_data,
+      logo_data: getStandingsLogoData(logos),
     };
   });
 }

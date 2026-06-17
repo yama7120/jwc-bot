@@ -8,6 +8,7 @@ import * as fScore from '../../functions/fScore.js';
 import * as fRanking from '../../functions/fRanking.js';
 import * as fMongo from '../../functions/fMongo.js';
 import * as fCron from '../../functions/fCron.js';
+import * as fCanvas from '../../functions/fCanvas.js';
 
 const nameCommand = 'admin';
 let data = new SlashCommandBuilder()
@@ -200,6 +201,21 @@ let data = new SlashCommandBuilder()
             config.adminCommand[nameCommand].subCommandGroup['update'][
               'all_account_data'
             ],
+          ),
+      )
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName('logo_thumbs')
+          .setDescription(
+            config.adminCommand[nameCommand].subCommandGroup['update'][
+              'logo_thumbs'
+            ],
+          )
+          .addStringOption((option) =>
+            option
+              .setName('team')
+              .setDescription('チーム（省略時は全チーム）')
+              .setAutocomplete(true),
           ),
       ),
   )
@@ -933,6 +949,38 @@ export default {
           }),
         );
       }
+    } else if (
+      subcommandGroup == 'update' &&
+      subcommand == 'logo_thumbs' &&
+      focusedOption.name === 'team'
+    ) {
+      const focusedValue = interaction.options.getFocused();
+      const cursor = client.clientMongo
+        .db('jwc')
+        .collection('clans')
+        .find(
+          { logo_data: { $exists: true, $ne: null } },
+          { projection: { clan_abbr: 1, team_name: 1, _id: 0 } },
+        );
+      let clans = await cursor.toArray();
+      await cursor.close();
+
+      clans = clans.filter((team) =>
+        functions.teamMatchesAutocompleteFilter(team, focusedValue),
+      );
+      if (clans.length > 25) {
+        clans = clans.slice(0, 25);
+      }
+
+      await interaction.respond(
+        clans.map((team) => ({
+          name: functions.formatTeamAutocompleteName(
+            team.clan_abbr,
+            team.team_name,
+          ),
+          value: team.clan_abbr,
+        })),
+      );
     } else if (subcommandGroup == 'roster') {
       const mongoTeam = await client.clientMongo
         .db('jwc')
@@ -1252,6 +1300,8 @@ export default {
       } else if (subcommand == 'all_account_data') {
         await fCron.cronLegend2pm(client);
         await interaction.followUp({ content: '*done*' }, { ephemeral: true });
+      } else if (subcommand == 'logo_thumbs') {
+        await updateLogoThumbs(interaction, client);
       }
     } else if (subcommandGroup == 'edit') {
       if (subcommand == 'attack_result') {
@@ -2001,6 +2051,27 @@ async function updateLeagueStandings(interaction, client) {
   }
 
   await interaction.followUp({ embeds: [embed] });
+
+  return;
+}
+
+async function updateLogoThumbs(interaction, client) {
+  const iTeam = interaction.options.getString('team');
+  const clanAbbr = iTeam?.toLowerCase();
+
+  await interaction.followUp({
+    content: `:hourglass: *Generating logo thumbnails${clanAbbr ? ` for ${clanAbbr}` : ''}...*`,
+  });
+
+  const result = await fCanvas.backfillTeamLogoThumbs(client.clientMongo, {
+    clanAbbr,
+  });
+
+  let message = `:white_check_mark: *Logo thumbnails updated: ${result.updated}/${result.total}*`;
+  if (result.failed.length > 0) {
+    message += `\n:warning: Failed: ${result.failed.join(', ')}`;
+  }
+  await interaction.followUp({ content: message });
 
   return;
 }
