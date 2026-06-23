@@ -1238,17 +1238,31 @@ function formatSignedInt(n) {
   return v >= 0 ? `+${v}` : `${v}`;
 }
 
-/** 連続通知時は最新1件だけ。event の trophiesCurrent が API プロフィールと一致するときだけ総トロフィーを表示 */
+/** 連続通知時は最新1件だけタイトルに総トロフィーを付ける */
 function formatRankedBattleLogTitle(eventData, scPlayer) {
   const titleEmote = eventData.diffTrophies >= 0 ? config.emote.up : config.emote.down;
   const diffPart = `${titleEmote}**${formatSignedInt(eventData.diffTrophies)}**`;
-  if (
-    eventData.showTrophiesInTitle === false
-    || !shouldShowLegendRankingForEvent(scPlayer, eventData)
-  ) {
+  if (!shouldShowTrophyTotalInTitle(scPlayer, eventData)) {
     return diffPart;
   }
   return `${diffPart} :trophy: **${eventData.trophiesCurrent}**`;
+}
+
+/**
+ * タイトルの総トロフィー表示可否。
+ * 順位 API 用の shouldShowLegendRankingForEvent とは別（API 未反映の sweep でも積算値を出す）。
+ */
+function shouldShowTrophyTotalInTitle(scPlayer, eventData) {
+  if (eventData?.showTrophiesInTitle === false) return false;
+  const eventTrophies = Number(eventData?.trophiesCurrent);
+  if (!Number.isFinite(eventTrophies)) return false;
+  const profileTrophies = Number(scPlayer?.trophies);
+  if (Number.isFinite(profileTrophies) && profileTrophies === eventTrophies) {
+    return true;
+  }
+  // API がまだ 0 のまま等: battle log 積算の trophiesCurrent を表示（+9 なのに 🏆 0 を防ぐ）
+  if (eventTrophies > 0) return true;
+  return Number(eventData?.diffTrophies) === 0;
 }
 
 function buildLegendBarChartLine(kind, nToday) {
@@ -1435,20 +1449,56 @@ function rankedBattleTrophyDeltaFromBattleLog(
 }
 
 /**
- * API の現在トロフィーを終値として、各 battle の trophiesCurrent を逆算する。
- * 単発通知では after.trophies、そのまま使われる。
+ * 各 battle 終了時点の trophiesCurrent を算出する。
+ * sweep 等で before===after のときは forward 積算（API 0 のままでも diff を反映）。
+ * stats 変動があるときは before+diffs が after と一致すれば forward、不一致なら after から逆算。
  */
-function computeTrophiesCurrentByBattleIndex(afterPlayerStats, diffsChronological) {
-  const afterT = Number(afterPlayerStats?.trophies);
-  const anchor = Number.isFinite(afterT) ? afterT : 0;
+function computeTrophiesCurrentByBattleIndex(
+  beforePlayerStats,
+  afterPlayerStats,
+  diffsChronological,
+) {
   const n = diffsChronological.length;
-  const out = new Array(n);
-  let suffixDelta = 0;
-  for (let i = n - 1; i >= 0; i--) {
-    out[i] = anchor - suffixDelta;
-    suffixDelta += Number(diffsChronological[i]) || 0;
+  if (n === 0) return [];
+
+  const beforeT = Number(beforePlayerStats?.trophies);
+  const afterT = Number(afterPlayerStats?.trophies);
+  const sumDiff = diffsChronological.reduce(
+    (s, d) => s + (Number(d) || 0),
+    0,
+  );
+
+  const forwardFrom = (start) => {
+    let running = start;
+    return diffsChronological.map((d) => {
+      running += Number(d) || 0;
+      return running;
+    });
+  };
+
+  if (Number.isFinite(beforeT)) {
+    const sameSnapshot = Number.isFinite(afterT) && beforeT === afterT;
+    const matchesAfter = Number.isFinite(afterT) && beforeT + sumDiff === afterT;
+    if (sameSnapshot || matchesAfter) {
+      return forwardFrom(beforeT);
+    }
   }
-  return out;
+
+  if (Number.isFinite(afterT)) {
+    const out = new Array(n);
+    let suffixDelta = 0;
+    for (let i = n - 1; i >= 0; i--) {
+      out[i] = afterT - suffixDelta;
+      suffixDelta += Number(diffsChronological[i]) || 0;
+    }
+    return out;
+  }
+
+  if (Number.isFinite(beforeT)) {
+    return forwardFrom(beforeT);
+  }
+
+  return forwardFrom(0);
 }
 
 async function reloadMongoAccLegendProjection(client, mongoAcc) {
@@ -1815,6 +1865,7 @@ async function processLegendRankedBattleLog(
     );
   });
   const trophiesByIdx = computeTrophiesCurrentByBattleIndex(
+    beforePlayerStats,
     afterPlayerStats,
     diffsChronological,
   );
