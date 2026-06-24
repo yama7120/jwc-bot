@@ -1450,8 +1450,9 @@ function rankedBattleTrophyDeltaFromBattleLog(
 
 /**
  * 各 battle 終了時点の trophiesCurrent を算出する。
- * sweep 等で before===after のときは forward 積算（API 0 のままでも diff を反映）。
- * stats 変動があるときは before+diffs が after と一致すれば forward、不一致なら after から逆算。
+ * - stats 変動あり & before+sumDiff===after: forward（before から積算）
+ * - sweep 等で before===after & API 未反映(0): forward（diff のみ積算）
+ * - sweep 等で before===after & API 反映済み: after から逆算（二重加算防止）
  */
 function computeTrophiesCurrentByBattleIndex(
   beforePlayerStats,
@@ -1476,22 +1477,35 @@ function computeTrophiesCurrentByBattleIndex(
     });
   };
 
-  if (Number.isFinite(beforeT)) {
-    const sameSnapshot = Number.isFinite(afterT) && beforeT === afterT;
-    const matchesAfter = Number.isFinite(afterT) && beforeT + sumDiff === afterT;
-    if (sameSnapshot || matchesAfter) {
+  const backwardFrom = (anchor) => {
+    const out = new Array(n);
+    let suffixDelta = 0;
+    for (let i = n - 1; i >= 0; i--) {
+      out[i] = anchor - suffixDelta;
+      suffixDelta += Number(diffsChronological[i]) || 0;
+    }
+    return out;
+  };
+
+  if (Number.isFinite(beforeT) && Number.isFinite(afterT)) {
+    const sameSnapshot = beforeT === afterT;
+    const matchesAfter = beforeT + sumDiff === afterT;
+
+    if (matchesAfter && !sameSnapshot) {
       return forwardFrom(beforeT);
+    }
+
+    // API は最新だが sweep は before===after: forward すると after+sumDiff と二重計上になる
+    if (sameSnapshot) {
+      if (afterT === 0 && sumDiff !== 0) {
+        return forwardFrom(0);
+      }
+      return backwardFrom(afterT);
     }
   }
 
   if (Number.isFinite(afterT)) {
-    const out = new Array(n);
-    let suffixDelta = 0;
-    for (let i = n - 1; i >= 0; i--) {
-      out[i] = afterT - suffixDelta;
-      suffixDelta += Number(diffsChronological[i]) || 0;
-    }
-    return out;
+    return backwardFrom(afterT);
   }
 
   if (Number.isFinite(beforeT)) {
