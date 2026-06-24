@@ -603,12 +603,42 @@ async function deleteRoster(clientMongo, league, playerTag) {
 }
 export { deleteRoster };
 
+const RANKINGS_API_CIRCUIT_MS = 10 * 60 * 1000;
+let rankingsApiCircuitOpenUntil = 0;
+
+function isRankingsApiServerError(error) {
+  const status = Number(error?.status ?? error?.httpStatus);
+  return Number.isFinite(status) && status >= 500 && status < 600;
+}
+
+function noteRankingsApiFailure(error) {
+  if (isRankingsApiServerError(error)) {
+    rankingsApiCircuitOpenUntil = Date.now() + RANKINGS_API_CIRCUIT_MS;
+  }
+}
+
+function isRankingsApiCircuitOpen() {
+  return Date.now() < rankingsApiCircuitOpenUntil;
+}
+
+async function fetchLegends200PlayerRanks(client, location, label) {
+  if (isRankingsApiCircuitOpen()) {
+    console.warn(`legends200: ${label} skipped (rankings API circuit open)`);
+    return { ok: false, skipped: true };
+  }
+  try {
+    const players = await client.clientCoc.getPlayerRanks(location);
+    return { ok: true, players };
+  } catch (error) {
+    noteRankingsApiFailure(error);
+    console.warn(`legends200: ${label} fetch failed:`, error?.message ?? error);
+    return { ok: false, error };
+  }
+}
+
 async function legends200(client) {
   const name = 'legends200';
-  let listing = {};
-  // ランキング取得
-  listing.japan = await client.clientCoc.getPlayerRanks(config_coc.locationId.japan);
-  listing.global = await client.clientCoc.getPlayerRanks('global');
+  const collection = client.clientMongo.db('jwc').collection('ranking');
 
   // 取得したランキング200件について、Mongoのaccountsに登録済みかを照合し、
   // 登録済みであれば homeClanAbbrを各要素に付与する
@@ -642,14 +672,39 @@ async function legends200(client) {
     return players;
   };
 
-  listing.japan = await enrichWithHomeClanAbbr(listing.japan);
-  listing.global = await enrichWithHomeClanAbbr(listing.global);
-  listing.date = new Date();
-  listing.unixTimeRequest = Math.round(Date.now() / 1000);
-  await client.clientMongo
-    .db('jwc')
-    .collection('ranking')
-    .updateOne({ name: name }, { $set: listing });
+  const japanResult = await fetchLegends200PlayerRanks(
+    client,
+    config_coc.locationId.japan,
+    'japan',
+  );
+  const globalResult = await fetchLegends200PlayerRanks(client, 'global', 'global');
+
+  const listingSet = {
+    date: new Date(),
+    unixTimeRequest: Math.round(Date.now() / 1000),
+  };
+
+  if (japanResult.ok) {
+    listingSet.japan = await enrichWithHomeClanAbbr(japanResult.players);
+    listingSet.japanUpdatedAt = listingSet.date;
+    listingSet.japanLastError = null;
+  } else if (!japanResult.skipped) {
+    listingSet.japanLastError = japanResult.error?.message ?? 'unknown';
+  }
+
+  if (globalResult.ok) {
+    listingSet.global = await enrichWithHomeClanAbbr(globalResult.players);
+    listingSet.globalUpdatedAt = listingSet.date;
+    listingSet.globalLastError = null;
+  } else if (!globalResult.skipped) {
+    listingSet.globalLastError = globalResult.error?.message ?? 'unknown';
+  }
+
+  if (!japanResult.ok && !globalResult.ok) {
+    console.warn('legends200: both japan and global fetch failed; keeping previous cache');
+  }
+
+  await collection.updateOne({ name }, { $set: listingSet }, { upsert: true });
   console.dir('done: legends200');
   return;
 }

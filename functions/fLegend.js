@@ -2360,7 +2360,8 @@ export function legendStatisticsForNotify(playerStats) {
   };
 }
 
-// ランキング表示: Legend I は location 榜優先。それ以外は legendStatistics.currentSeason.rank があれば公式順位を表示
+// ランキング表示: location 榜は Mongo legends200 のみ参照（live API は cron 側で更新）。
+// Legend I の GLOBAL はキャッシュ未ヒット時 legendStatistics.currentSeason.rank にフォールバック。
 async function getRankingDisplay(client, scPlayer, eventData = null) {
   try {
     let playerForRank = scPlayer;
@@ -2392,64 +2393,23 @@ async function getRankingDisplay(client, scPlayer, eventData = null) {
 
     const tag = playerForRank.tag;
     let japanRankValue = null;
-    let globalRankValue = null;
+    let globalRankValue = isLegend1 ? null : legendGlobalRank;
 
-    if (isLegend1) {
-      try {
-        const legends200 = await client.clientMongo
-          .db('jwc')
-          .collection('ranking')
-          .findOne({ name: 'legends200' }, { projection: { _id: 0, japan: 1, global: 1 } });
-        japanRankValue = findRankInLegends200List(legends200?.japan, tag);
+    try {
+      const legends200 = await client.clientMongo
+        .db('jwc')
+        .collection('ranking')
+        .findOne({ name: 'legends200' }, { projection: { _id: 0, japan: 1, global: 1 } });
+      japanRankValue = findRankInLegends200List(legends200?.japan, tag);
+      if (isLegend1) {
         globalRankValue = findRankInLegends200List(legends200?.global, tag);
-      } catch (mongoErr) {
-        console.error('legends200 読み込みエラー:', mongoErr);
       }
+    } catch (mongoErr) {
+      console.error('legends200 読み込みエラー:', mongoErr);
+    }
 
-      if (japanRankValue == null) {
-        try {
-          const playerRanks = await client.clientCoc.getPlayerRanks(
-            config_coc.locationId.japan,
-          );
-          japanRankValue = findRankInLegends200List(playerRanks, tag);
-        } catch (jpError) {
-          console.error('日本ランキング取得エラー:', jpError);
-        }
-      }
-
-      if (globalRankValue == null) {
-        try {
-          const globalRanks = await client.clientCoc.getPlayerRanks('global');
-          globalRankValue = findRankInLegends200List(globalRanks, tag);
-        } catch (globalError) {
-          console.error('グローバルランキング取得エラー:', globalError);
-        }
-      }
-
-      if (globalRankValue == null) {
-        globalRankValue = legendGlobalRank;
-      }
-    } else {
+    if (isLegend1 && globalRankValue == null) {
       globalRankValue = legendGlobalRank;
-      try {
-        const legends200 = await client.clientMongo
-          .db('jwc')
-          .collection('ranking')
-          .findOne({ name: 'legends200' }, { projection: { _id: 0, japan: 1 } });
-        japanRankValue = findRankInLegends200List(legends200?.japan, tag);
-      } catch (mongoErr) {
-        console.error('legends200 読み込みエラー:', mongoErr);
-      }
-      if (japanRankValue == null) {
-        try {
-          const playerRanks = await client.clientCoc.getPlayerRanks(
-            config_coc.locationId.japan,
-          );
-          japanRankValue = findRankInLegends200List(playerRanks, tag);
-        } catch (jpError) {
-          console.error('日本ランキング取得エラー:', jpError);
-        }
-      }
     }
 
     let rankingText = '';

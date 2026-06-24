@@ -61,8 +61,8 @@ export default {
       }
     }
 
-    // 13:58pm
-    scheduleCronWithGuard('legends200', '00 58 04 * * *', async () => {
+    // legends200: 30分ごと（location 榜はバトルログでは Mongo のみ参照）
+    scheduleCronWithGuard('legends200', '00 */30 * * * *', async () => {
       await fMongo.legends200(client);
       console.log('END: fMongo.legends200');
     });
