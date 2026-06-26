@@ -411,6 +411,9 @@ let data = new SlashCommandBuilder()
                 { name: '4', value: 4 },
                 { name: '5', value: 5 },
               ),
+          )
+          .addStringOption((option) =>
+            option.setName('reason').setDescription('理由（記入）'),
           ),
       )
       .addSubcommand((subcommand) =>
@@ -2828,6 +2831,7 @@ async function editTeamScore(interaction, client) {
   const iAction = await interaction.options.getString('action');
   const iClanAbbr = await interaction.options.getString('team');
   const iPoint = await interaction.options.getInteger('point');
+  const iReason = await interaction.options.getString('reason');
 
   const query = { clan_abbr: iClanAbbr };
   const mongoClan = await client.clientMongo
@@ -2836,8 +2840,12 @@ async function editTeamScore(interaction, client) {
     .findOne(query);
 
   let description = '';
+
+  description += `:exclamation: **VIOLATION**\n`;
+  description += `${iReason}\n\n`;
+
   if (iAction == 'deductStar') {
-    description = await deductStarInTeamScore(
+    description += await deductStarInTeamScore(
       client,
       query,
       mongoClan,
@@ -2845,7 +2853,7 @@ async function editTeamScore(interaction, client) {
       iPoint,
     );
   } else if (iAction == 'addPoint') {
-    description = await addPointInTeamScore(
+    description += await addPointInTeamScore(
       client,
       query,
       mongoClan,
