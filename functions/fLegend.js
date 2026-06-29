@@ -1975,12 +1975,21 @@ async function processLegendRankedBattleLog(
 }
 
 /**
+ * 週開始 (UTC 月 17:00) に対応するトーナメント終了 (翌 UTC 月 05:00 = JST 月 14:00)。
+ * `getRankedWeekTournamentEndUnix` と同じ終了時刻。
+ */
+function rankedWeekTournamentEndUnixFromWeekStartUnix(weekStartUnix) {
+  // 週開始 + 6日12時間 = 翌週 UTC 月 05:00
+  return weekStartUnix + ((7 * 24) - 12) * 60 * 60;
+}
+
+/**
  * 週次トーナメント (Legend 1 以外) の境界を JST ベースで自前計算する。
  *
  * 仕様:
  *   - 週開始: JST 火 02:00  (= UTC 月 17:00)
- *   - 週終了: 翌 JST 月 02:00 (= UTC 日 17:00)  ← 週開始 + 6日
- *   - JST 月 02:00 〜 火 02:00 はバトル不可の 24h ギャップ
+ *   - 週終了: JST 月 14:00  (= UTC 月 05:00)  ← `getRankedWeekTournamentEndUnix` と一致
+ *   - JST 月 14:00 〜 火 02:00 はバトル不可のギャップ
  *
  * ギャップ中 (= 週終了後・次の週開始前) に呼ばれた場合は「直前に終わった週」
  * の境界を返す。これにより、cronUpdate2am (JST 02:00) 直後に呼ばれても
@@ -1997,6 +2006,7 @@ function getWeeklyTournamentUnixBounds(_seasonData, nowMs = Date.now()) {
   // Mon=0, Tue=1, ..., Sun=6
   let daysSinceWeekStart = (day + 6) % 7;
   // 月曜の 17:00 UTC 未満は「先週月曜が直近の週開始」
+  // (月 14:00 JST までの当週トーナメント継続中 + その後のギャップを含む)
   if (day === 1 && hour < 17) {
     daysSinceWeekStart = 7;
   }
@@ -2007,12 +2017,11 @@ function getWeeklyTournamentUnixBounds(_seasonData, nowMs = Date.now()) {
     d.getUTCDate() - daysSinceWeekStart,
     17, 0, 0, 0,
   ));
-  // 週終了 = 週開始 + 6 日 (24h ギャップは含めない)
-  const weekEndDate = new Date(weekStartDate.getTime() + 6 * 24 * 60 * 60 * 1000);
+  const startUnix = Math.floor(weekStartDate.getTime() / 1000);
 
   return {
-    startUnix: Math.floor(weekStartDate.getTime() / 1000),
-    weekEndUnix: Math.floor(weekEndDate.getTime() / 1000),
+    startUnix,
+    weekEndUnix: rankedWeekTournamentEndUnixFromWeekStartUnix(startUnix),
   };
 }
 
