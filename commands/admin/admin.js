@@ -2916,11 +2916,7 @@ async function deductStarInTeamScore(
   await client.clientMongo
     .db('jwc')
     .collection('clans')
-    .updateOne(query, { $set: { 'score.sum.penalty': penalty } });
-  await client.clientMongo
-    .db('jwc')
-    .collection('clans')
-    .updateOne(query, { $set: { 'score.sumQ.penalty': penalty } });
+    .updateOne(query, { $set: { 'score.penalty': penalty } });
 
   return description;
 }
