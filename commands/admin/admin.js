@@ -3799,6 +3799,7 @@ async function warSummary(interaction, client) {
 
   await interaction.followUp({
     content: `✅ *War summary posted: ${iLeague.toUpperCase()} WEEK ${iWeek}* (${messageIds.length} message(s))`,
+    ephemeral: true,
   });
 
   return;
