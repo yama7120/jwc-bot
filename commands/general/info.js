@@ -363,12 +363,10 @@ export default {
         if (accs.length >= 25) {
           accs = accs.filter(function(acc, index) { return index < 25 });
         };
-        if (accs.length > 0) {
-          await interaction.respond(accs.map(acc => ({
-            name: `[TH${acc.townHallLevel}] ${acc.name}`,
-            value: acc.tag
-          })));
-        };
+        await interaction.respond(accs.map(acc => ({
+          name: `[TH${acc.townHallLevel}] ${acc.name}`,
+          value: acc.tag
+        })));
       }
       else if (focusedOption.name === 'team') {
         const focusedValue = interaction.options.getFocused();
@@ -376,6 +374,9 @@ export default {
 
         if (iLeague == 'entire') {
           await interaction.respond([{ name: 'ENTIRE JWC BOT', value: 'entire' }]);
+        }
+        else if (!iLeague) {
+          await interaction.respond([]);
         }
         else {
           const query = { [`status.${functions.seasonToString(config.season[iLeague])}`]: { $in: ['true', 'question'] }, league: iLeague };
@@ -393,12 +394,10 @@ export default {
             mongoClans = mongoClans.filter(function(team, index) { return index < 25 });
           };
 
-          if (mongoClans.length > 0) {
-            await interaction.respond(mongoClans.map(team => ({
-              name: `${team.clan_abbr.toUpperCase()}: ${team.team_name}`,
-              value: team.clan_abbr
-            })));
-          };
+          await interaction.respond(mongoClans.map(team => ({
+            name: `${team.clan_abbr.toUpperCase()}: ${team.team_name}`,
+            value: team.clan_abbr
+          })));
         };
       }
       else if (focusedOption.name === 'account') {
@@ -430,12 +429,10 @@ export default {
         if (accs.length >= 25) {
           accs = accs.filter(function(acc, index) { return index < 25 });
         };
-        if (accs.length > 0) {
-          await interaction.respond(accs.map(acc => ({
-            name: `[TH${acc.townHallLevel}] ${acc.name}`,
-            value: acc.tag
-          })));
-        };
+        await interaction.respond(accs.map(acc => ({
+          name: `[TH${acc.townHallLevel}] ${acc.name}`,
+          value: acc.tag
+        })));
       };
     }
     else if (subcommandGroup == 'team' || subcommandGroup == 'roster') {
@@ -444,22 +441,25 @@ export default {
         const focusedValue = interaction.options.getFocused();
         const iLeague = await interaction.options.getString('league');
 
-        const query = { [`status.${functions.seasonToString(config.season[iLeague])}`]: { $in: ['true', 'question'] }, league: iLeague };
-        const projection = { _id: 0, clan_abbr: 1, team_name: 1 };
-        const sort = { clan_abbr: 1 };
-        const options = { projection: projection, sort: sort };
-        const cursor = client.clientMongo.db('jwc').collection('clans').find(query, options);
-        let mongoClans = await cursor.toArray();
-        await cursor.close();
+        if (!iLeague) {
+          await interaction.respond([]);
+        }
+        else {
+          const query = { [`status.${functions.seasonToString(config.season[iLeague])}`]: { $in: ['true', 'question'] }, league: iLeague };
+          const projection = { _id: 0, clan_abbr: 1, team_name: 1 };
+          const sort = { clan_abbr: 1 };
+          const options = { projection: projection, sort: sort };
+          const cursor = client.clientMongo.db('jwc').collection('clans').find(query, options);
+          let mongoClans = await cursor.toArray();
+          await cursor.close();
 
-        mongoClans = mongoClans.filter(function(team) {
-          return functions.teamMatchesAutocompleteFilter(team, focusedValue);
-        });
-        if (mongoClans.length >= 25) {
-          mongoClans = mongoClans.filter(function(team, index) { return index < 25 });
-        };
+          mongoClans = mongoClans.filter(function(team) {
+            return functions.teamMatchesAutocompleteFilter(team, focusedValue);
+          });
+          if (mongoClans.length >= 25) {
+            mongoClans = mongoClans.filter(function(team, index) { return index < 25 });
+          };
 
-        if (mongoClans.length > 0) {
           await interaction.respond(mongoClans.map(team => ({
             name: `${team.clan_abbr.toUpperCase()}: ${functions.nameReplacer(team.team_name)}`,
             value: team.clan_abbr

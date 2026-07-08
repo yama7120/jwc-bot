@@ -53,16 +53,27 @@ export function interactionToContext(interaction) {
 function formatInteractionOptions(interaction) {
   const lines = [];
   for (const opt of interaction.options?.data ?? []) {
-    if (opt.type === 1) {
-      lines.push(`subcommand: ${opt.name}`);
-      for (const sub of opt.options ?? []) {
-        lines.push(`  ${sub.name} = ${formatOptionValue(sub)}`);
-      }
-    } else {
-      lines.push(`${opt.name} = ${formatOptionValue(opt)}`);
-    }
+    formatOptionTree(opt, lines, 0);
   }
   return lines.join('\n') || '(none)';
+}
+
+/** @param {import('discord.js').ApplicationCommandOption} opt */
+function formatOptionTree(opt, lines, depth) {
+  const indent = '  '.repeat(depth);
+  if (opt.type === 2) {
+    lines.push(`${indent}group: ${opt.name}`);
+    for (const sub of opt.options ?? []) {
+      formatOptionTree(sub, lines, depth + 1);
+    }
+  } else if (opt.type === 1) {
+    lines.push(`${indent}subcommand: ${opt.name}`);
+    for (const sub of opt.options ?? []) {
+      lines.push(`${indent}  ${sub.name} = ${formatOptionValue(sub)}`);
+    }
+  } else {
+    lines.push(`${indent}${opt.name} = ${formatOptionValue(opt)}`);
+  }
 }
 
 /** @param {{ value?: unknown; name: string }} opt */
