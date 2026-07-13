@@ -7,6 +7,7 @@ import config_coc from '../config/config_coc.js';
 import schedule from '../config/schedule.js';
 import * as fGetWars from './fGetWars.js';
 import * as fRanking from './fRanking.js';
+import * as fTeamLogo from './fTeamLogo.js';
 import { getWeekNow as getWeekNowFromCache } from './weekNow.js';
 
 /**
@@ -1964,14 +1965,15 @@ async function sendClanInfo(interaction, client, clanAbbr) {
   }
   myDescription += `${config.emote.discord} </rep edit my_channel:1229035726549680191> [for reps]\n`;
 
+  const logo = fTeamLogo.createTeamLogoEmbedAsset(mongoClan);
   let embed = new EmbedBuilder()
     .setTitle(myTitle)
     .setDescription(myDescription)
     .setColor(config.color.main)
-    .setThumbnail(mongoClan.logo_url)
+    .setThumbnail(logo.url)
     .setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
 
-  await interaction.followUp({ embeds: [embed] });
+  await interaction.followUp(fTeamLogo.withTeamLogo({ embeds: [embed] }, logo));
 }
 export { sendClanInfo };
 

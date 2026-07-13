@@ -3,6 +3,7 @@ import config from '../../config/config.js';
 import * as functions from '../../functions/functions.js';
 import schedule from '../../config/schedule.js';
 import * as fCanvas from '../../functions/fCanvas.js';
+import * as fTeamLogo from '../../functions/fTeamLogo.js';
 
 
 const nameCommand = 'stats';
@@ -523,13 +524,19 @@ async function statsTeam(interaction, client) {
     footerText = `${config.footer} ${config.league[iLeague]} | WEEK ${iWeek}`;
   };
 
+  const teamLogo = fTeamLogo.createTeamLogoEmbedAsset(mongoTeam);
   let embed = new EmbedBuilder()
-    .setAuthor({ name: mongoTeam.team_name.replace(/\\/g, ''), iconURL: mongoTeam.logo_url })
+    .setAuthor({
+      name: mongoTeam.team_name.replace(/\\/g, ''),
+      iconURL: teamLogo.url,
+    })
     .setTitle(title)
     .setColor(config.color[iLeague])
     .setDescription(description)
     .setFooter({ text: footerText, iconURL: config.urlImage.jwc })
-  await interaction.followUp({ embeds: [embed] });
+  await interaction.followUp(
+    fTeamLogo.withTeamLogo({ embeds: [embed] }, teamLogo),
+  );
 
   const mongoRanking = await client.clientMongo.db('jwc').collection('ranking').findOne({ name: 'jwcAttacks' });
   const attachment = await fCanvas.teamStats(client.clientMongo, iLeague, mongoTeam, mongoRanking);

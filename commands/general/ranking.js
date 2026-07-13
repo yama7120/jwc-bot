@@ -3,7 +3,7 @@ import config from '../../config/config.js';
 import config_coc from '../../config/config_coc.js';
 import * as functions from '../../functions/functions.js';
 import * as fRanking from '../../functions/fRanking.js';
-
+import * as fTeamLogo from '../../functions/fTeamLogo.js';
 
 const nameCommand = 'ranking';
 let data = new SlashCommandBuilder()
@@ -732,6 +732,7 @@ async function jwcAttack(interaction, client) {
   };
 
   let embed = new EmbedBuilder();
+  let teamLogo = null;
 
   let title = `${config.emote.sword} **TOP ATTACKERS**`;
   embed.setTitle(title);
@@ -750,10 +751,20 @@ async function jwcAttack(interaction, client) {
   if (teamAbbr != 'entire') {
     let dbValueClan = await client.clientMongo.db('jwc').collection('clans').findOne(
       { clan_abbr: teamAbbr },
-      { projection: { team_name: 1, logo_url: 1, _id: 0 } }
+      {
+        projection: {
+          team_name: 1,
+          clan_abbr: 1,
+          logo_url: 1,
+          logo_data: 1,
+          logo_data_thumb: 1,
+          _id: 0,
+        },
+      }
     );
     if (dbValueClan) {
-      embed.setAuthor({ name: dbValueClan.team_name, iconURL: dbValueClan.logo_url });
+      teamLogo = fTeamLogo.createTeamLogoEmbedAsset(dbValueClan);
+      embed.setAuthor({ name: dbValueClan.team_name, iconURL: teamLogo.url });
     } else {
       console.warn(`jwcAttack: clan not found for abbr='${teamAbbr}'`);
     }
@@ -769,7 +780,9 @@ async function jwcAttack(interaction, client) {
         embed.setTitle(title);
       };
       embed.setDescription(iDescription);
-      await interaction.followUp({ embeds: [embed] });
+      await interaction.followUp(
+        fTeamLogo.withTeamLogo({ embeds: [embed] }, teamLogo),
+      );
     };
   });
 
@@ -875,11 +888,13 @@ async function jwcDefense(interaction, client) {
   let embed = new EmbedBuilder()
     .setTitle(title)
     .setFooter({ text: footer, iconURL: config.urlImage.jwc })
+  let teamLogo = null;
 
   if (teamAbbr != 'entire') {
     let dbValueClan = await client.clientMongo.db('jwc').collection('clans').findOne({ clan_abbr: teamAbbr });
     if (dbValueClan) {
-      embed.setAuthor({ name: dbValueClan.team_name, iconURL: dbValueClan.logo_url });
+      teamLogo = fTeamLogo.createTeamLogoEmbedAsset(dbValueClan);
+      embed.setAuthor({ name: dbValueClan.team_name, iconURL: teamLogo.url });
     } else {
       console.warn(`jwcDefense: clan not found for abbr='${teamAbbr}'`);
     }
@@ -891,7 +906,9 @@ async function jwcDefense(interaction, client) {
   description.map(async (iDescription) => {
     if (iDescription != '') {
       embed.setDescription(iDescription);
-      await interaction.followUp({ embeds: [embed] });
+      await interaction.followUp(
+        fTeamLogo.withTeamLogo({ embeds: [embed] }, teamLogo),
+      );
     };
   });
 
@@ -903,7 +920,9 @@ async function jwcDefense(interaction, client) {
     let description = '';
     description += `**${totalSucDefenses}**/${totalDefenses}  ( **${rate}**% )  ${totalAvrgDestruction}%`;
     embed.setDescription(description);
-    await interaction.followUp({ embeds: [embed] });
+    await interaction.followUp(
+      fTeamLogo.withTeamLogo({ embeds: [embed] }, teamLogo),
+    );
   };
 
   return;

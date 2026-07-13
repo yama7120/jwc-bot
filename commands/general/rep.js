@@ -4,6 +4,7 @@ import * as functions from '../../functions/functions.js';
 import * as fMongo from '../../functions/fMongo.js';
 import * as fRoster from '../../functions/fRoster.js';
 import * as fCanvas from '../../functions/fCanvas.js';
+import * as fTeamLogo from '../../functions/fTeamLogo.js';
 import {
   reportAutocompleteIssue,
   safeAutocompleteRespond,
@@ -594,8 +595,9 @@ async function addRoster(client, interaction) {
   let title = '';
   let description = '';
   let embed = new EmbedBuilder();
+  const teamLogo = fTeamLogo.createTeamLogoEmbedAsset(mongoTeam);
   embed.setColor(config.color.main);
-  embed.setThumbnail(mongoTeam.logo_url);
+  embed.setThumbnail(teamLogo.url);
   embed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
   embed.setTimestamp();
 
@@ -607,7 +609,9 @@ async function addRoster(client, interaction) {
       embed.setTitle(title);
       embed.setDescription(description);
       embed.setColor(config.color.red);
-      await interaction.followUp({ embeds: [embed] });
+      await interaction.followUp(
+        fTeamLogo.withTeamLogo({ embeds: [embed] }, teamLogo),
+      );
       return;
     }
   }
@@ -751,13 +755,17 @@ async function addRoster(client, interaction) {
   embed.setTitle(title);
   embed.setDescription(description);
 
-  await interaction.followUp({ embeds: [embed] });
+  await interaction.followUp(
+    fTeamLogo.withTeamLogo({ embeds: [embed] }, teamLogo),
+  );
 
   const registrationLogChannel = client.channels.cache.get(
     config.logch.playerRegistration[league],
   );
   if (registrationLogChannel) {
-    await registrationLogChannel.send({ embeds: [embed] });
+    await registrationLogChannel.send(
+      fTeamLogo.withTeamLogo({ embeds: [embed] }, teamLogo),
+    );
   } else {
     console.error(
       `playerRegistration log channel not found for league ${league}`,
@@ -1322,7 +1330,8 @@ async function editTeamInformation(client, interaction) {
         await fCanvas.prepareTeamLogoForStorage(logoBuffer);
       listing.logo_data = logo_data;
       listing.logo_data_thumb = logo_data_thumb;
-      listing.logo_url = iLogoFile.url;
+      // Discord interaction 添付 URL は期限切れするため保存しない
+      listing.logo_url = null;
     } catch (error) {
       await interaction.followUp({
         content: `:exclamation: 添付ロゴの取得に失敗しました: ${error?.message ?? error}`,

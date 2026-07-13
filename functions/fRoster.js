@@ -4,6 +4,7 @@ import config from '../config/config.js';
 import config_coc from '../config/config_coc.js';
 import * as functions from './functions.js';
 import * as fMongo from './fMongo.js';
+import * as fTeamLogo from './fTeamLogo.js';
 
 const leagueTierRankById = new Map(
   config_coc.leagueTiers.map((tier, index) => [tier.id, index]),
@@ -26,7 +27,17 @@ function sortRosterAccounts(accs, sortOrder) {
 async function roster(interaction, client, iLeague, iTeamAbbr, sortOrder = 'default') {
   let mongoTeam = await client.clientMongo.db('jwc').collection('clans').findOne(
     { clan_abbr: iTeamAbbr },
-    { projection: { team_name: 1, clan_abbr: 1, logo_url: 1, clan_tag: 1, _id: 0 } }
+    {
+      projection: {
+        team_name: 1,
+        clan_abbr: 1,
+        logo_url: 1,
+        logo_data: 1,
+        logo_data_thumb: 1,
+        clan_tag: 1,
+        _id: 0,
+      },
+    }
   );
 
   const query = { [`homeClanAbbr.${config.leagueM[iLeague]}`]: iTeamAbbr, status: true };
@@ -153,25 +164,32 @@ async function rosterMain(
   });
 
   let footer = `${config.footer} ${config.league[iLeague]}`;
+  const teamLogo = fTeamLogo.createTeamLogoEmbedAsset(mongoTeam);
 
   embed.setTitle(title);
   embed.setDescription(description[0]);
   embed.setColor(config.color[iLeague]);
   embed.setFooter({ text: footer, iconURL: config.urlImage.jwc });
-  embed.setAuthor({ name: mongoTeam.team_name, iconURL: mongoTeam.logo_url });
-  await interaction.followUp({ embeds: [embed] });
+  embed.setAuthor({ name: mongoTeam.team_name, iconURL: teamLogo.url });
+  await interaction.followUp(
+    fTeamLogo.withTeamLogo({ embeds: [embed] }, teamLogo),
+  );
 
   for (let i = 1; i < 5; i++) {
     if (description[i] != '') {
       embed.setDescription(description[i])
-      await interaction.followUp({ embeds: [embed] });
+      await interaction.followUp(
+        fTeamLogo.withTeamLogo({ embeds: [embed] }, teamLogo),
+      );
     };
   };
 
   description = await setDescriptionRosterLeagueOne(client.clientMongo, iLeague, -1, mongoTeam.clan_abbr, mongoTeam.team_name);
 
   embed.setDescription(description);
-  await interaction.followUp({ embeds: [embed] });
+  await interaction.followUp(
+    fTeamLogo.withTeamLogo({ embeds: [embed] }, teamLogo),
+  );
 
   return;
 };
@@ -267,7 +285,17 @@ async function setDescriptionRosterLeagueOne(clientMongo, iLeague, index, teamAb
 async function rosterClan(interaction, client, iLeague, iTeamAbbr) {
   let mongoTeam = await client.clientMongo.db('jwc').collection('clans').findOne(
     { clan_abbr: iTeamAbbr },
-    { projection: { team_name: 1, logo_url: 1, clan_tag: 1, _id: 0 } }
+    {
+      projection: {
+        team_name: 1,
+        clan_abbr: 1,
+        logo_url: 1,
+        logo_data: 1,
+        logo_data_thumb: 1,
+        clan_tag: 1,
+        _id: 0,
+      },
+    }
   );
 
   if (!mongoTeam) {
@@ -307,18 +335,23 @@ async function rosterClan(interaction, client, iLeague, iTeamAbbr) {
   const description2 = arrDescription.slice(25).join('');
 
   const footer = `${config.footer} ${config.league[iLeague]}`;
+  const teamLogo = fTeamLogo.createTeamLogoEmbedAsset(mongoTeam);
 
   let embed = new EmbedBuilder();
   embed.setTitle(title);
   embed.setDescription(description1);
   embed.setColor(config.color[iLeague]);
   embed.setFooter({ text: footer, iconURL: config.urlImage.jwc });
-  embed.setAuthor({ name: mongoTeam.team_name, iconURL: mongoTeam.logo_url });
-  await interaction.followUp({ embeds: [embed] });
+  embed.setAuthor({ name: mongoTeam.team_name, iconURL: teamLogo.url });
+  await interaction.followUp(
+    fTeamLogo.withTeamLogo({ embeds: [embed] }, teamLogo),
+  );
 
   if (description2) {
     embed.setDescription(description2);
-    await interaction.followUp({ embeds: [embed] });
+    await interaction.followUp(
+      fTeamLogo.withTeamLogo({ embeds: [embed] }, teamLogo),
+    );
   };
   
   return;

@@ -2,6 +2,7 @@ import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import config from '../../config/config.js';
 import schedule from '../../config/schedule.js';
 import * as functions from '../../functions/functions.js';
+import * as fTeamLogo from '../../functions/fTeamLogo.js';
 
 const nameCommand = 'schedule';
 let data = new SlashCommandBuilder()
@@ -77,6 +78,7 @@ export default {
     let title = '';
     let description = '';
     let footer = '';
+    let teamLogo = null;
 
     let options = {
       year: 'numeric',
@@ -148,6 +150,7 @@ export default {
         .db('jwc')
         .collection('clans')
         .findOne({ clan_abbr: clanAbbr });
+      teamLogo = fTeamLogo.createTeamLogoEmbedAsset(dbValueClan);
 
       const query = {
         season: config.season[iLeague],
@@ -213,7 +216,7 @@ export default {
 
       embed.setAuthor({
         name: dbValueClan.team_name,
-        iconURL: dbValueClan.logo_url,
+        iconURL: teamLogo.url,
       });
     }
 
@@ -229,6 +232,8 @@ export default {
     embed.setColor(config.color[iLeague]);
     embed.setFooter({ text: footer, iconURL: config.urlImage.jwc });
 
-    await interaction.followUp({ embeds: [embed] });
+    await interaction.followUp(
+      fTeamLogo.withTeamLogo({ embeds: [embed] }, teamLogo),
+    );
   },
 };

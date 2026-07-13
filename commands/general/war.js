@@ -3,6 +3,7 @@ import config from '../../config/config.js';
 import schedule from '../../config/schedule.js';
 import * as functions from '../../functions/functions.js';
 import * as fGetWars from '../../functions/fGetWars.js';
+import * as fTeamLogo from '../../functions/fTeamLogo.js';
 
 const nameCommand = 'war';
 let data = new SlashCommandBuilder()
@@ -461,7 +462,16 @@ async function warAttacks(interaction, client) {
 
   let mongoClan = await client.clientMongo.db('jwc').collection('clans').findOne(
     { clan_abbr: clanAbbr },
-    { projection: { team_name: 1, logo_url: 1, _id: 0 } }
+    {
+      projection: {
+        team_name: 1,
+        clan_abbr: 1,
+        logo_url: 1,
+        logo_data: 1,
+        logo_data_thumb: 1,
+        _id: 0,
+      },
+    }
   );
   if (!mongoClan) {
     await interaction.followUp({
@@ -470,6 +480,7 @@ async function warAttacks(interaction, client) {
     return;
   }
   const teamName = mongoClan.team_name;
+  const teamLogo = fTeamLogo.createTeamLogoEmbedAsset(mongoClan);
 
   const query = {
     season: config.season[iLeague],
@@ -591,11 +602,13 @@ async function warAttacks(interaction, client) {
   embed.setTitle(title);
   embed.setColor(config.color[iLeague]);
   embed.setFooter({ text: footerText, iconURL: config.urlImage.jwc });
-  embed.setAuthor({ name: teamName, iconURL: mongoClan.logo_url });
+  embed.setAuthor({ name: teamName, iconURL: teamLogo.url });
 
   for (const desc of description) {
     embed.setDescription(desc);
-    await interaction.followUp({ embeds: [embed] });
+    await interaction.followUp(
+      fTeamLogo.withTeamLogo({ embeds: [embed] }, teamLogo),
+    );
   };
 
   return;
@@ -614,7 +627,16 @@ async function warDefenses(interaction, client) {
 
   let mongoClan = await client.clientMongo.db('jwc').collection('clans').findOne(
     { clan_abbr: clanAbbr },
-    { projection: { team_name: 1, logo_url: 1, _id: 0 } }
+    {
+      projection: {
+        team_name: 1,
+        clan_abbr: 1,
+        logo_url: 1,
+        logo_data: 1,
+        logo_data_thumb: 1,
+        _id: 0,
+      },
+    }
   );
   if (!mongoClan) {
     await interaction.followUp({
@@ -623,6 +645,7 @@ async function warDefenses(interaction, client) {
     return;
   }
   const teamName = mongoClan.team_name;
+  const teamLogo = fTeamLogo.createTeamLogoEmbedAsset(mongoClan);
 
   const query = {
     season: config.season[iLeague],
@@ -754,11 +777,13 @@ async function warDefenses(interaction, client) {
   embed.setTitle(title);
   embed.setColor(config.color[iLeague]);
   embed.setFooter({ text: footerText, iconURL: config.urlImage.jwc });
-  embed.setAuthor({ name: teamName, iconURL: mongoClan.logo_url });
+  embed.setAuthor({ name: teamName, iconURL: teamLogo.url });
 
   for (const desc of description) {
     embed.setDescription(desc);
-    await interaction.followUp({ embeds: [embed] });
+    await interaction.followUp(
+      fTeamLogo.withTeamLogo({ embeds: [embed] }, teamLogo),
+    );
   };
 
   return;
@@ -800,9 +825,15 @@ async function warLineupMain(interaction, client) {
     let mongoTeam_B = await client.clientMongo.db('jwc').collection('clans').findOne({ clan_abbr: teamAbbr_B });
 
     embed = await sendLineup(client, embed, iLeague, iWeek, mongoTeam_A, mongoTeam_B, members_A);
-    await interaction.followUp({ embeds: [embed] });
+    const teamLogoA = fTeamLogo.createTeamLogoEmbedAsset(mongoTeam_A);
+    await interaction.followUp(
+      fTeamLogo.withTeamLogo({ embeds: [embed] }, teamLogoA),
+    );
     embed = await sendLineup(client, embed, iLeague, iWeek, mongoTeam_B, mongoTeam_A, members_B);
-    await interaction.followUp({ embeds: [embed] });
+    const teamLogoB = fTeamLogo.createTeamLogoEmbedAsset(mongoTeam_B);
+    await interaction.followUp(
+      fTeamLogo.withTeamLogo({ embeds: [embed] }, teamLogoB),
+    );
   }
   catch (err) {
     let description = '';
@@ -827,7 +858,8 @@ async function sendLineup(client, embed, iLeague, iWeek, mongoTeam, mongoTeamOpp
     leagueM = 'j';
   };
 
-  embed.setAuthor({ name: mongoTeam.team_name, iconURL: mongoTeam.logo_url });
+  const teamLogo = fTeamLogo.createTeamLogoEmbedAsset(mongoTeam);
+  embed.setAuthor({ name: mongoTeam.team_name, iconURL: teamLogo.url });
 
   let arrDescription = [];
   let description = '';
