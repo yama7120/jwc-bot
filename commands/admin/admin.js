@@ -1445,7 +1445,22 @@ async function createNegoChMain(interaction, client) {
     myContent += `*${config.league[iLeague]} - WEEK ${iWeek}*\n`;
   }
 
-  interaction.followUp(myContent);
+  await interaction.followUp(myContent);
+
+  try {
+    const summaryResult = await postOrUpdateWarSummary(client, iLeague, iWeek);
+    await interaction.followUp({
+      content: summaryResult.content,
+      ...(summaryResult.ephemeral ? { ephemeral: true } : {}),
+    });
+  } catch (err) {
+    console.error('createNegoChMain: war summary failed:', err);
+    await interaction.followUp({
+      content:
+        ':exclamation: *Negotiation channels done, but war summary failed*',
+      ephemeral: true,
+    });
+  }
 
   return;
 }
@@ -3735,13 +3750,7 @@ async function deleteNegoChs(interaction) {
   return;
 }
 
-async function warSummary(interaction, client) {
-  const iLeague = await interaction.options.getString('league');
-  let iWeek = await interaction.options.getInteger('week');
-  if (iWeek == null || iWeek == 99) {
-    iWeek = await functions.getWeekNow(iLeague);
-  }
-
+async function postOrUpdateWarSummary(client, iLeague, iWeek) {
   const query = {
     season: config.season[iLeague],
     league: iLeague,
@@ -3760,10 +3769,9 @@ async function warSummary(interaction, client) {
       });
     }
     await functions.updateWarInfo(client, iLeague, iWeek);
-    await interaction.followUp({
+    return {
       content: `✅ *War summary updated: ${iLeague.toUpperCase()} WEEK ${iWeek}*`,
-    });
-    return;
+    };
   }
 
   const { embedGroups } = await functions.getWarInfoEmbedGroups(
@@ -3774,11 +3782,10 @@ async function warSummary(interaction, client) {
 
   const warInfoChannel = client.channels.cache.get(config.leagueCh[iLeague]);
   if (!warInfoChannel) {
-    await interaction.followUp({
+    return {
       content: `❌ *War info channel not found for ${iLeague.toUpperCase()}*`,
       ephemeral: true,
-    });
-    return;
+    };
   }
 
   const messageIds = [];
@@ -3797,9 +3804,23 @@ async function warSummary(interaction, client) {
   };
   await warInfoColl.updateOne(query, { $set: newListing }, { upsert: true });
 
-  await interaction.followUp({
+  return {
     content: `✅ *War summary posted: ${iLeague.toUpperCase()} WEEK ${iWeek}* (${messageIds.length} message(s))`,
     ephemeral: true,
+  };
+}
+
+async function warSummary(interaction, client) {
+  const iLeague = await interaction.options.getString('league');
+  let iWeek = await interaction.options.getInteger('week');
+  if (iWeek == null || iWeek == 99) {
+    iWeek = await functions.getWeekNow(iLeague);
+  }
+
+  const result = await postOrUpdateWarSummary(client, iLeague, iWeek);
+  await interaction.followUp({
+    content: result.content,
+    ...(result.ephemeral ? { ephemeral: true } : {}),
   });
 
   return;
