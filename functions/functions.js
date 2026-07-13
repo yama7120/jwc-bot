@@ -1693,8 +1693,8 @@ async function getDescriptionNego(
   myContent += `* 日程と、どちらから申請するかを決めてください。\n`;
   myContent += `* 交渉結果は </rep deal_war:1229035726549680191> コマンドで報告してください。 <#1123531433475063818>\n`;
   myContent += `* 下記の基準日から変更する場合は、必ず基準期間内に __マッチング__ するようご注意ください。\n`;
-  if (league == 'cup') {
-    myContent += `* 対戦時間は **12 時間** で変更は不可とします。\n`;
+  if (league == 'cup' || league == 'j1' || league == 'j2') {
+    myContent += `* 対戦時間は **${schedule.timeBattle[league]} 時間** で変更は不可とします。\n`;
   }
 
   myDescription += `**${teamNameA}** :vs: **${teamNameB}**\n`;
