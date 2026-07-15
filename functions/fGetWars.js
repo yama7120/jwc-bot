@@ -2158,8 +2158,9 @@ async function sendWarStats(interaction, clientMongo, league, mongoWar) {
     opponentLogoData: mongoClanB?.logo_data,
   };
 
-  const canvasPromise =
-    mongoWar.result != '' ? fCanvas.warProgress(mongoWar, teamLogos) : null;
+  const canvasPromise = !warResultIsUnset(mongoWar)
+    ? fCanvas.warProgress(mongoWar, teamLogos)
+    : null;
 
   const embed = await createEmbedWarStats(
     clientMongo,
