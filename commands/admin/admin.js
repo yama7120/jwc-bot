@@ -1085,14 +1085,12 @@ export default {
         let mongoWars = await cursor.toArray();
         await cursor.close();
 
-        if (mongoWars.length > 0) {
-          await interaction.respond(
-            mongoWars.map((war) => ({
-              name: functions.formatMatchAutocompleteName(war),
-              value: war.match,
-            })),
-          );
-        }
+        await interaction.respond(
+          mongoWars.map((war) => ({
+            name: functions.formatMatchAutocompleteName(war),
+            value: war.match,
+          })),
+        );
       } else if (focusedOption.name === 'team') {
         // 対戦のどちらかのチーム
         if (

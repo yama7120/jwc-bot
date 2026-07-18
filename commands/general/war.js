@@ -135,12 +135,13 @@ export default {
       let mongoWars = await cursor.toArray();
       await cursor.close();
 
-      if (mongoWars.length > 0) {
-        await interaction.respond(mongoWars.map(war => ({
+      await safeAutocompleteRespond(
+        interaction,
+        mongoWars.map(war => ({
           name: functions.formatMatchAutocompleteName(war),
           value: war.match
-        })));
-      };
+        })),
+      );
     }
     else if (focusedOption.name === 'team') {
       if (!iLeague) {
