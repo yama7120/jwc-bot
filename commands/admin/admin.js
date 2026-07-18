@@ -1379,7 +1379,7 @@ export default {
     } else if (subcommand == 'scan_clan') {
       scanClan(interaction, client);
     } else if (subcommand == 'mention_reps') {
-      mentionReps(interaction, client);
+      await mentionReps(interaction, client);
     } else if (subcommand == 'test') {
       fMongo.legends200(client);
 
@@ -4127,7 +4127,51 @@ async function mentionReps(interaction, client) {
   myContent += `\n`;
   myContent += iMessage;
 
-  client.channels.cache.get(mongoWar.nego_channel).send({ content: myContent });
+  const negotiationChannel = await client.channels.fetch(mongoWar.nego_channel);
+  const sentMessage = await negotiationChannel.send({ content: myContent });
 
-  interaction.followUp('*done*');
+  const clanReps = [`<@!${rep1stId1}>`, `<@!${rep2ndId1}>`];
+  if (rep3rdId1) {
+    clanReps.push(`<@!${rep3rdId1}>`);
+  }
+  const opponentReps = [`<@!${rep1stId2}>`, `<@!${rep2ndId2}>`];
+  if (rep3rdId2) {
+    opponentReps.push(`<@!${rep3rdId2}>`);
+  }
+
+  const resultEmbed = new EmbedBuilder()
+    .setTitle(':white_check_mark: 代表者へのメンションを送信しました')
+    .setDescription(
+      `**${mongoClan.team_name} (${mongoWar.clan_abbr.toUpperCase()})** vs ` +
+        `**${mongoClanOpp.team_name} (${mongoWar.opponent_abbr.toUpperCase()})**`,
+    )
+    .addFields(
+      {
+        name: '対戦',
+        value: `${config.league[iLeague]} / Week ${iWeek} / Match ${iMatch}`,
+        inline: true,
+      },
+      {
+        name: '送信先',
+        value: `<#${mongoWar.nego_channel}>\n[送信メッセージを開く](${sentMessage.url})`,
+        inline: true,
+      },
+      {
+        name: mongoWar.clan_abbr.toUpperCase(),
+        value: clanReps.join(' '),
+      },
+      {
+        name: mongoWar.opponent_abbr.toUpperCase(),
+        value: opponentReps.join(' '),
+      },
+      {
+        name: '送信内容',
+        value: iMessage.slice(0, 1024),
+      },
+    )
+    .setColor(config.color[iLeague])
+    .setFooter({ text: config.footer, iconURL: config.urlImage.jwc })
+    .setTimestamp();
+
+  await interaction.followUp({ embeds: [resultEmbed] });
 }
