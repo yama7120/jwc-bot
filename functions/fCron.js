@@ -10,6 +10,7 @@ import { getWeekNow } from './weekNow.js';
 import * as fGetWars from './fGetWars.js';
 import * as fRanking from './fRanking.js';
 import * as fCanvas from './fCanvas.js';
+import { deliverLegendLogToUser } from './fLegend.js';
 import { reportError } from './errorReport.js';
 import {
   isHeavyCronRunning,
@@ -661,33 +662,7 @@ async function sendLegendDayEmbedToAccount(client, mongoAcc, embed) {
   if (!logSettings || logSettings.post === 'NA') return;
   if (!legendAccountHasBattleNotifications(logSettings)) return;
 
-  try {
-    if (logSettings.post === 'channel') {
-      let channel = client.channels.cache.get(logSettings.channel);
-      if (!channel) {
-        channel = await client.channels.fetch(logSettings.channel).catch(() => null);
-      }
-      if (channel?.isTextBased()) {
-        await channel.send({ embeds: [embed] });
-      } else {
-        console.error(
-          'Day start: channel not found or not text-based',
-          mongoAcc.name,
-          mongoAcc.tag,
-        );
-      }
-    } else if (logSettings.post === 'dm') {
-      const pilotId = extractPilotId(mongoAcc);
-      if (!pilotId) {
-        console.warn('Day start: pilotDC.id missing', mongoAcc.tag);
-        return;
-      }
-      const pilot = await client.users.fetch(pilotId);
-      await pilot.send({ embeds: [embed] });
-    }
-  } catch (error) {
-    console.error('Day start notification failed:', mongoAcc.name, mongoAcc.tag, error);
-  }
+  await deliverLegendLogToUser(client, mongoAcc, { embeds: [embed] });
 }
 
 async function sendLogLegendDayToMonitoredLegend1(client, embed) {
@@ -889,35 +864,12 @@ async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo 
 
   const attachmentHistory = await fCanvas.legendHistory(mongoAcc);
 
-  try {
-    if (mongoAcc.legend.logSettings.post === 'channel') {
-      let channel = client.channels.cache.get(mongoAcc.legend.logSettings.channel);
-      if (!channel) {
-        channel = await client.channels.fetch(mongoAcc.legend.logSettings.channel).catch(() => null);
-      }
-      if (channel?.isTextBased()) {
-        await channel.send({ embeds: [embed] });
-        await channel.send({ files: [result.attachment] });
-        await channel.send({ files: [attachmentHistory] });
-      } else {
-        console.error(
-          'Result: channel not found or not text-based',
-          mongoAcc.name,
-          mongoAcc.tag,
-        );
-      }
-    } else if (mongoAcc.legend.logSettings.post === 'dm') {
-      const pilotId = extractPilotId(mongoAcc);
-      if (!pilotId) {
-        throw new Error('pilotDC.id is missing for DM destination');
-      }
-      const pilot = await client.users.fetch(pilotId);
-      await pilot.send({ embeds: [embed] });
-      await pilot.send({ files: [result.attachment] });
-      await pilot.send({ files: [attachmentHistory] });
-    }
-  } catch (error) {
-    console.error(`メッセージの送信中にエラーが発生しました: ${mongoAcc.name}`, error);
+  const delivery = await deliverLegendLogToUser(client, mongoAcc, {
+    embeds: [embed],
+  });
+  if (delivery.ok) {
+    await deliverLegendLogToUser(client, mongoAcc, { files: [result.attachment] });
+    await deliverLegendLogToUser(client, mongoAcc, { files: [attachmentHistory] });
   }
   // 14時のresult系バックアップ通知先
   const disableLegendLogs = process.env.DISABLE_LEGEND_LOGS === 'true';

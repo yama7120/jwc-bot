@@ -349,7 +349,31 @@ async function settings(interaction, client) {
     iSettingsChannelId = null;
   }
   else if (iSettingsPost == 'channel') {
-    iSettingsChannelId = interaction.channel.id;
+    const channel = interaction.channel;
+    if (!channel?.isTextBased()) {
+      await interaction.followUp({
+        content: 'Legend logs can only be posted to text channels.',
+        ephemeral: true,
+      });
+      return;
+    }
+
+    const guildMember = interaction.guild?.members?.me
+      ?? (interaction.guild
+        ? await interaction.guild.members.fetch(client.user.id).catch(() => null)
+        : null);
+    const botActor = guildMember?.user ?? client.user;
+    if (!fLegend.canBotPostLegendLogToChannel(channel, botActor)) {
+      await interaction.followUp({
+        content:
+          'JWC BOT needs **View Channel** and **Send Messages** in this channel. '
+          + 'Fix permissions or choose DM.',
+        ephemeral: true,
+      });
+      return;
+    }
+
+    iSettingsChannelId = channel.id;
   };
 
   const logSettings = { attacks: iSettingsAttacks, defenses: iSettingsDefenses, result: iSettingsResult, post: iSettingsPost, channel: iSettingsChannelId };

@@ -1,4 +1,4 @@
-import { EmbedBuilder } from 'discord.js';
+import { EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 
 import config from '../config/config.js';
 import config_coc from '../config/config_coc.js';
@@ -2140,68 +2140,203 @@ function getWeeklySummaryFromEvents(events, seasonData) {
   };
 }
 
-/** 本人設定（channel / dm）のみ。シーズン通知などランキング無し embed 用 */
-async function sendLogEmbed(client, mongoAcc, myEmbed) {
+const LEGEND_BROKEN_DELIVERY_ERROR_CODES = new Set([50001, 10003, 50007]);
+
+function isBrokenLegendDeliveryError(error) {
+  return LEGEND_BROKEN_DELIVERY_ERROR_CODES.has(error?.code);
+}
+
+function canBotPostLegendLogToChannel(channel, clientUser) {
+  if (!channel?.isTextBased?.()) return false;
+  const perms = channel.permissionsFor(clientUser);
+  if (!perms) return false;
+  return (
+    perms.has(PermissionFlagsBits.ViewChannel)
+    && perms.has(PermissionFlagsBits.SendMessages)
+  );
+}
+
+async function resolveLegendLogChannel(client, channelId) {
+  if (!channelId) return null;
+  let channel = client.channels.cache.get(channelId);
+  if (!channel) {
+    channel = await client.channels.fetch(channelId).catch(() => null);
+  }
+  return channel?.isTextBased() ? channel : null;
+}
+
+async function disableBrokenLegendLogSettings(client, mongoAcc, details) {
+  const logSettings = mongoAcc?.legend?.logSettings;
+  if (!logSettings || logSettings.post === 'NA') {
+    return false;
+  }
+
+  const disabledAt = Math.floor(Date.now() / 1000);
+  await client.clientMongo
+    .db('jwc')
+    .collection('accounts')
+    .updateOne(
+      { tag: mongoAcc.tag },
+      {
+        $set: {
+          'legend.logSettings.post': 'NA',
+          'legend.logSettings.channel': null,
+          'legend.logSettings.lastDisabledAt': disabledAt,
+          'legend.logSettings.lastDisabledReason': details.reason,
+        },
+      },
+    );
+
+  mongoAcc.legend.logSettings.post = 'NA';
+  mongoAcc.legend.logSettings.channel = null;
+  mongoAcc.legend.logSettings.lastDisabledAt = disabledAt;
+  mongoAcc.legend.logSettings.lastDisabledReason = details.reason;
+  return true;
+}
+
+async function notifyLegendLogSettingsDisabled(client, mongoAcc, reason) {
+  const settingsCommand = `</legend settings:${config.command.legend.id}>`;
+  const accountLabel = `${mongoAcc.name ?? 'unknown'} (${mongoAcc.tag ?? 'unknown'})`;
+  const content = [
+    ':warning: Legend log delivery was disabled.',
+    `Account: **${accountLabel}**`,
+    `Reason: ${reason}`,
+    `Please reconfigure with ${settingsCommand}.`,
+  ].join('\n');
+
+  if (mongoAcc.pilotDC?.id) {
+    try {
+      const pilot = await client.users.fetch(mongoAcc.pilotDC.id);
+      await pilot.send({ content });
+    } catch (error) {
+      console.warn(
+        `[legend] failed to notify pilot about disabled log settings (${mongoAcc.tag}):`,
+        error?.message ?? error,
+      );
+    }
+  }
+
   try {
-    await sendLogEmbedToUser(client, mongoAcc, myEmbed);
-    const disableLegendLogs = process.env.DISABLE_LEGEND_LOGS === 'true';
-    if (!disableLegendLogs) {
-      await sendLegendLogChannelEmbed(client, myEmbed);
+    const errorChannel =
+      client.channels.cache.get(config.logch.error)
+      || (await client.channels.fetch(config.logch.error).catch(() => null));
+    if (errorChannel?.isTextBased()) {
+      await errorChannel.send({ content });
     }
   } catch (error) {
-    console.error('ログ送信中にエラーが発生しました:', error, mongoAcc.name);
+    console.warn(
+      `[legend] failed to notify error channel about disabled log settings (${mongoAcc.tag}):`,
+      error?.message ?? error,
+    );
+  }
+}
+
+async function handleBrokenLegendLogDelivery(client, mongoAcc, details) {
+  const disabled = await disableBrokenLegendLogSettings(client, mongoAcc, details);
+  if (disabled) {
+    await notifyLegendLogSettingsDisabled(client, mongoAcc, details.reason);
+  }
+}
+
+async function deliverLegendLogToUser(client, mongoAcc, payload) {
+  const logSettings = mongoAcc?.legend?.logSettings;
+  if (!logSettings || logSettings.post === 'NA') {
+    return { ok: false, reason: 'disabled' };
+  }
+
+  try {
+    if (logSettings.post === 'channel') {
+      const channel = await resolveLegendLogChannel(
+        client,
+        logSettings.channel,
+      );
+      if (!channel) {
+        console.error(
+          '[legend] delivery channel missing:',
+          mongoAcc.name,
+          mongoAcc.tag,
+          logSettings.channel,
+        );
+        await handleBrokenLegendLogDelivery(client, mongoAcc, {
+          reason: 'channel_not_found',
+          channelId: logSettings.channel,
+        });
+        return { ok: false, reason: 'channel_not_found' };
+      }
+      if (!canBotPostLegendLogToChannel(channel, client.user)) {
+        console.error(
+          '[legend] missing channel permissions:',
+          mongoAcc.name,
+          mongoAcc.tag,
+          channel.id,
+        );
+        await handleBrokenLegendLogDelivery(client, mongoAcc, {
+          reason: 'missing_channel_permissions',
+          channelId: channel.id,
+        });
+        return { ok: false, reason: 'missing_channel_permissions' };
+      }
+      await channel.send(payload);
+      return { ok: true };
+    }
+
+    if (logSettings.post === 'dm') {
+      const pilotId = mongoAcc.pilotDC?.id;
+      if (!pilotId) {
+        console.warn('[legend] pilotDC.id missing for DM delivery:', mongoAcc.tag);
+        return { ok: false, reason: 'pilot_missing' };
+      }
+      const pilot = await client.users.fetch(pilotId);
+      await pilot.send(payload);
+      return { ok: true };
+    }
+
+    return { ok: false, reason: 'unsupported_post_mode' };
+  } catch (error) {
+    console.error(
+      '[legend] delivery failed:',
+      mongoAcc.name,
+      mongoAcc.tag,
+      error,
+    );
+    if (isBrokenLegendDeliveryError(error)) {
+      const reason =
+        logSettings.post === 'dm'
+          ? 'dm_unreachable'
+          : `discord_error_${error.code}`;
+      await handleBrokenLegendLogDelivery(client, mongoAcc, { reason });
+    }
+    return { ok: false, reason: 'delivery_failed', error };
+  }
+}
+
+/** 本人設定（channel / dm）のみ。シーズン通知などランキング無し embed 用 */
+async function sendLogEmbed(client, mongoAcc, myEmbed) {
+  await sendLogEmbedToUser(client, mongoAcc, myEmbed);
+  const disableLegendLogs = process.env.DISABLE_LEGEND_LOGS === 'true';
+  if (!disableLegendLogs) {
+    await sendLegendLogChannelEmbed(client, myEmbed);
   }
 }
 
 async function sendLogEmbedToUser(client, mongoAcc, myEmbed) {
-  if (!mongoAcc.legend?.logSettings) {
-    return;
-  }
-  if (mongoAcc.legend.logSettings.post === 'NA') {
-    return;
-  }
-  if (mongoAcc.legend.logSettings.post === 'channel') {
-    let channelUser = client.channels.cache.get(
-      mongoAcc.legend.logSettings.channel,
-    );
-    if (!channelUser) {
-      channelUser = await client.channels
-        .fetch(mongoAcc.legend.logSettings.channel)
-        .catch(() => null);
-    }
-    if (channelUser?.isTextBased()) {
-      await channelUser.send({ embeds: [myEmbed] });
-    } else {
-      console.error(
-        'チャンネルが見つからないか、テキストチャンネルではありません。',
-        mongoAcc.name,
-        mongoAcc.tag,
-      );
-    }
-    return;
-  }
-  if (mongoAcc.legend.logSettings.post === 'dm') {
-    await sendToDM(client, mongoAcc, myEmbed);
-  }
+  await deliverLegendLogToUser(client, mongoAcc, { embeds: [myEmbed] });
 }
 
 async function sendLegendLogChannelEmbed(client, myEmbed) {
-  const channelLog = client.channels.cache.get(config.logch.legend);
-  if (channelLog?.isTextBased()) {
-    await channelLog.send({ embeds: [myEmbed] });
-  } else {
-    console.error(
-      'ログチャンネルが見つからないか、テキストチャンネルではありません。',
-    );
-  }
-}
-
-async function sendToDM(client, mongoAcc, myEmbed) {
   try {
-    const pilot = await client.users.fetch(mongoAcc.pilotDC.id);
-    await pilot.send({ embeds: [myEmbed] });
+    const channelLog =
+      client.channels.cache.get(config.logch.legend)
+      || (await client.channels.fetch(config.logch.legend).catch(() => null));
+    if (channelLog?.isTextBased()) {
+      await channelLog.send({ embeds: [myEmbed] });
+    } else {
+      console.error(
+        'ログチャンネルが見つからないか、テキストチャンネルではありません。',
+      );
+    }
   } catch (error) {
-    console.error('DMの送信中にエラーが発生しました:', error, mongoAcc.name);
+    console.error('[legend] aggregate log channel send failed:', error);
   }
 }
 
@@ -2614,7 +2749,12 @@ async function autoUpdateLegendReset(client) {
 
   return;
 }
-export { autoUpdateLegendReset, cronRankedWeekEndReminder };
+export {
+  autoUpdateLegendReset,
+  canBotPostLegendLogToChannel,
+  cronRankedWeekEndReminder,
+  deliverLegendLogToUser,
+};
 
 async function updateLegendPreviousSeason(clientMongo, clientCoc, playerTag) {
   try {
