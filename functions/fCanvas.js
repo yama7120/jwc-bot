@@ -935,38 +935,14 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
 
     // タウンホール別
     const imgLength = 80;
-    const townhalls = [
-      {
-        level: 'th17',
-        img: './image/th17_cam3.png',
-        posH: pos.h121,
-        posV: pos.v101,
-      },
-      {
-        level: 'th16',
-        img: './image/th16_cam3.png',
-        posH: pos.h101,
-        posV: pos.v101,
-      },
-      {
-        level: 'th15',
-        img: './image/th15_cam3.png',
-        posH: pos.h81,
-        posV: pos.v101 + 5,
-      },
-      {
-        level: 'th14',
-        img: './image/th14_cam3.png',
-        posH: pos.h61,
-        posV: pos.v101,
-      },
-      {
-        level: 'th13',
-        img: './image/th13_cam3.png',
-        posH: pos.h41,
-        posV: pos.v101,
-      },
-    ];
+    const mixTownHalls = getMixTownHallLevels();
+    const mixThPosH = [pos.h121, pos.h101, pos.h81, pos.h61, pos.h41];
+    const townhalls = mixTownHalls.map((th, index) => ({
+      level: th.level,
+      img: th.img,
+      posH: mixThPosH[index] ?? pos.h41,
+      posV: pos.v101,
+    }));
 
     for (const th of townhalls) {
       // タウンホール画像を描画
@@ -1043,23 +1019,20 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
     chartDataTeam[2] = mongoTeam.stats.tScoreDef.sum.allAttackTypes.total;
     chartDataTeam[3] = mongoTeam.stats.tScoreDef.sum.fresh.total;
   } else if (league == 'mix') {
+    const mixTownHalls = getMixTownHallLevels();
     chartLabels = [
-      'TH17 att.',
-      'TH16 att.',
-      'TH15 att.',
-      'TH14 att.',
-      'TH13 att.',
-      'TH17 def.',
-      'TH16 def.',
-      'TH15 def.',
-      'TH14 def.',
-      'TH13 def.',
+      ...mixTownHalls.map((th) => `${th.label} att.`),
+      ...mixTownHalls.map((th) => `${th.label} def.`),
     ];
-    chartDataAvg = Array(10).fill(50);
-    chartDataTeam = [17, 16, 15, 14, 13].flatMap((th) => [
-      mongoTeam.stats.tScore.sum.allAttackTypes[`th${th}`],
-      mongoTeam.stats.tScoreDef.sum.allAttackTypes[`th${th}`],
-    ]);
+    chartDataAvg = Array(mixTownHalls.length * 2).fill(50);
+    chartDataTeam = [
+      ...mixTownHalls.map(
+        (th) => mongoTeam.stats.tScore.sum.allAttackTypes[th.level],
+      ),
+      ...mixTownHalls.map(
+        (th) => mongoTeam.stats.tScoreDef.sum.allAttackTypes[th.level],
+      ),
+    ];
   }
   const chartColor = {
     j1: config.rgb.red,
@@ -1525,19 +1498,16 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
       }
     });
   } else if (league == 'mix') {
-    const posStart_topPlayers = {
-      th17: pos.v41,
-      th16: pos.v12,
-      th15: pos.v42,
-      th14: pos.v82,
-      th13: pos.v122,
-    };
-
+    const mixTownHalls = getMixTownHallLevels();
+    const mixPosV = [pos.v41, pos.v42, pos.v82, pos.v122, pos.v162];
     const imgLength = 80;
     const posImgStarsH = pos.h32 - imgLength / 2;
+    const spacingMix = 70;
 
-    for (const [th, posV] of Object.entries(posStart_topPlayers)) {
-      const imgTH = await Canvas.loadImage(`./image/${th}_cam3.png`);
+    for (let i = 0; i < mixTownHalls.length; i++) {
+      const th = mixTownHalls[i];
+      const posV = mixPosV[i] ?? pos.v41 + i * 100;
+      const imgTH = await Canvas.loadImage(th.img);
       const posImgStarsV = posV - imgLength / 2;
       ctx.drawImage(imgTH, posImgStarsH, posImgStarsV, imgLength, imgLength);
 
@@ -1547,44 +1517,39 @@ async function teamStats(clientMongo, league, mongoTeam, mongoRanking) {
 
       ctx.textAlign = 'left';
       setFont(ctx, config.canvasFontSize.small);
-      ctx.fillText(th.replace('th', ''), pos.h52 + 0, posV + 5);
+      ctx.fillText(String(th.lv), pos.h52 + 0, posV + 5);
 
-      spacing = 70;
-      const levels = ['th17', 'th16', 'th15', 'th14', 'th13'];
-      const limits = { th17: 5, th16: 2, th15: 4, th14: 4, th13: 4 };
+      const limit = Math.max(config.bd?.mix?.[th.level] ?? 3, 3);
+      let counter = 1;
+      const ranked = mongoRanking?.[league]?.[th.level] ?? [];
+      for (const acc of ranked) {
+        if (counter > limit) break;
+        if (acc.homeClanAbbr != mongoTeam.clan_abbr) continue;
 
-      levels.forEach((lvTH) => {
-        let counter = 1;
-        const limit = limits[lvTH];
-        mongoRanking[league][lvTH].forEach((acc, index) => {
-          if (counter > limit) return;
-          if (acc.homeClanAbbr == mongoTeam.clan_abbr) {
-            const pos_ranking = posStart_topPlayers[lvTH] + counter * spacing;
-            ctx.textAlign = 'center';
-            ctx.fillStyle = config.rgb.snowWhite;
-            let text = String(counter);
-            setFont(ctx, config.canvasFontSize.xSmall);
-            ctx.fillText(text, pos.h32, pos_ranking);
-            if (acc.rank < 100) {
-              text = `(${String(acc.rank)})`;
-              setFont(ctx, config.canvasFontSize.xxSmall);
-              ctx.fillText(text, pos.h42, pos_ranking);
-            }
-            text = String(acc.name);
-            setFontJP(ctx, config.canvasFontSize.xSmall);
-            ctx.fillText(text, pos.h102, pos_ranking);
-            ctx.textAlign = 'right';
-            setFont(ctx, config.canvasFontSize.small);
-            text = String(acc.nTriples);
-            ctx.fillText(text, pos.h162, pos_ranking);
-            setFont(ctx, config.canvasFontSize.xSmall);
-            ctx.textAlign = 'left';
-            text = String(`/${acc.nAttacks}`);
-            ctx.fillText(text, pos.h162, pos_ranking + 3);
-            counter += 1;
-          }
-        });
-      });
+        const pos_ranking = posV + counter * spacingMix;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = config.rgb.snowWhite;
+        let text = String(counter);
+        setFont(ctx, config.canvasFontSize.xSmall);
+        ctx.fillText(text, pos.h32, pos_ranking);
+        if (acc.rank < 100) {
+          text = `(${String(acc.rank)})`;
+          setFont(ctx, config.canvasFontSize.xxSmall);
+          ctx.fillText(text, pos.h42, pos_ranking);
+        }
+        text = String(acc.name);
+        setFontJP(ctx, config.canvasFontSize.xSmall);
+        ctx.fillText(text, pos.h102, pos_ranking);
+        ctx.textAlign = 'right';
+        setFont(ctx, config.canvasFontSize.small);
+        text = String(acc.nTriples);
+        ctx.fillText(text, pos.h162, pos_ranking);
+        setFont(ctx, config.canvasFontSize.xSmall);
+        ctx.textAlign = 'left';
+        text = String(`/${acc.nAttacks}`);
+        ctx.fillText(text, pos.h162, pos_ranking + 3);
+        counter += 1;
+      }
     }
   }
 
@@ -1722,11 +1687,14 @@ async function standings(clientMongo, league, standings, leagueStats) {
   posH.triple = pos.h122;
   // mix
   posH.hitrate.mix = pos.h62;
-  posH.th17 = pos.h82;
-  posH.th16 = pos.h102;
-  posH.th15 = pos.h122;
-  posH.th14 = pos.h142;
-  posH.th13 = pos.h162;
+  const mixTownHalls = getMixTownHallLevels();
+  const mixColumnPositions = pickMixStandingColumnPositions(
+    pos,
+    mixTownHalls.length,
+  );
+  mixTownHalls.forEach((th, index) => {
+    posH[th.level] = mixColumnPositions[index];
+  });
 
   setFont(ctx, config.canvasFontSize.xxSmall);
   text = 'Rank';
@@ -1757,63 +1725,20 @@ async function standings(clientMongo, league, standings, leagueStats) {
     */
   } else if (league == 'swiss' || league == 'cup') {
   } else if (league == 'mix') {
-    // change TH level
-    text = 'TH17';
-    ctx.fillText(text, posH.th17 + 30, headerHeight);
-    text = 'TH16';
-    ctx.fillText(text, posH.th16 + 30, headerHeight);
-    text = 'TH15';
-    ctx.fillText(text, posH.th15 + 30, headerHeight);
-    text = 'TH14';
-    ctx.fillText(text, posH.th14 + 30, headerHeight);
-    text = 'TH13';
-    ctx.fillText(text, posH.th13 + 30, headerHeight);
     const lengthTh = 60;
-    const imgTh17 = await Canvas.loadImage(`./image/th17_cam3.png`);
-    ctx = reflectImage2Canvas(
-      ctx,
-      imgTh17,
-      lengthTh,
-      lengthTh,
-      posH.th17 - lengthTh / 2 + 30,
-      headerHeight + lengthTh / 4,
-    );
-    const imgTh16 = await Canvas.loadImage(`./image/th16_cam3.png`);
-    ctx = reflectImage2Canvas(
-      ctx,
-      imgTh16,
-      lengthTh,
-      lengthTh,
-      posH.th16 - lengthTh / 2 + 30,
-      headerHeight + lengthTh / 4,
-    );
-    const imgTh15 = await Canvas.loadImage(`./image/th15_cam3.png`);
-    ctx = reflectImage2Canvas(
-      ctx,
-      imgTh15,
-      lengthTh,
-      lengthTh,
-      posH.th15 - lengthTh / 2 + 30,
-      headerHeight + lengthTh / 2.9,
-    );
-    const imgTh14 = await Canvas.loadImage(`./image/th14_cam3.png`);
-    ctx = reflectImage2Canvas(
-      ctx,
-      imgTh14,
-      lengthTh,
-      lengthTh,
-      posH.th14 - lengthTh / 2 + 30,
-      headerHeight + lengthTh / 3.2,
-    );
-    const imgTh13 = await Canvas.loadImage(`./image/th13_cam3.png`);
-    ctx = reflectImage2Canvas(
-      ctx,
-      imgTh13,
-      lengthTh,
-      lengthTh,
-      posH.th13 - lengthTh / 2 + 30,
-      headerHeight + lengthTh / 3.0,
-    );
+    for (const th of mixTownHalls) {
+      text = th.label;
+      ctx.fillText(text, posH[th.level] + 30, headerHeight);
+      const imgTh = await Canvas.loadImage(th.img);
+      ctx = reflectImage2Canvas(
+        ctx,
+        imgTh,
+        lengthTh,
+        lengthTh,
+        posH[th.level] - lengthTh / 2 + 30,
+        headerHeight + lengthTh / 4,
+      );
+    }
   }
   ctx.fillStyle = config.rgb.gray200;
   setFont(ctx, config.canvasFontSize.xxxxSmall);
@@ -2045,7 +1970,6 @@ async function standings(clientMongo, league, standings, leagueStats) {
             0,
           );
         } else if (league == 'mix') {
-          // change TH level
           ctxHitrate(
             ctx,
             score.clan.allAttackTypes,
@@ -2071,130 +1995,32 @@ async function standings(clientMongo, league, standings, leagueStats) {
             spacing / 4,
           );
 
-          ctxHitrate(
-            ctx,
-            score.clan.fresh,
-            'th17',
-            posH.th17,
-            pos0,
-            myFont,
-            config.canvasFontSize.small,
-            config.canvasFontSize.xxxSmall,
-            60,
-          );
-          ctxTriples(
-            ctx,
-            score.clan.fresh,
-            'th17',
-            posH.th17,
-            pos0,
-            myFont,
-            config.canvasFontSize.xSmall,
-            config.canvasFontSize.xxxxSmall,
-            config.rgb.gray200,
-            50,
-            spacing / 4,
-          );
-
-          ctxHitrate(
-            ctx,
-            score.clan.fresh,
-            'th16',
-            posH.th16,
-            pos0,
-            myFont,
-            config.canvasFontSize.small,
-            config.canvasFontSize.xxxSmall,
-            60,
-          );
-          ctxTriples(
-            ctx,
-            score.clan.fresh,
-            'th16',
-            posH.th16,
-            pos0,
-            myFont,
-            config.canvasFontSize.xSmall,
-            config.canvasFontSize.xxxxSmall,
-            config.rgb.gray200,
-            50,
-            spacing / 4,
-          );
-
-          ctxHitrate(
-            ctx,
-            score.clan.fresh,
-            'th15',
-            posH.th15,
-            pos0,
-            myFont,
-            config.canvasFontSize.small,
-            config.canvasFontSize.xxxSmall,
-            60,
-          );
-          ctxTriples(
-            ctx,
-            score.clan.fresh,
-            'th15',
-            posH.th15,
-            pos0,
-            myFont,
-            config.canvasFontSize.xSmall,
-            config.canvasFontSize.xxxxSmall,
-            config.rgb.gray200,
-            50,
-            spacing / 4,
-          );
-
-          ctxHitrate(
-            ctx,
-            score.clan.fresh,
-            'th14',
-            posH.th14,
-            pos0,
-            myFont,
-            config.canvasFontSize.small,
-            config.canvasFontSize.xxxSmall,
-            60,
-          );
-          ctxTriples(
-            ctx,
-            score.clan.fresh,
-            'th14',
-            posH.th14,
-            pos0,
-            myFont,
-            config.canvasFontSize.xSmall,
-            config.canvasFontSize.xxxxSmall,
-            config.rgb.gray200,
-            50,
-            spacing / 4,
-          );
-
-          ctxHitrate(
-            ctx,
-            score.clan.fresh,
-            'th13',
-            posH.th13,
-            pos0,
-            myFont,
-            config.canvasFontSize.small,
-            config.canvasFontSize.xxxSmall,
-            60,
-          );
-          ctxTriples(
-            ctx,
-            score.clan.fresh,
-            'th13',
-            posH.th13,
-            pos0,
-            myFont,
-            config.canvasFontSize.xSmall,
-            config.canvasFontSize.xxxxSmall,
-            config.rgb.gray200,
-            50,
-            spacing / 4,
-          );
+          for (const th of mixTownHalls) {
+            ctxHitrate(
+              ctx,
+              score.clan.fresh,
+              th.level,
+              posH[th.level],
+              pos0,
+              myFont,
+              config.canvasFontSize.small,
+              config.canvasFontSize.xxxSmall,
+              60,
+            );
+            ctxTriples(
+              ctx,
+              score.clan.fresh,
+              th.level,
+              posH[th.level],
+              pos0,
+              myFont,
+              config.canvasFontSize.xSmall,
+              config.canvasFontSize.xxxxSmall,
+              config.rgb.gray200,
+              50,
+              spacing / 4,
+            );
+          }
         }
       }
 
@@ -2352,7 +2178,6 @@ async function standings(clientMongo, league, standings, leagueStats) {
           0,
         );
       } else if (league == 'mix') {
-        // change TH level
         ctxHitrate(
           ctx,
           statsLeague.allAttackTypes,
@@ -2378,130 +2203,32 @@ async function standings(clientMongo, league, standings, leagueStats) {
           spacing / 4,
         );
 
-        ctxHitrate(
-          ctx,
-          statsLeague.fresh,
-          'th17',
-          posH.th17,
-          posAll,
-          myFont,
-          config.canvasFontSize.small,
-          config.canvasFontSize.xxSmall,
-          60,
-        );
-        ctxTriples(
-          ctx,
-          statsLeague.fresh,
-          'th17',
-          posH.th17,
-          posAll,
-          myFont,
-          config.canvasFontSize.xSmall,
-          config.canvasFontSize.xxxSmall,
-          config.rgb.gray200,
-          50,
-          spacing / 4,
-        );
-
-        ctxHitrate(
-          ctx,
-          statsLeague.fresh,
-          'th16',
-          posH.th16,
-          posAll,
-          myFont,
-          config.canvasFontSize.small,
-          config.canvasFontSize.xxSmall,
-          60,
-        );
-        ctxTriples(
-          ctx,
-          statsLeague.fresh,
-          'th16',
-          posH.th16,
-          posAll,
-          myFont,
-          config.canvasFontSize.xSmall,
-          config.canvasFontSize.xxxSmall,
-          config.rgb.gray200,
-          50,
-          spacing / 4,
-        );
-
-        ctxHitrate(
-          ctx,
-          statsLeague.fresh,
-          'th15',
-          posH.th15,
-          posAll,
-          myFont,
-          config.canvasFontSize.small,
-          config.canvasFontSize.xxSmall,
-          60,
-        );
-        ctxTriples(
-          ctx,
-          statsLeague.fresh,
-          'th15',
-          posH.th15,
-          posAll,
-          myFont,
-          config.canvasFontSize.xSmall,
-          config.canvasFontSize.xxxSmall,
-          config.rgb.gray200,
-          50,
-          spacing / 4,
-        );
-
-        ctxHitrate(
-          ctx,
-          statsLeague.fresh,
-          'th14',
-          posH.th14,
-          posAll,
-          myFont,
-          config.canvasFontSize.small,
-          config.canvasFontSize.xxSmall,
-          60,
-        );
-        ctxTriples(
-          ctx,
-          statsLeague.fresh,
-          'th14',
-          posH.th14,
-          posAll,
-          myFont,
-          config.canvasFontSize.xSmall,
-          config.canvasFontSize.xxxSmall,
-          config.rgb.gray200,
-          50,
-          spacing / 4,
-        );
-
-        ctxHitrate(
-          ctx,
-          statsLeague.fresh,
-          'th13',
-          posH.th13,
-          posAll,
-          myFont,
-          config.canvasFontSize.small,
-          config.canvasFontSize.xxSmall,
-          60,
-        );
-        ctxTriples(
-          ctx,
-          statsLeague.fresh,
-          'th13',
-          posH.th13,
-          posAll,
-          myFont,
-          config.canvasFontSize.xSmall,
-          config.canvasFontSize.xxxSmall,
-          config.rgb.gray200,
-          50,
-          spacing / 4,
-        );
+        for (const th of mixTownHalls) {
+          ctxHitrate(
+            ctx,
+            statsLeague.fresh,
+            th.level,
+            posH[th.level],
+            posAll,
+            myFont,
+            config.canvasFontSize.small,
+            config.canvasFontSize.xxSmall,
+            60,
+          );
+          ctxTriples(
+            ctx,
+            statsLeague.fresh,
+            th.level,
+            posH[th.level],
+            posAll,
+            myFont,
+            config.canvasFontSize.xSmall,
+            config.canvasFontSize.xxxSmall,
+            config.rgb.gray200,
+            50,
+            spacing / 4,
+          );
+        }
       }
     }
   }
@@ -2880,6 +2607,30 @@ async function standingsLandscape(
   return attachment;
 }
 export { standingsLandscape };
+
+/** MIX BD 用 TH 一覧（config.lvTHmix から生成） */
+function getMixTownHallLevels() {
+  return (config.lvTHmix ?? []).map((lv) => ({
+    lv,
+    level: `th${lv}`,
+    label: `TH${lv}`,
+    img: `./image/th${lv}_cam3.png`,
+  }));
+}
+
+/** standings MIX 列の水平位置を均等配置 */
+function pickMixStandingColumnPositions(pos, count) {
+  const slots = [pos.h82, pos.h102, pos.h122, pos.h142, pos.h162];
+  if (count <= 0) return [];
+  if (count === 1) return [slots[2]];
+  if (count >= slots.length) return slots.slice(0, count);
+  const result = [];
+  for (let i = 0; i < count; i++) {
+    const idx = Math.round((i * (slots.length - 1)) / (count - 1));
+    result.push(slots[idx]);
+  }
+  return result;
+}
 
 function ctxHitrate(
   ctx,
