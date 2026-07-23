@@ -1633,7 +1633,8 @@ async function standings(clientMongo, league, standings, leagueStats) {
   // ***** 中央上 ***** //
   let text = `STANDINGS | ${config.league[league]}`;
   setFont(ctx, config.canvasFontSize.large);
-  ctx.fillText(text, widthCenter, 200);
+  const titleY = league == 'mix' ? 120 : 200;
+  ctx.fillText(text, widthCenter, titleY);
 
   // ***** 中央下 ***** //
   const lengthLogoJwc = 100;
@@ -1663,9 +1664,10 @@ async function standings(clientMongo, league, standings, leagueStats) {
 
   // ***** STANDINGS ***** //
   ctx.fillStyle = config.rgb.snowWhite;
-  const marginTop = 600;
-  const spacing = (heightCanvas - 800) / standings.length;
-  const headerHeight = 350;
+  // MIX はチーム数が少なく上部余白が目立つため、タイトル〜ヘッダーを上に寄せる
+  const marginTop = league == 'mix' ? 450 : 600;
+  const spacing = (heightCanvas - (league == 'mix' ? 650 : 800)) / standings.length;
+  const headerHeight = league == 'mix' ? 240 : 350;
 
   let posH = {};
   posH.rank = pos.h161;
@@ -1685,15 +1687,12 @@ async function standings(clientMongo, league, standings, leagueStats) {
   // swiss
   posH.hitrate.swiss = pos.h72;
   posH.triple = pos.h122;
-  // mix
-  posH.hitrate.mix = pos.h62;
+  // mix: Hitrate と TH BD 列を右ブロック内で等間隔に配置
   const mixTownHalls = getMixTownHallLevels();
-  const mixColumnPositions = pickMixStandingColumnPositions(
-    pos,
-    mixTownHalls.length,
-  );
+  const mixRightColumns = pickMixRightColumnPositions(pos, mixTownHalls.length);
+  posH.hitrate.mix = mixRightColumns.hitrate;
   mixTownHalls.forEach((th, index) => {
-    posH[th.level] = mixColumnPositions[index];
+    posH[th.level] = mixRightColumns.th[index];
   });
 
   setFont(ctx, config.canvasFontSize.xxSmall);
@@ -1728,14 +1727,14 @@ async function standings(clientMongo, league, standings, leagueStats) {
     const lengthTh = 60;
     for (const th of mixTownHalls) {
       text = th.label;
-      ctx.fillText(text, posH[th.level] + 30, headerHeight);
+      ctx.fillText(text, posH[th.level], headerHeight);
       const imgTh = await Canvas.loadImage(th.img);
       ctx = reflectImage2Canvas(
         ctx,
         imgTh,
         lengthTh,
         lengthTh,
-        posH[th.level] - lengthTh / 2 + 30,
+        posH[th.level] - lengthTh / 2,
         headerHeight + lengthTh / 4,
       );
     }
@@ -2005,7 +2004,7 @@ async function standings(clientMongo, league, standings, leagueStats) {
               myFont,
               config.canvasFontSize.small,
               config.canvasFontSize.xxxSmall,
-              60,
+              30,
             );
             ctxTriples(
               ctx,
@@ -2017,7 +2016,7 @@ async function standings(clientMongo, league, standings, leagueStats) {
               config.canvasFontSize.xSmall,
               config.canvasFontSize.xxxxSmall,
               config.rgb.gray200,
-              50,
+              20,
               spacing / 4,
             );
           }
@@ -2213,7 +2212,7 @@ async function standings(clientMongo, league, standings, leagueStats) {
             myFont,
             config.canvasFontSize.small,
             config.canvasFontSize.xxSmall,
-            60,
+            30,
           );
           ctxTriples(
             ctx,
@@ -2225,7 +2224,7 @@ async function standings(clientMongo, league, standings, leagueStats) {
             config.canvasFontSize.xSmall,
             config.canvasFontSize.xxxSmall,
             config.rgb.gray200,
-            50,
+            20,
             spacing / 4,
           );
         }
@@ -2618,18 +2617,26 @@ function getMixTownHallLevels() {
   }));
 }
 
-/** standings MIX 列の水平位置を均等配置 */
-function pickMixStandingColumnPositions(pos, count) {
-  const slots = [pos.h82, pos.h102, pos.h122, pos.h142, pos.h162];
-  if (count <= 0) return [];
-  if (count === 1) return [slots[2]];
-  if (count >= slots.length) return slots.slice(0, count);
-  const result = [];
-  for (let i = 0; i < count; i++) {
-    const idx = Math.round((i * (slots.length - 1)) / (count - 1));
-    result.push(slots[idx]);
+/** MIX の Hitrate + TH 列を右ブロック内で等間隔配置 */
+function pickMixRightColumnPositions(pos, thCount) {
+  const columnCount = 1 + thCount; // Hitrate + TH columns
+  if (columnCount <= 0) return { hitrate: pos.h62, th: [] };
+
+  // % (h22) より右〜右端手前までを等分
+  const startI = 5; // h52
+  const endI = 17; // h172
+  const positions = [];
+  for (let i = 0; i < columnCount; i++) {
+    const idx =
+      columnCount === 1
+        ? Math.round((startI + endI) / 2)
+        : Math.round(startI + ((endI - startI) * i) / (columnCount - 1));
+    positions.push(pos[`h${idx}2`]);
   }
-  return result;
+  return {
+    hitrate: positions[0],
+    th: positions.slice(1),
+  };
 }
 
 function ctxHitrate(
