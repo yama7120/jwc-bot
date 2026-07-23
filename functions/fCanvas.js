@@ -1633,8 +1633,7 @@ async function standings(clientMongo, league, standings, leagueStats) {
   // ***** 中央上 ***** //
   let text = `STANDINGS | ${config.league[league]}`;
   setFont(ctx, config.canvasFontSize.large);
-  const titleY = league == 'mix' ? 120 : 200;
-  ctx.fillText(text, widthCenter, titleY);
+  ctx.fillText(text, widthCenter, 200);
 
   // ***** 中央下 ***** //
   const lengthLogoJwc = 100;
@@ -1664,10 +1663,10 @@ async function standings(clientMongo, league, standings, leagueStats) {
 
   // ***** STANDINGS ***** //
   ctx.fillStyle = config.rgb.snowWhite;
-  // MIX はチーム数が少なく上部余白が目立つため、タイトル〜ヘッダーを上に寄せる
-  const marginTop = league == 'mix' ? 450 : 600;
-  const spacing = (heightCanvas - (league == 'mix' ? 650 : 800)) / standings.length;
-  const headerHeight = league == 'mix' ? 240 : 350;
+  const marginTop = 600;
+  const spacing = (heightCanvas - 800) / standings.length;
+  // MIX は列ヘッダー行（Rank / Team / Hitrate / TH…）だけ少し上へ
+  const headerHeight = league == 'mix' ? 300 : 350;
 
   let posH = {};
   posH.rank = pos.h161;
