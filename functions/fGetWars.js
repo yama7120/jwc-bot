@@ -612,7 +612,23 @@ async function sendEnd(client, mongoWar) {
   embed.setDescription(description1);
   await functions.safeSend(client, config.warlogch[league], { embeds: [embed] }, 'sendEnd:warlog');
 
+  if (!mongoWar.result) {
+    mongoWar.result = {};
+  }
   mongoWar.result.state = 'warEnded';
+  await client.clientMongo
+    .db('jwc')
+    .collection('wars')
+    .updateOne(
+      {
+        season: mongoWar.season ?? config.season[league],
+        league,
+        week,
+        match,
+      },
+      { $set: { 'result.state': 'warEnded' } },
+    );
+
   const embed2 = await createEmbedWarStats(
     client.clientMongo,
     league,

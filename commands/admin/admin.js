@@ -3925,11 +3925,12 @@ async function sendEndMessage(interaction, client) {
 
   try {
     await fGetWars.sendEnd(client, mongoWar);
+    await functions.updateWarInfo(client, iLeague, iWeek);
     const negoCh = mongoWar.nego_channel
       ? `<#${mongoWar.nego_channel}>`
       : '(nego channel unset)';
     await interaction.followUp({
-      content: `送信完了: ${mongoWar.clan_abbr} vs ${mongoWar.opponent_abbr} → ${negoCh}`,
+      content: `送信完了: ${mongoWar.clan_abbr} vs ${mongoWar.opponent_abbr} → ${negoCh}（status → warEnded）`,
       ephemeral: true,
     });
   } catch (e) {
