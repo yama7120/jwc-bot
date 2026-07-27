@@ -225,7 +225,7 @@ export default {
           delete_nego_chs: '交渉用チャンネル削除',
         },
         info: {
-          war_summary: '対戦まとめ（本部サーバーのリーグ情報チャンネル専用）',
+          war_summary: '対戦まとめを再生成（本部サーバーのリーグ情報チャンネル専用）',
           ranking_summary:
             '個人ランキングまとめ（本部サーバーのリーグ情報チャンネル専用）',
           bot_status: 'Bot status',

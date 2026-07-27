@@ -3757,19 +3757,14 @@ async function postOrUpdateWarSummary(client, iLeague, iWeek) {
   const warInfoColl = client.clientMongo.db('jwc').collection('war_info');
   const existingList = await warInfoColl.find(query).toArray();
 
+  // Always regenerate: delete Discord messages + DB docs, then post fresh.
+  // In-place edit fails silently when messages were manually deleted but DB
+  // still has stale message IDs — admin command should force a clean slate.
+  for (const existing of existingList) {
+    await functions.deleteWarInfoMessages(client, iLeague, existing);
+  }
   if (existingList.length > 0) {
-    for (let i = 1; i < existingList.length; i++) {
-      await functions.deleteWarInfoMessages(client, iLeague, existingList[i]);
-    }
-    if (existingList.length > 1) {
-      await warInfoColl.deleteMany({
-        _id: { $in: existingList.slice(1).map((doc) => doc._id) },
-      });
-    }
-    await functions.updateWarInfo(client, iLeague, iWeek);
-    return {
-      content: `✅ *War summary updated: ${iLeague.toUpperCase()} WEEK ${iWeek}*`,
-    };
+    await warInfoColl.deleteMany(query);
   }
 
   const { embedGroups } = await functions.getWarInfoEmbedGroups(
@@ -3800,10 +3795,10 @@ async function postOrUpdateWarSummary(client, iLeague, iWeek) {
     league: iLeague,
     week: Number(iWeek),
   };
-  await warInfoColl.updateOne(query, { $set: newListing }, { upsert: true });
+  await warInfoColl.insertOne(newListing);
 
   return {
-    content: `✅ *War summary posted: ${iLeague.toUpperCase()} WEEK ${iWeek}* (${messageIds.length} message(s))`,
+    content: `✅ *War summary regenerated: ${iLeague.toUpperCase()} WEEK ${iWeek}* (${messageIds.length} message(s))`,
     ephemeral: true,
   };
 }
