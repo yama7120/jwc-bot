@@ -871,17 +871,18 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
       ? mongoAcc.legend.events
       : [];
     const targetDayEvents = existingEvents.filter(
-      (event) => event.season === targetSeason && event.day === targetDay,
+      (event) => event?.season === targetSeason && event?.day === targetDay,
     );
 
     // 3. 該当するdayのイベントを再計算（既存 + 新規）
     const allTargetDayEvents = [...targetDayEvents, ...newEvents];
     updatedDayData = aggregateDaysFromEvents(allTargetDayEvents).find(
-      (d) => d.season === targetSeason && d.day === targetDay,
+      (d) => d?.season === targetSeason && d?.day === targetDay,
     );
+    // legend.days に null が混入していることがある（Mongo 更新側は $filter で除去済み）
     const existingDayData = Array.isArray(mongoAcc?.legend?.days)
       ? mongoAcc.legend.days.find(
-        (d) => d.season === targetSeason && d.day === targetDay,
+        (d) => d?.season === targetSeason && d?.day === targetDay,
       )
       : null;
     if (updatedDayData) {
@@ -998,6 +999,7 @@ function aggregateDaysFromEvents(events) {
 
   const safeEvents = Array.isArray(events) ? events : [];
   safeEvents.forEach((event) => {
+    if (!event || event.season == null || event.day == null) return;
     const key = `${event.season}-${event.day}`;
     if (!daysMap.has(key)) {
       daysMap.set(key, {
