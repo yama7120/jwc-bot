@@ -86,7 +86,7 @@ async function calcTScore(clientMongo, mongoClan, mongoLeague) {
   stats.tScore = tScore;
   stats.tScoreDef = tScoreDef;
 
-  clientMongo.db('jwc').collection('clans')
+  await clientMongo.db('jwc').collection('clans')
     .updateOne({ clan_abbr: mongoClan.clan_abbr }, { $set: { stats: stats } });
 };
 
@@ -474,7 +474,8 @@ async function updateScore(clientMongo, league, mongoClan) {
   let sumScoreClanQ = {};
   let sumScoreOppQ = {};
 
-  await Promise.all(mongoWars.map(async (mongoWar) => {
+  // Sequential: shared accumulators must not run in parallel (await yields and drops wars).
+  for (const mongoWar of mongoWars) {
     const week = mongoWar.week;
     const weekStr = `w${week}`;
     let point = 0;
@@ -599,7 +600,7 @@ async function updateScore(clientMongo, league, mongoClan) {
         }
       }
     }
-  }));
+  }
 
   sumScoreClan.sumDestruction = (nWarF > 0) ? Math.round(sumScoreClan.sumDestruction * 100) / 100 : 0;
   sumScoreOpp.sumDestruction = (nWarF > 0) ? Math.round(sumScoreOpp.sumDestruction * 100) / 100 : 0;
@@ -663,7 +664,7 @@ async function updateScore(clientMongo, league, mongoClan) {
   };
   scoreAll.sumQ = scoreSumQ;
 
-  clientMongo.db('jwc').collection('clans').updateOne({ clan_abbr: mongoClan.clan_abbr }, { $set: { score: scoreAll } });
+  await clientMongo.db('jwc').collection('clans').updateOne({ clan_abbr: mongoClan.clan_abbr }, { $set: { score: scoreAll } });
 };
 export { updateScore };
 

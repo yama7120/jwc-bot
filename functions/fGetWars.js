@@ -690,6 +690,7 @@ async function dbUpdate(
   mongoClanOpp,
   teamName,
   teamNameOpp,
+  force = false,
 ) {
   const unixTime = Math.round(Date.now() / 1000);
 
@@ -706,6 +707,7 @@ async function dbUpdate(
     flagUpdate = 1;
   } else if (clanWar.state == 'inWar' || clanWar.state == 'warEnded') {
     if (
+      !force &&
       clanWar.clan.attackCount == nAtBefore.clan &&
       clanWar.opponent.attackCount == nAtBefore.opponent &&
       clanWar.state == 'inWar' &&
@@ -717,11 +719,19 @@ async function dbUpdate(
     }
 
     if (clanWar.state == 'warEnded') {
-      if (clanWar.clan.attackCount == 0 && clanWar.opponent.attackCount == 0) {
+      if (
+        !force &&
+        clanWar.clan.attackCount == 0 &&
+        clanWar.opponent.attackCount == 0
+      ) {
         flagUpdate = 0;
         return [mongoWar, flagUpdate];
       }
       flagUpdate = 1;
+    }
+
+    if (force) {
+      flagUpdate = Math.max(flagUpdate, 1);
     }
 
     if (

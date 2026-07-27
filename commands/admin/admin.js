@@ -2649,11 +2649,12 @@ async function editWarResult(interaction, client) {
   const mongoWarUpdated = await myColl.findOne(query);
 
   if (iAction != 'forfeit') {
-    let logChIdLocal = null;
-    let teamName = null;
-    let teamNameOpp = null;
-    let nAtBefore = 99;
-    await fGetWars.dbUpdate(
+    const nAtBefore = {
+      clan: mongoWarUpdated.result?.clan?.allAttackTypes?.nAt?.total ?? 0,
+      opponent:
+        mongoWarUpdated.result?.opponent?.allAttackTypes?.nAt?.total ?? 0,
+    };
+    const [mongoWarAfterDbUpdate, flagUpdate] = await fGetWars.dbUpdate(
       client,
       mongoWarUpdated,
       mongoWarUpdated.clan_war,
@@ -2662,12 +2663,23 @@ async function editWarResult(interaction, client) {
       mongoWarUpdated.week,
       mongoWarUpdated.match,
       nAtBefore,
-      logChIdLocal,
-      teamName,
-      teamNameOpp,
+      null,
+      null,
+      mongoWarUpdated.clan_abbr,
+      mongoWarUpdated.opponent_abbr,
+      true,
     );
+    if (flagUpdate > 0 && mongoWarAfterDbUpdate) {
+      mongoWarUpdated.result = mongoWarAfterDbUpdate.result;
+      mongoWarUpdated.clan_war = mongoWarAfterDbUpdate.clan_war;
+      mongoWarUpdated.opponent_war = mongoWarAfterDbUpdate.opponent_war;
+    }
   }
   description += `:white_check_mark: *The War result has successfully updated.*\n`;
+
+  await fScore.autoUpdate(client.clientMongo, mongoWarUpdated.league);
+  await fMongo.standings(client.clientMongo, mongoWarUpdated.league);
+  description += `:white_check_mark: *${config.league[mongoWarUpdated.league]} standings has successfully updated.*\n`;
 
   await functions.updateWarInfo(
     client,
