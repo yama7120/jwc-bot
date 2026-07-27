@@ -2048,6 +2048,8 @@ async function updateLeagueStandings(interaction, client) {
   let embed = new EmbedBuilder();
   embed.setTitle(`**STANDINGS UPDATED**`);
 
+  await fGetWars.recalculateLeagueWarResults(client, iLeague);
+
   const description = await fScore.autoUpdate(client.clientMongo, iLeague);
   embed.setDescription(description);
 

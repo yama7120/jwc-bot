@@ -1166,7 +1166,49 @@ async function dbUpdate(
     return [mongoWar, flagUpdate];
   }
 }
-export { dbUpdate };
+
+async function recalculateLeagueWarResults(client, league) {
+  const cursor = client.clientMongo
+    .db('jwc')
+    .collection('wars')
+    .find({
+      season: config.season[league],
+      league,
+      week: { $gt: 0 },
+      'result.state': 'warEnded',
+    });
+  const mongoWars = await cursor.toArray();
+  await cursor.close();
+
+  for (const mongoWar of mongoWars) {
+    if (!mongoWar.clan_war?.clan || !mongoWar.opponent_war?.clan) {
+      continue;
+    }
+
+    const nAtBefore = {
+      clan: mongoWar.result?.clan?.allAttackTypes?.nAt?.total ?? 0,
+      opponent: mongoWar.result?.opponent?.allAttackTypes?.nAt?.total ?? 0,
+    };
+
+    await dbUpdate(
+      client,
+      mongoWar,
+      mongoWar.clan_war,
+      mongoWar.opponent_war,
+      league,
+      mongoWar.week,
+      mongoWar.match,
+      nAtBefore,
+      null,
+      null,
+      mongoWar.clan_abbr,
+      mongoWar.opponent_abbr,
+      true,
+    );
+  }
+}
+
+export { dbUpdate, recalculateLeagueWarResults };
 
 async function writeClanWarAttack(
   client,

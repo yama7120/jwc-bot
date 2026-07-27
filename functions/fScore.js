@@ -439,6 +439,44 @@ function returnArr(mongoClans, weekStr, term1, term2, term3) {
   return arr;
 };
 
+function buildScoringResult(mongoWar) {
+  const { result, clan_war, opponent_war } = mongoWar;
+  if (!result || result.state !== 'warEnded') {
+    return result;
+  }
+  if (!clan_war?.clan || !opponent_war?.clan) {
+    return result;
+  }
+
+  const adjusted = JSON.parse(JSON.stringify(result));
+  const sides = [
+    ['clan', clan_war.clan],
+    ['opponent', opponent_war.clan],
+  ];
+
+  for (const [key, warClan] of sides) {
+    const penalty = warClan.penalty ?? {};
+    adjusted[key] = { ...adjusted[key] };
+    adjusted[key].stars = warClan.stars + (penalty.star ?? 0);
+    adjusted[key].destruction =
+      Math.round(warClan.destruction * 100) / 100 + (penalty.destruction ?? 0);
+    if (penalty.defPoint != null) {
+      const oneDefensePtDef = adjusted[key].ptDef2 ?? 0;
+      adjusted[key].ptDefSum = oneDefensePtDef + penalty.defPoint;
+    }
+  }
+
+  return adjusted;
+}
+
+function getScoringWar(mongoWar) {
+  const result = buildScoringResult(mongoWar);
+  if (result === mongoWar.result) {
+    return mongoWar;
+  }
+  return { ...mongoWar, result };
+}
+
 
 async function updateScore(clientMongo, league, mongoClan) {
   const clanAbbr = mongoClan.clan_abbr;
@@ -476,15 +514,16 @@ async function updateScore(clientMongo, league, mongoClan) {
 
   // Sequential: shared accumulators must not run in parallel (await yields and drops wars).
   for (const mongoWar of mongoWars) {
-    const week = mongoWar.week;
+    const scoringWar = getScoringWar(mongoWar);
+    const week = scoringWar.week;
     const weekStr = `w${week}`;
     let point = 0;
 
-    if (mongoWar.clan_abbr == clanAbbr || mongoWar.opponent_abbr == clanAbbr) {
-      if (mongoWar.result) {
-        if (mongoWar.result.state == 'warEnded' || mongoWar.result.state == 'forfeited') {
-          if (mongoWar.clan_abbr == clanAbbr) {
-            [point, win, tie, loss] = calcPoint(mongoWar, 'clan', 'opponent');
+    if (scoringWar.clan_abbr == clanAbbr || scoringWar.opponent_abbr == clanAbbr) {
+      if (scoringWar.result) {
+        if (scoringWar.result.state == 'warEnded' || scoringWar.result.state == 'forfeited') {
+          if (scoringWar.clan_abbr == clanAbbr) {
+            [point, win, tie, loss] = calcPoint(scoringWar, 'clan', 'opponent');
             /*
             if (league == 'mix') {
               [point, win, tie, loss] = calcPointMix(mongoWar, 'clan', 'opponent');
@@ -494,8 +533,8 @@ async function updateScore(clientMongo, league, mongoClan) {
             };
             */
           }
-          else if (mongoWar.opponent_abbr == clanAbbr) {
-            [point, win, tie, loss] = calcPoint(mongoWar, 'opponent', 'clan');
+          else if (scoringWar.opponent_abbr == clanAbbr) {
+            [point, win, tie, loss] = calcPoint(scoringWar, 'opponent', 'clan');
             /*
             if (league == 'mix') {
               [point, win, tie, loss] = calcPointMix(mongoWar, 'opponent', 'clan');
@@ -512,7 +551,7 @@ async function updateScore(clientMongo, league, mongoClan) {
           nTie += tie;
           nLoss += loss;
           sumPoint += point;
-          if (mongoWar.result.state != 'forfeited') {
+          if (scoringWar.result.state != 'forfeited') {
             nWarF += 1;
           };
 
@@ -523,7 +562,7 @@ async function updateScore(clientMongo, league, mongoClan) {
               nTieQ += tie;
               nLossQ += loss;
               sumPointQ += point;
-              if (mongoWar.result.state != 'forfeited') {
+              if (scoringWar.result.state != 'forfeited') {
                 nWarQF += 1;
               };
             };
@@ -535,7 +574,7 @@ async function updateScore(clientMongo, league, mongoClan) {
               nTieQ += tie;
               nLossQ += loss;
               sumPointQ += point;
-              if (mongoWar.result.state != 'forfeited') {
+              if (scoringWar.result.state != 'forfeited') {
                 nWarQF += 1;
               };
             };
@@ -544,53 +583,53 @@ async function updateScore(clientMongo, league, mongoClan) {
           let scoreClan = {};
           let scoreOpp = {};
 
-          if (mongoWar.result.state == 'warEnded') {
-            if (mongoWar.clan_abbr == clanAbbr) {
-              scoreClan = mongoWar.result.clan;
-              scoreOpp = mongoWar.result.opponent;
-              scoreOpp.teamAbbr = mongoWar.opponent_abbr;
-              sumScoreClan = await sumResult(sumScoreClan, mongoWar, 'clan');
-              sumScoreOpp = await sumResult(sumScoreOpp, mongoWar, 'opponent');
+          if (scoringWar.result.state == 'warEnded') {
+            if (scoringWar.clan_abbr == clanAbbr) {
+              scoreClan = scoringWar.result.clan;
+              scoreOpp = scoringWar.result.opponent;
+              scoreOpp.teamAbbr = scoringWar.opponent_abbr;
+              sumScoreClan = await sumResult(sumScoreClan, scoringWar, 'clan');
+              sumScoreOpp = await sumResult(sumScoreOpp, scoringWar, 'opponent');
               if (league == 'j1' || league == 'j2') {
                 if (week <= config.weeksQ[league]) {
-                  sumScoreClanQ = await sumResult(sumScoreClanQ, mongoWar, 'clan');
-                  sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, 'opponent');
+                  sumScoreClanQ = await sumResult(sumScoreClanQ, scoringWar, 'clan');
+                  sumScoreOppQ = await sumResult(sumScoreOppQ, scoringWar, 'opponent');
                 };
               }
               else if (league == 'swiss' || league == 'mix' || league == 'cup') {
                 if (week <= config.weeksQ[league]) {
-                  sumScoreClanQ = await sumResult(sumScoreClanQ, mongoWar, 'clan');
-                  sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, 'opponent');
+                  sumScoreClanQ = await sumResult(sumScoreClanQ, scoringWar, 'clan');
+                  sumScoreOppQ = await sumResult(sumScoreOppQ, scoringWar, 'opponent');
                 };
               }
             }
-            else if (mongoWar.opponent_abbr == clanAbbr) {
-              scoreClan = mongoWar.result.opponent;
-              scoreOpp = mongoWar.result.clan;
-              scoreOpp.teamAbbr = mongoWar.clan_abbr;
-              sumScoreClan = await sumResult(sumScoreClan, mongoWar, 'opponent');
-              sumScoreOpp = await sumResult(sumScoreOpp, mongoWar, 'clan');
+            else if (scoringWar.opponent_abbr == clanAbbr) {
+              scoreClan = scoringWar.result.opponent;
+              scoreOpp = scoringWar.result.clan;
+              scoreOpp.teamAbbr = scoringWar.clan_abbr;
+              sumScoreClan = await sumResult(sumScoreClan, scoringWar, 'opponent');
+              sumScoreOpp = await sumResult(sumScoreOpp, scoringWar, 'clan');
               if (league == 'j1' || league == 'j2') {
                 if (week <= config.weeksQ[league]) {
-                  sumScoreClanQ = await sumResult(sumScoreClanQ, mongoWar, 'opponent');
-                  sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, 'clan');
+                  sumScoreClanQ = await sumResult(sumScoreClanQ, scoringWar, 'opponent');
+                  sumScoreOppQ = await sumResult(sumScoreOppQ, scoringWar, 'clan');
                 };
               }
               else if (league == 'swiss' || league == 'mix' || league == 'cup') {
                 if (week <= config.weeksQ[league]) {
-                  sumScoreClanQ = await sumResult(sumScoreClanQ, mongoWar, 'opponent');
-                  sumScoreOppQ = await sumResult(sumScoreOppQ, mongoWar, 'clan');
+                  sumScoreClanQ = await sumResult(sumScoreClanQ, scoringWar, 'opponent');
+                  sumScoreOppQ = await sumResult(sumScoreOppQ, scoringWar, 'clan');
                 };
               }
             };
           }
-          else if (mongoWar.result.state == 'forfeited') {
+          else if (scoringWar.result.state == 'forfeited') {
             scoreClan = 'N/A';
             scoreOpp = 'N/A';
           };
 
           const scoreThisWar = {
-            state: mongoWar.result.state,
+            state: scoringWar.result.state,
             point: point,
             clan: scoreClan,
             opponent: scoreOpp,
