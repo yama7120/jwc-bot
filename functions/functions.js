@@ -1197,19 +1197,13 @@ async function getWarDescriptionParts(clientMongo, league, weekStr) {
   };
   const sort = { match: 1 };
   const myColl = clientMongo.db(config.mongo.nameDatabase).collection('wars');
-  const cursor = myColl.find(query).sort(sort);
+  const cursor = myColl
+    .find(query, { projection: fGetWars.WAR_SUMMARY_PROJECTION })
+    .sort(sort);
   const dbValueWars = await cursor.toArray();
   await cursor.close();
 
-  const arrDescription = [];
-  await Promise.all(
-    dbValueWars.map(async (dbValueWar, index) => {
-      arrDescription[index] =
-        `${await fGetWars.createDescription(clientMongo, dbValueWar, league, 'multi')}`;
-    }),
-  );
-
-  return arrDescription;
+  return fGetWars.createDescriptionsMulti(clientMongo, dbValueWars, league);
 }
 
 async function getWarInfoEmbedGroups(clientMongo, league, weekStr) {

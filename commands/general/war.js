@@ -215,17 +215,18 @@ async function warSummary(interaction, client) {
   };
 
   const query = { season: config.season[iLeague], league: iLeague, week: iWeek };
-  const options = {};
+  const options = { projection: fGetWars.WAR_SUMMARY_PROJECTION };
   const sort = { 'match': 1 };
   const myColl = client.clientMongo.db('jwc').collection('wars');
   const cursor = myColl.find(query, options).sort(sort);
   let mongoWars = await cursor.toArray();
   await cursor.close();
 
-  let arrDescription = [];
-  await Promise.all(mongoWars.map(async (mongoWar, index) => {
-    arrDescription[index] = `${await fGetWars.createDescription(client.clientMongo, mongoWar, iLeague, 'multi')}`;
-  }));
+  const arrDescription = await fGetWars.createDescriptionsMulti(
+    client.clientMongo,
+    mongoWars,
+    iLeague,
+  );
 
   let description1 = '';
   let description2 = '';
@@ -324,11 +325,20 @@ async function warLive(interaction, client) {
 
   let numLive = 0;
   let description = '';
+  const clansMap = await fGetWars.loadClansMapByAbbr(
+    client.clientMongo,
+    mongoWars.flatMap((war) => [war.clan_abbr, war.opponent_abbr]),
+  );
   let arrDescription = [];
   await Promise.all(mongoWars.map(async (mongoWar, index) => {
     //if (mongoWar.clan_war.state == 'inWar' || mongoWar.result.state == 'inWar') {
     numLive += 1;
-    arrDescription[index] = await fGetWars.createDescriptionLive(client.clientMongo, mongoWar);
+    arrDescription[index] = await fGetWars.createDescriptionLive(
+      client.clientMongo,
+      mongoWar,
+      clansMap.get(mongoWar.clan_abbr) ?? null,
+      clansMap.get(mongoWar.opponent_abbr) ?? null,
+    );
     //};
   }));
 

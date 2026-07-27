@@ -1893,6 +1893,58 @@ async function createResult(arrAttacks, arrPlayers, state, resultOld) {
   return [arrAttacksPlus, resultClan, resultOpponent];
 }
 
+/** /war summary・war_info 用。members 等の重い clan_war ペイロードを除外する */
+const WAR_SUMMARY_PROJECTION = {
+  match: 1,
+  name_match: 1,
+  stream: 1,
+  clan_abbr: 1,
+  opponent_abbr: 1,
+  deal: 1,
+  result: 1,
+  'clan_war.startTime': 1,
+  'clan_war.endTime': 1,
+};
+export { WAR_SUMMARY_PROJECTION };
+
+async function loadClansMapByAbbr(clientMongo, abbrs) {
+  const unique = [...new Set((abbrs ?? []).filter(Boolean))];
+  if (unique.length === 0) {
+    return new Map();
+  }
+  const clans = await clientMongo
+    .db(config.mongo.nameDatabase)
+    .collection('clans')
+    .find(
+      { clan_abbr: { $in: unique } },
+      { projection: { clan_abbr: 1, team_name: 1, _id: 0 } },
+    )
+    .toArray();
+  return new Map(clans.map((clan) => [clan.clan_abbr, clan]));
+}
+export { loadClansMapByAbbr };
+
+async function createDescriptionsMulti(clientMongo, mongoWars, league) {
+  const wars = Array.isArray(mongoWars) ? mongoWars : [];
+  const clansMap = await loadClansMapByAbbr(
+    clientMongo,
+    wars.flatMap((war) => [war?.clan_abbr, war?.opponent_abbr]),
+  );
+  return Promise.all(
+    wars.map((mongoWar) =>
+      createDescription(
+        clientMongo,
+        mongoWar,
+        league,
+        'multi',
+        clansMap.get(mongoWar.clan_abbr) ?? null,
+        clansMap.get(mongoWar.opponent_abbr) ?? null,
+      ),
+    ),
+  );
+}
+export { createDescriptionsMulti };
+
 async function createDescription(
   clientMongo,
   mongoWar,
@@ -1903,17 +1955,23 @@ async function createDescription(
 ) {
   let clanAbbr = mongoWar.clan_abbr;
   let clanAbbrOpp = mongoWar.opponent_abbr;
-  if (!mongoClanA) {
-    mongoClanA = await clientMongo
-      .db('jwc')
-      .collection('clans')
-      .findOne({ clan_abbr: clanAbbr });
-  }
-  if (!mongoClanB) {
-    mongoClanB = await clientMongo
-      .db('jwc')
-      .collection('clans')
-      .findOne({ clan_abbr: clanAbbrOpp });
+  if (!mongoClanA || !mongoClanB) {
+    const [fetchedA, fetchedB] = await Promise.all([
+      mongoClanA
+        ? Promise.resolve(mongoClanA)
+        : clientMongo
+          .db(config.mongo.nameDatabase)
+          .collection('clans')
+          .findOne({ clan_abbr: clanAbbr }),
+      mongoClanB
+        ? Promise.resolve(mongoClanB)
+        : clientMongo
+          .db(config.mongo.nameDatabase)
+          .collection('clans')
+          .findOne({ clan_abbr: clanAbbrOpp }),
+    ]);
+    mongoClanA = fetchedA;
+    mongoClanB = fetchedB;
   }
 
   let stateStr = '';
@@ -1977,10 +2035,10 @@ async function createDescription(
     //const startTimeJstDate = utcToZonedTime(mongoWar.clan_war.startTime, 'Asia/Tokyo');
     //const startTimeJstStr = format(startTimeJstDate, 'M/d HH:mm:ss');
     const startTimeUnix = Math.floor(
-      new Date(mongoWar.clan_war.startTime).getTime() / 1000,
+      new Date(mongoWar.clan_war?.startTime).getTime() / 1000,
     );
     const endTimeUnix = Math.floor(
-      new Date(mongoWar.clan_war.endTime).getTime() / 1000,
+      new Date(mongoWar.clan_war?.endTime).getTime() / 1000,
     );
 
     if (mongoWar.result.state == 'preparation') {
@@ -2109,18 +2167,31 @@ async function createDescriptionMix(lvTH, result) {
   return description;
 }
 
-async function createDescriptionLive(clientMongo, mongoWar) {
+async function createDescriptionLive(
+  clientMongo,
+  mongoWar,
+  mongoClanA = null,
+  mongoClanB = null,
+) {
   const result = mongoWar.result;
-  let clanAbbr = mongoWar.clan_abbr;
-  let clanAbbrOpp = mongoWar.opponent_abbr;
-  let mongoClanA = await clientMongo
-    .db('jwc')
-    .collection('clans')
-    .findOne({ clan_abbr: clanAbbr });
-  let mongoClanB = await clientMongo
-    .db('jwc')
-    .collection('clans')
-    .findOne({ clan_abbr: clanAbbrOpp });
+  if (!mongoClanA || !mongoClanB) {
+    const [fetchedA, fetchedB] = await Promise.all([
+      mongoClanA
+        ? Promise.resolve(mongoClanA)
+        : clientMongo
+          .db(config.mongo.nameDatabase)
+          .collection('clans')
+          .findOne({ clan_abbr: mongoWar.clan_abbr }),
+      mongoClanB
+        ? Promise.resolve(mongoClanB)
+        : clientMongo
+          .db(config.mongo.nameDatabase)
+          .collection('clans')
+          .findOne({ clan_abbr: mongoWar.opponent_abbr }),
+    ]);
+    mongoClanA = fetchedA;
+    mongoClanB = fetchedB;
+  }
 
   let description = '';
   description = `**${mongoClanA.team_name} :vs: ${mongoClanB.team_name}**\n`;
