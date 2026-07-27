@@ -1167,7 +1167,7 @@ async function dbUpdate(
   }
 }
 
-async function recalculateLeagueWarResults(client, league) {
+async function recalculateLeagueWarResults(client, league, onProgress) {
   const cursor = client.clientMongo
     .db('jwc')
     .collection('wars')
@@ -1180,8 +1180,39 @@ async function recalculateLeagueWarResults(client, league) {
   const mongoWars = await cursor.toArray();
   await cursor.close();
 
+  const total = mongoWars.length;
+  if (onProgress) {
+    await onProgress(
+      `:hourglass: war results 再計算開始 — ${total} 試合 (season ${config.season[league]})`,
+    );
+  }
+
+  let done = 0;
+  let batchLines = [];
+  const flushBatch = async (force = false) => {
+    if (!onProgress) {
+      batchLines = [];
+      return;
+    }
+    if (!force && batchLines.length < 10) {
+      return;
+    }
+    if (batchLines.length === 0) {
+      return;
+    }
+    await onProgress(
+      `:gear: war results ${done}/${total}\n${batchLines.join('\n')}`,
+    );
+    batchLines = [];
+  };
+
   for (const mongoWar of mongoWars) {
+    done += 1;
+    const matchLabel = `w${mongoWar.week} m${mongoWar.match} \`${mongoWar.clan_abbr ?? '?'}\` vs \`${mongoWar.opponent_abbr ?? '?'}\``;
+
     if (!mongoWar.clan_war?.clan || !mongoWar.opponent_war?.clan) {
+      batchLines.push(`:fast_forward: ${done}. ${matchLabel} (skip: clan_war なし)`);
+      await flushBatch();
       continue;
     }
 
@@ -1205,6 +1236,15 @@ async function recalculateLeagueWarResults(client, league) {
       mongoWar.opponent_abbr,
       true,
     );
+
+    batchLines.push(`:white_check_mark: ${done}. ${matchLabel}`);
+    await flushBatch();
+  }
+
+  await flushBatch(true);
+
+  if (onProgress) {
+    await onProgress(`:white_check_mark: war results 再計算完了 — ${total} 試合`);
   }
 }
 

@@ -2044,18 +2044,33 @@ async function updateEveryWar(interaction, client) {
 
 async function updateLeagueStandings(interaction, client) {
   const iLeague = await interaction.options.getString('league');
+  const leagueLabel = config.league[iLeague];
+  const notify = async (content) => {
+    await interaction.followUp({ content });
+  };
+
+  await notify(
+    `:arrows_counterclockwise: **${leagueLabel} standings** 更新開始`,
+  );
 
   let embed = new EmbedBuilder();
   embed.setTitle(`**STANDINGS UPDATED**`);
 
-  await fGetWars.recalculateLeagueWarResults(client, iLeague);
+  await notify(`**1/5** war results 再計算 (全 week / warEnded)`);
+  await fGetWars.recalculateLeagueWarResults(client, iLeague, notify);
 
-  const description = await fScore.autoUpdate(client.clientMongo, iLeague);
+  await notify(`**2/5** team score / league stats / T-score`);
+  const description = await fScore.autoUpdate(
+    client.clientMongo,
+    iLeague,
+    notify,
+  );
   embed.setDescription(description);
 
   embed.setColor(config.color[iLeague]);
   embed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
 
+  await notify(`**3/5** standings 表の再構築`);
   await fMongo.standings(client.clientMongo, iLeague);
   if (iLeague == 'j1') {
     await fMongo.standingsGroupStage(
@@ -2065,17 +2080,25 @@ async function updateLeagueStandings(interaction, client) {
       'cloak',
     );
   }
-  await fMongo.jwcAttacks(client.clientMongo, iLeague);
+  await notify(`:white_check_mark: standings 再構築完了`);
 
+  await notify(`**4/5** jwc attacks 集計`);
+  await fMongo.jwcAttacks(client.clientMongo, iLeague);
+  await notify(`:white_check_mark: jwc attacks 集計完了`);
+
+  await notify(`**5/5** attack ranking 更新`);
   if (iLeague == 'mix') {
     for (const lvTH of config.lvTHmix) {
+      await notify(`:gear: ranking TH${lvTH}...`);
       await functions.updateRankingJwcAttack(client, iLeague, lvTH);
     }
   } else {
     await functions.updateRankingJwcAttack(client, iLeague, config.lvTH);
   }
+  await notify(`:white_check_mark: attack ranking 更新完了`);
 
   await interaction.followUp({ embeds: [embed] });
+  await notify(`:white_check_mark: **${leagueLabel} standings** 更新完了`);
 
   return;
 }

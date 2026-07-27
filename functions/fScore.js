@@ -2,7 +2,7 @@ import config from '../config/config.js';
 import * as functions from './functions.js';
 import * as ss from 'simple-statistics';
 
-async function autoUpdate(clientMongo, league) {
+async function autoUpdate(clientMongo, league, onProgress) {
   let rtn_description = '';
 
   const cursor = clientMongo.db('jwc').collection('clans')
@@ -13,16 +13,36 @@ async function autoUpdate(clientMongo, league) {
   // リーグ内全チームスコア更新
   rtn_description += '* **Score**\n';
   let arrDescription = [];
-  await Promise.all(mongoClans.map(async (mongoClan, index) => {
+  if (onProgress) {
+    await onProgress(
+      `:hourglass: team score 更新開始 — ${mongoClans.length} チーム`,
+    );
+  }
+  for (let index = 0; index < mongoClans.length; index++) {
+    const mongoClan = mongoClans[index];
     await updateScore(clientMongo, league, mongoClan);
     arrDescription[index] = `${mongoClan.team_name}\n`;
-  }));
+    if (
+      onProgress &&
+      (index + 1 === mongoClans.length || (index + 1) % 5 === 0)
+    ) {
+      await onProgress(
+        `:gear: team score ${index + 1}/${mongoClans.length} — \`${mongoClan.clan_abbr}\``,
+      );
+    }
+  }
 
   arrDescription.forEach(function (description) {
     rtn_description += description;
   });
+  if (onProgress) {
+    await onProgress(`:white_check_mark: team score 更新完了`);
+  }
 
   // リーグ全体スタッツ更新
+  if (onProgress) {
+    await onProgress(`:hourglass: league stats 更新中...`);
+  }
   rtn_description += '* **Stats in League**\n';
   let mongoLeague = await clientMongo.db('jwc').collection('leagues').findOne(
     { league: league },
@@ -38,21 +58,41 @@ async function autoUpdate(clientMongo, league) {
     await clientMongo.db('jwc').collection('leagues').updateOne({ league: league }, { $set: { stats: statsLeague } });
     rtn_description += '_Updated_\n';
   };
+  if (onProgress) {
+    await onProgress(`:white_check_mark: league stats 更新完了`);
+  }
 
   // リーグ内全チーム偏差値更新
+  if (onProgress) {
+    await onProgress(
+      `:hourglass: T-score 更新開始 — ${mongoClans.length} チーム`,
+    );
+  }
   rtn_description += '* **T Score**\n';
   let mongoLeagueUpdated = await clientMongo.db('jwc').collection('leagues').findOne(
     { league: league },
     { projection: { stats: 1, _id: 0 } }
   );
-  await Promise.all(mongoClans.map(async (mongoClan, index) => {
+  for (let index = 0; index < mongoClans.length; index++) {
+    const mongoClan = mongoClans[index];
     await calcTScore(clientMongo, mongoClan, mongoLeagueUpdated);
     arrDescription[index] = `${mongoClan.team_name}\n`;
-  }));
+    if (
+      onProgress &&
+      (index + 1 === mongoClans.length || (index + 1) % 5 === 0)
+    ) {
+      await onProgress(
+        `:gear: T-score ${index + 1}/${mongoClans.length} — \`${mongoClan.clan_abbr}\``,
+      );
+    }
+  }
 
   arrDescription.forEach(function (description) {
     rtn_description += description;
   });
+  if (onProgress) {
+    await onProgress(`:white_check_mark: T-score 更新完了`);
+  }
 
   return rtn_description;
 };
