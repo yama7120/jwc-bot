@@ -2701,7 +2701,14 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   const tomorrow = new Date(currentDate);
   tomorrow.setDate(currentDate.getDate() + 1);
 
-  const seasonData = functions.calculateSeasonValues(client, currentDate);
+  // Legend I: JST 14:00 (= UTC 05:00)、それ以外: JST 02:00 (= UTC 17:00)
+  const boundaryUtcHour =
+    mongoAcc?.leagueTier?.id === config_coc.leagueId.legend ? 5 : 17;
+  const seasonData = functions.calculateSeasonValues(
+    client,
+    currentDate,
+    boundaryUtcHour,
+  );
 
   let dayStats = {};
   const daysLength = mongoAcc.legend.days?.length ?? 0;

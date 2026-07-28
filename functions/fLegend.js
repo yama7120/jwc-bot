@@ -1387,7 +1387,7 @@ function applyRankedBattleEventTimestamp(embed, eventData) {
   embed.setTimestamp();
 }
 
-/** Legend / Ranked の「日」境界: JST 02:00 (= UTC 17:00) にスナップ */
+/** Legend / Ranked の「日」境界にスナップ（デフォルトは JST 02:00 = UTC 17:00） */
 function rankedDayStartUtcMs(timestampMs, boundaryUtcHour = 17) {
   const d = new Date(timestampMs);
   let boundaryMs = Date.UTC(
@@ -1636,6 +1636,10 @@ async function bootstrapLegendRankedEvents(
     ? mongoAccMut.legend.events[0]?.day
     : null;
   const seasonDataGrace = getLegendGraceSeasonData(seasonData, latestStoredDay);
+  // Legend I: JST 14:00 (= UTC 05:00)、それ以外: JST 02:00 (= UTC 17:00)
+  const dayBoundaryUtcHour = Number.isFinite(Number(seasonData?.dayBoundaryUtcHour))
+    ? Number(seasonData.dayBoundaryUtcHour)
+    : (afterPlayerStats?.leagueTier?.id === config_coc.leagueId.legend ? 5 : 17);
 
   for (const item of capped) {
     const opp = item?.opponentPlayerTag ?? '';
@@ -1660,7 +1664,11 @@ async function bootstrapLegendRankedEvents(
     );
     const battleUnix = battleLogItemToUnixSeconds(item);
     const seasonDataAtBattle = battleUnix
-      ? functions.calculateSeasonValues(client, new Date(battleUnix * 1000))
+      ? functions.calculateSeasonValues(
+          client,
+          new Date(battleUnix * 1000),
+          dayBoundaryUtcHour,
+        )
       : seasonDataGrace;
     const eventData = buildRankedEventDataFromBattleLogItem(
       item,
@@ -1716,6 +1724,10 @@ async function ingestLegendRankedBattleLogSilent(
     ? mongoAccMut.legend.events[0]?.day
     : null;
   const seasonDataGrace = getLegendGraceSeasonData(seasonData, latestStoredDay);
+  // Legend I: JST 14:00 (= UTC 05:00)、それ以外: JST 02:00 (= UTC 17:00)
+  const dayBoundaryUtcHour = Number.isFinite(Number(seasonData?.dayBoundaryUtcHour))
+    ? Number(seasonData.dayBoundaryUtcHour)
+    : (afterPlayerStats?.leagueTier?.id === config_coc.leagueId.legend ? 5 : 17);
 
   for (const item of capped) {
     const opp = item?.opponentPlayerTag ?? '';
@@ -1740,7 +1752,11 @@ async function ingestLegendRankedBattleLogSilent(
     );
     const battleUnix = battleLogItemToUnixSeconds(item);
     const seasonDataAtBattle = battleUnix
-      ? functions.calculateSeasonValues(client, new Date(battleUnix * 1000))
+      ? functions.calculateSeasonValues(
+          client,
+          new Date(battleUnix * 1000),
+          dayBoundaryUtcHour,
+        )
       : seasonDataGrace;
     const eventData = buildRankedEventDataFromBattleLogItem(
       item,
@@ -1871,6 +1887,10 @@ async function processLegendRankedBattleLog(
     ? mongoAccMut.legend.events[0]?.day
     : null;
   const seasonDataGrace = getLegendGraceSeasonData(seasonData, latestStoredDay);
+  // Legend I: JST 14:00 (= UTC 05:00)、それ以外: JST 02:00 (= UTC 17:00)
+  const dayBoundaryUtcHour = Number.isFinite(Number(seasonData?.dayBoundaryUtcHour))
+    ? Number(seasonData.dayBoundaryUtcHour)
+    : (afterPlayerStats?.leagueTier?.id === config_coc.leagueId.legend ? 5 : 17);
   const diffsChronological = chronological.map((item) => {
     const isAttack = item?.attack === true;
     return rankedBattleTrophyDeltaFromBattleLog(
@@ -1896,7 +1916,11 @@ async function processLegendRankedBattleLog(
     const unixTimeSeconds =
       battleUnix ?? (baseUnixTimeSeconds + (idx * spacedStepSeconds));
     const seasonDataAtBattle = battleUnix
-      ? functions.calculateSeasonValues(client, new Date(battleUnix * 1000))
+      ? functions.calculateSeasonValues(
+          client,
+          new Date(battleUnix * 1000),
+          dayBoundaryUtcHour,
+        )
       : seasonDataGrace;
     const includeRanking = true;
     const eventData = buildRankedEventDataFromBattleLogItem(
