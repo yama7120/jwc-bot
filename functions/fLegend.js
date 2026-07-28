@@ -1113,8 +1113,13 @@ async function sendLogLegendMain(
     return;
   }
 
-  // 本人向け（設定チャンネル/DM）: ランキング API 不調時のため順位なし
-  const eventDataForUser = { ...eventData, includeRanking: false };
+  // 本人向け（設定チャンネル/DM）:
+  // Legend I は順位表示、それ以外はランキング API 不調対策で順位なし
+  const isLegend1 = scPlayer?.leagueTier?.id === config_coc.leagueId.legend;
+  const eventDataForUser = {
+    ...eventData,
+    includeRanking: isLegend1 ? eventData.includeRanking !== false : false,
+  };
   const embedUser = await handleBattleLog(
     client,
     legendEventType,
