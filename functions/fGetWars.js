@@ -1445,7 +1445,7 @@ export { sendAttackInfo };
 
 async function createResult(arrAttacks, arrPlayers, state, resultOld) {
   let arrAttacksPlusOld = [];
-  if (resultOld.state == 'inWar') {
+  if (resultOld && resultOld.state == 'inWar') {
     arrAttacksPlusOld = resultOld.arrAttacksPlus;
   }
 
