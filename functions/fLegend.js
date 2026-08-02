@@ -1476,6 +1476,7 @@ function rankedBattleTrophyDeltaFromBattleLog(
  * - stats 変動あり & before+sumDiff===after: forward（before から積算）
  * - sweep 等で before===after & API 未反映: forward（直前総数から積算）
  * - sweep 等で before===after & API 反映済み: after から逆算（二重加算防止）
+ * - API が保存済み総数より古い（巻き戻り）: forward（直前総数から積算）
  *
  * @param {number} [lastStoredTrophies] 直近に保存済みの event.trophies（API 未反映判定用）
  */
@@ -1521,6 +1522,15 @@ function computeTrophiesCurrentByBattleIndex(
     && Number.isFinite(afterT)
     && afterT === lastT
     && sumDiff !== 0;
+  // API / 監視スナップショットが保存済み履歴より古い（例: 4997 のあと API が 4972 のまま）
+  const apiStaleBehindHistory =
+    Number.isFinite(lastT)
+    && Number.isFinite(afterT)
+    && sumDiff !== 0
+    && (
+      (sumDiff > 0 && afterT < lastT)
+      || (sumDiff < 0 && afterT > lastT)
+    );
 
   if (Number.isFinite(beforeT) && Number.isFinite(afterT)) {
     const sameSnapshot = beforeT === afterT;
@@ -1532,6 +1542,11 @@ function computeTrophiesCurrentByBattleIndex(
 
     // 保存済み総数 + 今回 diff が API と一致 → 直前総数から積算（より正確な途中経過）
     if (lastMatchesAfter) {
+      return forwardFrom(lastT);
+    }
+
+    // API が履歴より古い → 保存済み総数から積算（4972 への巻き戻り防止）
+    if (apiStaleBehindHistory) {
       return forwardFrom(lastT);
     }
 
@@ -1550,6 +1565,9 @@ function computeTrophiesCurrentByBattleIndex(
   }
 
   if (lastMatchesAfter) {
+    return forwardFrom(lastT);
+  }
+  if (apiStaleBehindHistory) {
     return forwardFrom(lastT);
   }
   if (apiNotYetUpdated) {
