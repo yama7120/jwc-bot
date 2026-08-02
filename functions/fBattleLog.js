@@ -55,23 +55,67 @@ function fingerprintRankedBattleEventRow(row) {
   return `ranked|${atk}|${opp}|${stars}|${dest}`;
 }
 
-/** API 行が既に events / 旧 rankedBattleLog にあるか（ログ末尾走査の打ち切り用） */
-function battleLogItemMatchesStoredRankedBattle(item, events, rankedBattleLog) {
+/**
+ * API 行が既に events / 旧 rankedBattleLog にあるか。
+ *
+ * 同一バトルの再取り込み防止は次のいずれか:
+ * - battleTimestamp (unix) が一致
+ * - 同一 season+day での fingerprint 一致
+ *
+ * ※ 日付を跨いだ「同相手・同スター・同破壊率」は別バトルになり得るため、
+ *   旧実装のような day 無視の fingerprint 全件一致は行わない。
+ */
+function battleLogItemMatchesStoredRankedBattle(
+  item,
+  events,
+  rankedBattleLog,
+  opts = undefined,
+) {
   const fp = fingerprintRankedBattleItem(item);
   // opponent が空の場合は fingerprint が ...||... になりやすいので明示的に除外
   if (!normalizePlayerTag(item?.opponentPlayerTag)) return false;
 
+  const battleUnix = battleLogItemToUnixSeconds(item);
+  const season = opts?.season;
+  const day = opts?.day;
+  const hasSeasonDay =
+    season != null && day != null && Number.isFinite(Number(day));
+
+  const rowMatches = (row) => {
+    const fpr = fingerprintRankedBattleEventRow(row);
+    if (!fpr || fpr !== fp) return false;
+
+    const rowUnix = Number(row?.unixTime ?? row?.unixTimeSeconds);
+    if (
+      Number.isFinite(battleUnix)
+      && Number.isFinite(rowUnix)
+      && rowUnix > 0
+      && rowUnix === battleUnix
+    ) {
+      return true;
+    }
+
+    if (
+      hasSeasonDay
+      && row?.season === season
+      && Number(row?.day) === Number(day)
+    ) {
+      return true;
+    }
+
+    // 時刻も season/day も無い旧データ向け: fingerprint のみ（後方互換）
+    if (!Number.isFinite(battleUnix) && !hasSeasonDay) {
+      return true;
+    }
+
+    return false;
+  };
+
   const safeEvents = Array.isArray(events) ? events : [];
-  for (const e of safeEvents) {
-    const fpe = fingerprintRankedBattleEventRow(e);
-    if (fpe && fpe === fp) return true;
-  }
+  if (safeEvents.some(rowMatches)) return true;
 
   const rbl = Array.isArray(rankedBattleLog) ? rankedBattleLog : [];
-  for (const r of rbl) {
-    const fpr = fingerprintRankedBattleEventRow(r);
-    if (fpr && fpr === fp) return true;
-  }
+  if (rbl.some(rowMatches)) return true;
 
   return false;
 }

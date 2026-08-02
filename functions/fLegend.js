@@ -805,14 +805,17 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
       continue;
     }
 
-    // 並び順/日付判定のブレで同じ battlelog が別 day 扱いになっても重複しないよう、
-    // action+opponent+stars+dest の fingerprint でも弾く（特に 0 変動防衛で発生しやすい）
+    // 同一バトルの再取り込み防止:
+    // - 同じ battleTimestamp (unixTime)
+    // - 同じ season+day での fingerprint
+    // 日付を跨いだ「同相手・同結果」は別バトルになり得るので day 無視の一致はしない。
     const fp = legendEventFingerprint(
       legendEventType,
       opp,
       event.stars,
       event.destructionPercentage,
     );
+    const eventUnix = Number(event.unixTimeSeconds);
     if (
       fp
       && existingEvents.some((e) => {
@@ -822,7 +825,20 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
           e?.stars,
           e?.destructionPercentage,
         );
-        return fpe && fpe === fp;
+        if (!fpe || fpe !== fp) return false;
+
+        const rowUnix = Number(e?.unixTime);
+        if (
+          Number.isFinite(eventUnix)
+          && eventUnix > 0
+          && Number.isFinite(rowUnix)
+          && rowUnix > 0
+          && rowUnix === eventUnix
+        ) {
+          return true;
+        }
+
+        return e?.season === event.season && Number(e?.day) === Number(event.day);
       })
     ) {
       continue;
@@ -1458,19 +1474,23 @@ function rankedBattleTrophyDeltaFromBattleLog(
 /**
  * 各 battle 終了時点の trophiesCurrent を算出する。
  * - stats 変動あり & before+sumDiff===after: forward（before から積算）
- * - sweep 等で before===after & API 未反映(0): forward（diff のみ積算）
+ * - sweep 等で before===after & API 未反映: forward（直前総数から積算）
  * - sweep 等で before===after & API 反映済み: after から逆算（二重加算防止）
+ *
+ * @param {number} [lastStoredTrophies] 直近に保存済みの event.trophies（API 未反映判定用）
  */
 function computeTrophiesCurrentByBattleIndex(
   beforePlayerStats,
   afterPlayerStats,
   diffsChronological,
+  lastStoredTrophies = undefined,
 ) {
   const n = diffsChronological.length;
   if (n === 0) return [];
 
   const beforeT = Number(beforePlayerStats?.trophies);
   const afterT = Number(afterPlayerStats?.trophies);
+  const lastT = Number(lastStoredTrophies);
   const sumDiff = diffsChronological.reduce(
     (s, d) => s + (Number(d) || 0),
     0,
@@ -1494,6 +1514,14 @@ function computeTrophiesCurrentByBattleIndex(
     return out;
   };
 
+  const lastMatchesAfter =
+    Number.isFinite(lastT) && Number.isFinite(afterT) && lastT + sumDiff === afterT;
+  const apiNotYetUpdated =
+    Number.isFinite(lastT)
+    && Number.isFinite(afterT)
+    && afterT === lastT
+    && sumDiff !== 0;
+
   if (Number.isFinite(beforeT) && Number.isFinite(afterT)) {
     const sameSnapshot = beforeT === afterT;
     const matchesAfter = beforeT + sumDiff === afterT;
@@ -1502,17 +1530,38 @@ function computeTrophiesCurrentByBattleIndex(
       return forwardFrom(beforeT);
     }
 
-    // API は最新だが sweep は before===after: forward すると after+sumDiff と二重計上になる
+    // 保存済み総数 + 今回 diff が API と一致 → 直前総数から積算（より正確な途中経過）
+    if (lastMatchesAfter) {
+      return forwardFrom(lastT);
+    }
+
+    // sweep: before===after
     if (sameSnapshot) {
+      // API トロフィーが 0 のまま / 直前総数のまま → 未反映なので forward
       if (afterT === 0 && sumDiff !== 0) {
         return forwardFrom(0);
       }
+      if (apiNotYetUpdated) {
+        return forwardFrom(afterT);
+      }
+      // API 反映済み: after から逆算（forward すると二重計上）
       return backwardFrom(afterT);
     }
   }
 
+  if (lastMatchesAfter) {
+    return forwardFrom(lastT);
+  }
+  if (apiNotYetUpdated) {
+    return forwardFrom(afterT);
+  }
+
   if (Number.isFinite(afterT)) {
     return backwardFrom(afterT);
+  }
+
+  if (Number.isFinite(lastT)) {
+    return forwardFrom(lastT);
   }
 
   if (Number.isFinite(beforeT)) {
@@ -1649,11 +1698,20 @@ async function bootstrapLegendRankedEvents(
   for (const item of capped) {
     const opp = item?.opponentPlayerTag ?? '';
     if (!opp) continue;
+    const battleUnix = battleLogItemToUnixSeconds(item);
+    const seasonDataAtBattle = battleUnix
+      ? functions.calculateSeasonValues(
+          client,
+          new Date(battleUnix * 1000),
+          dayBoundaryUtcHour,
+        )
+      : seasonDataGrace;
     if (
       battleLogItemMatchesStoredRankedBattle(
         item,
         mongoAccMut.legend?.events,
         mongoAccMut.legend?.rankedBattleLog,
+        { season: seasonDataAtBattle.seasonId, day: seasonDataAtBattle.daysNow },
       )
     ) {
       continue;
@@ -1667,14 +1725,6 @@ async function bootstrapLegendRankedEvents(
       item?.destructionPercentage,
       afterPlayerStats.leagueTier.id,
     );
-    const battleUnix = battleLogItemToUnixSeconds(item);
-    const seasonDataAtBattle = battleUnix
-      ? functions.calculateSeasonValues(
-          client,
-          new Date(battleUnix * 1000),
-          dayBoundaryUtcHour,
-        )
-      : seasonDataGrace;
     const eventData = buildRankedEventDataFromBattleLogItem(
       item,
       afterPlayerStats,
@@ -1737,11 +1787,20 @@ async function ingestLegendRankedBattleLogSilent(
   for (const item of capped) {
     const opp = item?.opponentPlayerTag ?? '';
     if (!opp) continue;
+    const battleUnix = battleLogItemToUnixSeconds(item);
+    const seasonDataAtBattle = battleUnix
+      ? functions.calculateSeasonValues(
+          client,
+          new Date(battleUnix * 1000),
+          dayBoundaryUtcHour,
+        )
+      : seasonDataGrace;
     if (
       battleLogItemMatchesStoredRankedBattle(
         item,
         mongoAccMut.legend?.events,
         mongoAccMut.legend?.rankedBattleLog,
+        { season: seasonDataAtBattle.seasonId, day: seasonDataAtBattle.daysNow },
       )
     ) {
       continue;
@@ -1755,14 +1814,6 @@ async function ingestLegendRankedBattleLogSilent(
       item?.destructionPercentage,
       afterPlayerStats.leagueTier.id,
     );
-    const battleUnix = battleLogItemToUnixSeconds(item);
-    const seasonDataAtBattle = battleUnix
-      ? functions.calculateSeasonValues(
-          client,
-          new Date(battleUnix * 1000),
-          dayBoundaryUtcHour,
-        )
-      : seasonDataGrace;
     const eventData = buildRankedEventDataFromBattleLogItem(
       item,
       afterPlayerStats,
@@ -1833,6 +1884,14 @@ async function processLegendRankedBattleLog(
 
   const legendEvents = mongoAcc.legend?.events ?? [];
   const legacyRankedLog = mongoAcc.legend?.rankedBattleLog;
+  const latestStoredDay = Array.isArray(legendEvents) && legendEvents.length > 0
+    ? legendEvents[0]?.day
+    : null;
+  const seasonDataGrace = getLegendGraceSeasonData(seasonData, latestStoredDay);
+  // Legend I: JST 14:00 (= UTC 05:00)、それ以外: JST 02:00 (= UTC 17:00)
+  const dayBoundaryUtcHour = Number.isFinite(Number(seasonData?.dayBoundaryUtcHour))
+    ? Number(seasonData.dayBoundaryUtcHour)
+    : (afterPlayerStats?.leagueTier?.id === config_coc.leagueId.legend ? 5 : 17);
 
   // NOTE: battlelog の並び順は環境/クライアント差で逆転することがあるため、
   // 「末尾から走査して一致したら break」は誤検知しやすい。
@@ -1845,7 +1904,22 @@ async function processLegendRankedBattleLog(
     if (!opp) {
       continue;
     }
-    if (battleLogItemMatchesStoredRankedBattle(item, legendEvents, legacyRankedLog)) {
+    const battleUnix = battleLogItemToUnixSeconds(item);
+    const seasonDataAtBattle = battleUnix
+      ? functions.calculateSeasonValues(
+          client,
+          new Date(battleUnix * 1000),
+          dayBoundaryUtcHour,
+        )
+      : seasonDataGrace;
+    if (
+      battleLogItemMatchesStoredRankedBattle(
+        item,
+        legendEvents,
+        legacyRankedLog,
+        { season: seasonDataAtBattle.seasonId, day: seasonDataAtBattle.daysNow },
+      )
+    ) {
       continue;
     }
     newItems.push(item);
@@ -1888,14 +1962,6 @@ async function processLegendRankedBattleLog(
   let lastResult = null;
   const baseUnixTimeSeconds = Math.floor(Date.now() / 1000);
   const spacedStepSeconds = 120;
-  const latestStoredDay = Array.isArray(mongoAccMut?.legend?.events) && mongoAccMut.legend.events.length > 0
-    ? mongoAccMut.legend.events[0]?.day
-    : null;
-  const seasonDataGrace = getLegendGraceSeasonData(seasonData, latestStoredDay);
-  // Legend I: JST 14:00 (= UTC 05:00)、それ以外: JST 02:00 (= UTC 17:00)
-  const dayBoundaryUtcHour = Number.isFinite(Number(seasonData?.dayBoundaryUtcHour))
-    ? Number(seasonData.dayBoundaryUtcHour)
-    : (afterPlayerStats?.leagueTier?.id === config_coc.leagueId.legend ? 5 : 17);
   const diffsChronological = chronological.map((item) => {
     const isAttack = item?.attack === true;
     return rankedBattleTrophyDeltaFromBattleLog(
@@ -1905,10 +1971,12 @@ async function processLegendRankedBattleLog(
       afterPlayerStats.leagueTier.id,
     );
   });
+  const lastStoredTrophies = Number(mongoAccMut?.legend?.events?.[0]?.trophies);
   const trophiesByIdx = computeTrophiesCurrentByBattleIndex(
     beforePlayerStats,
     afterPlayerStats,
     diffsChronological,
+    Number.isFinite(lastStoredTrophies) ? lastStoredTrophies : undefined,
   );
   const pendingNotifications = [];
 
