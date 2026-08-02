@@ -8,6 +8,30 @@ import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { ChartJSNodeCanvas } from 'chartjs-node-canvas';
 
+/** Mongo の leagueTier は iconUrls、API クラスは icon.url のことがある */
+function resolveLeagueTierIconUrl(leagueTier) {
+  const id = leagueTier?.id;
+  if (
+    id === config_coc.leagueId.legend
+    || id === config_coc.leagueId.legend2
+    || id === config_coc.leagueId.legend3
+  ) {
+    return config.urlImage.legend;
+  }
+  const fromDoc =
+    leagueTier?.iconUrls?.large
+    || leagueTier?.iconUrls?.medium
+    || leagueTier?.iconUrls?.small
+    || leagueTier?.icon?.url;
+  if (typeof fromDoc === 'string' && fromDoc.length > 0) return fromDoc;
+  const tier = config_coc.leagueTiers?.find((t) => t.id === id);
+  return (
+    tier?.iconUrls?.large
+    || tier?.iconUrls?.small
+    || config.urlImage.legend
+  );
+}
+
 // ***** 共通フォント定義 ***** //
 // フォントを一度だけ登録（GlobalFontsは一度登録すれば全体で利用可能）
 let fontsRegistered = false;
@@ -2796,7 +2820,7 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   ctx.fillText(text, widthCenter, 100);
 
   const lengthLogoLegend = 200;
-  const urlLogoLeague = mongoAcc.leagueTier.icon.url;
+  const urlLogoLeague = resolveLeagueTierIconUrl(mongoAcc.leagueTier);
   const imgLogoLegend = await Canvas.loadImage(urlLogoLeague);
   ctx.drawImage(
     imgLogoLegend,
@@ -3100,7 +3124,7 @@ async function legendHistory(mongoAcc) {
   ctx.restore();
 
   const lengthLogoLegend = 200;
-  const urlLogoLeague = mongoAcc.leagueTier.icon.url;
+  const urlLogoLeague = resolveLeagueTierIconUrl(mongoAcc.leagueTier);
   const imgLogoLegend = await Canvas.loadImage(urlLogoLeague);
   ctx.drawImage(
     imgLogoLegend,

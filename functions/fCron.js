@@ -803,6 +803,13 @@ function getLegendRank200BorderTrophies(legends200) {
 }
 
 async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo = {}, legend200Borders = {}) {
+  if (!result?.attachment) {
+    console.warn(
+      `[sendLogAttachment] skip (no attachment): ${mongoAcc?.name} (${mongoAcc?.tag})`,
+    );
+    return;
+  }
+
   const embed = new EmbedBuilder();
   const title = `${config.emote.legend} RESULT OF ${seasonData.daysNow == 1 ? 'THE LAST DAY' : `DAY ${seasonData.daysNow - 1}`}`;
   embed.setTitle(title);
