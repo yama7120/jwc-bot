@@ -764,27 +764,95 @@ async function sendLegendResult(client, seasonData) {
     const mongoAcc = mongoAccs[i];
 
     console.log(`[${i + 1}/${mongoAccs.length}] アカウント処理中: ${mongoAcc.name} (${mongoAcc.tag}) ${mongoAcc.leagueTier.name}`);
-    if (mongoAcc.leagueTier.id == config_coc.leagueId.legend) {
-      try {
-        const resultR1 = await fCanvas.legendStatsR1(client, mongoAcc, 'previous');
-        const rankInfo = {
-          global: globalRankMap.get(mongoAcc.tag) ?? mongoAcc.legend?.current?.rank ?? null,
-          japan: japanRankMap.get(mongoAcc.tag) ?? null
-        };
-        await saveLegendRankHistoryForDay(client, mongoAcc.tag, resultR1?.dayStats, rankInfo);
-        await sendLogAttachment(client, mongoAcc, resultR1, seasonData, rankInfo, legend200Borders);
-        collectLegendSummary(summaryByPilot, mongoAcc, resultR1, rankInfo);
+    if (mongoAcc.leagueTier.id != config_coc.leagueId.legend) {
+      continue;
+    }
 
-        await functions.sleep(500);
-      } catch (error) {
-        console.error(`[${i + 1}/${mongoAccs.length}] エラー発生 (${mongoAcc.tag}): ${error.message}`);
-        await functions.sleep(1000);
+    // 順位は画像生成成否に依存させない（canvas 例外で落ちると days[].*Rank が永久に null になる）
+    const previousDayStats = resolvePreviousLegendDayStats(mongoAcc, seasonData);
+    const rankInfo = {
+      global:
+        globalRankMap.get(mongoAcc.tag)
+        ?? mongoAcc.legend?.previousDay?.rank
+        ?? mongoAcc.legend?.current?.rank
+        ?? null,
+      japan: japanRankMap.get(mongoAcc.tag) ?? null,
+    };
+    try {
+      await saveLegendRankHistoryForDay(
+        client,
+        mongoAcc.tag,
+        previousDayStats,
+        rankInfo,
+      );
+    } catch (rankErr) {
+      console.error(
+        `[${i + 1}/${mongoAccs.length}] rank save failed (${mongoAcc.tag}):`,
+        rankErr?.message ?? rankErr,
+      );
+    }
+
+    try {
+      const resultR1 = await fCanvas.legendStatsR1(client, mongoAcc, 'previous');
+      const dayStatsForSave = resultR1?.dayStats ?? previousDayStats;
+      // canvas 側の day が取れた場合はそちらを正として再保存（previousDayStats とズレ防止）
+      if (resultR1?.dayStats?.season != null && Number.isFinite(resultR1?.dayStats?.day)) {
+        await saveLegendRankHistoryForDay(
+          client,
+          mongoAcc.tag,
+          resultR1.dayStats,
+          rankInfo,
+        );
       }
+      await sendLogAttachment(client, mongoAcc, resultR1, seasonData, rankInfo, legend200Borders);
+      collectLegendSummary(summaryByPilot, mongoAcc, {
+        ...resultR1,
+        dayStats: dayStatsForSave,
+      }, rankInfo);
+
+      await functions.sleep(500);
+    } catch (error) {
+      console.error(`[${i + 1}/${mongoAccs.length}] エラー発生 (${mongoAcc.tag}): ${error.message}`);
+      await functions.sleep(1000);
     }
   }
 
   await sendLegendSummaryByPilot(client, seasonData, summaryByPilot);
   console.log('end: sendLegendResult');
+}
+
+/** sendLegendResult 用: 終了した日の days[] エントリを特定する */
+function resolvePreviousLegendDayStats(mongoAcc, seasonData) {
+  const daysArr = Array.isArray(mongoAcc?.legend?.days) ? mongoAcc.legend.days : [];
+  if (daysArr.length === 0) return null;
+
+  const seasonId = seasonData?.seasonId;
+  const daysNow = Number(seasonData?.daysNow);
+  const newest = daysArr[0];
+
+  if (
+    newest
+    && newest.season === seasonId
+    && Number(newest.day) === daysNow
+  ) {
+    // 当日エントリが既にある → その直前が終了日
+    return daysArr[1] ?? null;
+  }
+
+  // 当日エントリ未作成 → 先頭が終了日（または別 season の最終日）
+  if (newest && (newest.season === seasonId || seasonId == null)) {
+    return newest;
+  }
+
+  // season 不一致時も「daysNow-1」を同 season から探す
+  if (Number.isFinite(daysNow) && daysNow > 1) {
+    const prev = daysArr.find(
+      (d) => d?.season === seasonId && Number(d?.day) === daysNow - 1,
+    );
+    if (prev) return prev;
+  }
+
+  return newest ?? null;
 }
 
 function getLegendRank200BorderTrophies(legends200) {
@@ -895,24 +963,52 @@ async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo 
 
 async function saveLegendRankHistoryForDay(client, tag, dayStats, rankInfo) {
   const season = dayStats?.season;
-  const day = dayStats?.day;
-  if (!season || !Number.isFinite(day)) {
+  const day = Number(dayStats?.day);
+  if (season == null || season === '' || !Number.isFinite(day)) {
+    console.warn(
+      `[saveLegendRankHistoryForDay] skip invalid dayStats tag=${tag} season=${season} day=${dayStats?.day}`,
+    );
     return;
   }
-  const globalRank = Number.isFinite(rankInfo?.global) ? rankInfo.global : null;
-  const japanRank = Number.isFinite(rankInfo?.japan) ? rankInfo.japan : null;
-  await client.clientMongo.db('jwc').collection('accounts').updateOne(
+  const globalRank = Number.isFinite(Number(rankInfo?.global))
+    ? Number(rankInfo.global)
+    : null;
+  const japanRank = Number.isFinite(Number(rankInfo?.japan))
+    ? Number(rankInfo.japan)
+    : null;
+
+  const seasonCandidates = [...new Set(
+    [season, String(season)].filter((s) => s != null && s !== ''),
+  )];
+  if (typeof season === 'string' && /^\d+$/.test(season)) {
+    seasonCandidates.push(Number(season));
+  } else if (typeof season === 'number') {
+    seasonCandidates.push(String(season));
+  }
+
+  const result = await client.clientMongo.db('jwc').collection('accounts').updateOne(
     { tag },
     {
       $set: {
         'legend.days.$[target].globalRank': globalRank,
-        'legend.days.$[target].japanRank': japanRank
-      }
+        'legend.days.$[target].japanRank': japanRank,
+      },
     },
     {
-      arrayFilters: [{ 'target.season': season, 'target.day': day }]
-    }
+      arrayFilters: [
+        {
+          'target.day': day,
+          'target.season': { $in: seasonCandidates },
+        },
+      ],
+    },
   );
+
+  if (result.matchedCount === 0) {
+    console.warn(
+      `[saveLegendRankHistoryForDay] no matching day tag=${tag} season=${season} day=${day}`,
+    );
+  }
 }
 
 function collectLegendSummary(summaryByPilot, mongoAcc, result, rankInfo) {
