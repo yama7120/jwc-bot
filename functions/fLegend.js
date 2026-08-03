@@ -1273,19 +1273,17 @@ function formatRankedBattleLogTitle(eventData, scPlayer) {
 
 /**
  * タイトルの総トロフィー表示可否。
- * 順位 API 用の shouldShowLegendRankingForEvent とは別（API 未反映の sweep でも積算値を出す）。
+ * player.trophies（API）と event の総数が一致するときだけ出す。
+ * 積算値の独走・連鎖表示はしない。
  */
 function shouldShowTrophyTotalInTitle(scPlayer, eventData) {
   if (eventData?.showTrophiesInTitle === false) return false;
   const eventTrophies = Number(eventData?.trophiesCurrent);
-  if (!Number.isFinite(eventTrophies)) return false;
   const profileTrophies = Number(scPlayer?.trophies);
-  if (Number.isFinite(profileTrophies) && profileTrophies === eventTrophies) {
-    return true;
+  if (!Number.isFinite(eventTrophies) || !Number.isFinite(profileTrophies)) {
+    return false;
   }
-  // API がまだ 0 のまま等: battle log 積算の trophiesCurrent を表示（+9 なのに 🏆 0 を防ぐ）
-  if (eventTrophies > 0) return true;
-  return Number(eventData?.diffTrophies) === 0;
+  return profileTrophies === eventTrophies;
 }
 
 function buildLegendBarChartLine(kind, nToday) {
@@ -1473,25 +1471,24 @@ function rankedBattleTrophyDeltaFromBattleLog(
 
 /**
  * 各 battle 終了時点の trophiesCurrent を算出する。
- * - stats 変動あり & before+sumDiff===after: forward（before から積算）
- * - sweep 等で before===after & API 未反映: forward（直前総数から積算）
- * - sweep 等で before===after & API 反映済み: after から逆算（二重加算防止）
- * - API が保存済み総数より古い（巻き戻り）: forward（直前総数から積算）
  *
- * @param {number} [lastStoredTrophies] 直近に保存済みの event.trophies（API 未反映判定用）
+ * 方針: player.trophies（after）を正とする。保存済み総数からの積算はしない
+ * （一度ズレると基準が汚染されて連鎖するため）。
+ *
+ * - before+sumDiff===after: before から積算（バッチ内の途中経過）
+ * - それ以外で after がある: after から逆算（API 同期）
+ * - after が 0 のまま等の極端な未反映: after を使う（タイトル側で非表示にしうる）
  */
 function computeTrophiesCurrentByBattleIndex(
   beforePlayerStats,
   afterPlayerStats,
   diffsChronological,
-  lastStoredTrophies = undefined,
 ) {
   const n = diffsChronological.length;
   if (n === 0) return [];
 
   const beforeT = Number(beforePlayerStats?.trophies);
   const afterT = Number(afterPlayerStats?.trophies);
-  const lastT = Number(lastStoredTrophies);
   const sumDiff = diffsChronological.reduce(
     (s, d) => s + (Number(d) || 0),
     0,
@@ -1515,71 +1512,19 @@ function computeTrophiesCurrentByBattleIndex(
     return out;
   };
 
-  const lastMatchesAfter =
-    Number.isFinite(lastT) && Number.isFinite(afterT) && lastT + sumDiff === afterT;
-  const apiNotYetUpdated =
-    Number.isFinite(lastT)
-    && Number.isFinite(afterT)
-    && afterT === lastT
-    && sumDiff !== 0;
-  // API / 監視スナップショットが保存済み履歴より古い（例: 4997 のあと API が 4972 のまま）
-  const apiStaleBehindHistory =
-    Number.isFinite(lastT)
-    && Number.isFinite(afterT)
-    && sumDiff !== 0
-    && (
-      (sumDiff > 0 && afterT < lastT)
-      || (sumDiff < 0 && afterT > lastT)
-    );
-
   if (Number.isFinite(beforeT) && Number.isFinite(afterT)) {
     const sameSnapshot = beforeT === afterT;
     const matchesAfter = beforeT + sumDiff === afterT;
 
+    // 監視が戦前→戦後で整合しているときだけ before から積算
     if (matchesAfter && !sameSnapshot) {
       return forwardFrom(beforeT);
     }
-
-    // 保存済み総数 + 今回 diff が API と一致 → 直前総数から積算（より正確な途中経過）
-    if (lastMatchesAfter) {
-      return forwardFrom(lastT);
-    }
-
-    // API が履歴より古い → 保存済み総数から積算（4972 への巻き戻り防止）
-    if (apiStaleBehindHistory) {
-      return forwardFrom(lastT);
-    }
-
-    // sweep: before===after
-    if (sameSnapshot) {
-      // API トロフィーが 0 のまま / 直前総数のまま → 未反映なので forward
-      if (afterT === 0 && sumDiff !== 0) {
-        return forwardFrom(0);
-      }
-      if (apiNotYetUpdated) {
-        return forwardFrom(afterT);
-      }
-      // API 反映済み: after から逆算（forward すると二重計上）
-      return backwardFrom(afterT);
-    }
   }
 
-  if (lastMatchesAfter) {
-    return forwardFrom(lastT);
-  }
-  if (apiStaleBehindHistory) {
-    return forwardFrom(lastT);
-  }
-  if (apiNotYetUpdated) {
-    return forwardFrom(afterT);
-  }
-
+  // 基本は API after を正（バッチ内は逆算で各战斗時点を復元）
   if (Number.isFinite(afterT)) {
     return backwardFrom(afterT);
-  }
-
-  if (Number.isFinite(lastT)) {
-    return forwardFrom(lastT);
   }
 
   if (Number.isFinite(beforeT)) {
@@ -1989,12 +1934,10 @@ async function processLegendRankedBattleLog(
       afterPlayerStats.leagueTier.id,
     );
   });
-  const lastStoredTrophies = Number(mongoAccMut?.legend?.events?.[0]?.trophies);
   const trophiesByIdx = computeTrophiesCurrentByBattleIndex(
     beforePlayerStats,
     afterPlayerStats,
     diffsChronological,
-    Number.isFinite(lastStoredTrophies) ? lastStoredTrophies : undefined,
   );
   const pendingNotifications = [];
 
