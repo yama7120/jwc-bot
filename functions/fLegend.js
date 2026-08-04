@@ -887,23 +887,32 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
       ? mongoAcc.legend.events
       : [];
     const targetDayEvents = existingEvents.filter(
-      (event) => event?.season === targetSeason && event?.day === targetDay,
+      (event) =>
+        event?.season === targetSeason
+        && Number(event?.day) === Number(targetDay),
     );
 
     // 3. 該当するdayのイベントを再計算（既存 + 新規）
     const allTargetDayEvents = [...targetDayEvents, ...newEvents];
     updatedDayData = aggregateDaysFromEvents(allTargetDayEvents).find(
-      (d) => d?.season === targetSeason && d?.day === targetDay,
+      (d) =>
+        d?.season === targetSeason
+        && Number(d?.day) === Number(targetDay),
     );
     // legend.days に null が混入していることがある（Mongo 更新側は $filter で除去済み）
     const existingDayData = Array.isArray(mongoAcc?.legend?.days)
       ? mongoAcc.legend.days.find(
-        (d) => d?.season === targetSeason && d?.day === targetDay,
+        (d) =>
+          d?.season === targetSeason
+          && Number(d?.day) === Number(targetDay),
       )
       : null;
     if (updatedDayData) {
-      updatedDayData.globalRank = existingDayData?.globalRank ?? null;
-      updatedDayData.japanRank = existingDayData?.japanRank ?? null;
+      // 既に付与した順位を消さない（day 再集計で null に落とさない）
+      const prevGlobal = parsePositiveRank(existingDayData?.globalRank);
+      const prevJapan = parsePositiveRank(existingDayData?.japanRank);
+      updatedDayData.globalRank = prevGlobal;
+      updatedDayData.japanRank = prevJapan;
     }
     const baseLegendDaysArray = {
       $filter: {
