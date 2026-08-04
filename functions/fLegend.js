@@ -695,7 +695,8 @@ async function autoUpdateLegend(
       seasonData,
       mongoAcc,
     );
-    await sendLogEmbed(client, mongoAcc, embed);
+    // 集約 ch（config.logch.legend）には送らない。本人向け channel/DM のみ
+    await sendLogEmbedToUser(client, mongoAcc, embed);
     await markRankedSeasonTransition(
       client,
       mongoAcc,
@@ -2420,9 +2421,12 @@ async function sendLogEmbedToUser(client, mongoAcc, myEmbed) {
 
 async function sendLegendLogChannelEmbed(client, myEmbed) {
   try {
+    const channelId = config.logch?.legend;
+    if (!channelId) return;
+
     const channelLog =
-      client.channels.cache.get(config.logch.legend)
-      || (await client.channels.fetch(config.logch.legend).catch(() => null));
+      client.channels.cache.get(channelId)
+      || (await client.channels.fetch(channelId).catch(() => null));
     if (channelLog?.isTextBased()) {
       await channelLog.send({ embeds: [myEmbed] });
     } else {
