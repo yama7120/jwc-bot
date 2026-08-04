@@ -2720,10 +2720,55 @@ function ctxTriples(
   return;
 }
 
+/**
+ * legend.days から current / previous の日次を取る（14:00 切替直後でも前日を拾う）
+ * days は新しい日が先頭想定。
+ */
+function resolveLegendDayStatsForImage(mongoAcc, seasonData, iDay) {
+  const days = Array.isArray(mongoAcc?.legend?.days)
+    ? mongoAcc.legend.days.filter((d) => d != null)
+    : [];
+  if (days.length === 0) return null;
+
+  const seasonId = seasonData?.seasonId;
+  const daysNow = Number(seasonData?.daysNow);
+  const sameSeason = (d) =>
+    seasonId == null || d?.season == null || d.season === seasonId;
+
+  if (iDay === 'current') {
+    const cur = days.find(
+      (d) => sameSeason(d) && Number(d.day) === daysNow,
+    );
+    return cur ?? null;
+  }
+
+  // previous（日次 result / stats 用）
+  const currentIdx = days.findIndex(
+    (d) => sameSeason(d) && Number(d.day) === daysNow,
+  );
+  if (currentIdx >= 0) {
+    // 当日が先頭 → 次要素が前日
+    return days[currentIdx + 1] ?? null;
+  }
+
+  // 当日エントリ未作成（14:00 直後の典型）→ 先頭が終了した日
+  const newest = days[0];
+  if (newest && sameSeason(newest) && Number(newest.day) !== daysNow) {
+    return newest;
+  }
+
+  if (Number.isFinite(daysNow) && daysNow > 1) {
+    const prev = days.find(
+      (d) => sameSeason(d) && Number(d.day) === daysNow - 1,
+    );
+    if (prev) return prev;
+  }
+
+  return newest && Number(newest.day) !== daysNow ? newest : null;
+}
+
 async function legendStatsR1(client, mongoAcc, iDay) {
   const currentDate = new Date();
-  const tomorrow = new Date(currentDate);
-  tomorrow.setDate(currentDate.getDate() + 1);
 
   // Legend I: JST 14:00 (= UTC 05:00)、それ以外: JST 02:00 (= UTC 17:00)
   const boundaryUtcHour =
@@ -2734,38 +2779,13 @@ async function legendStatsR1(client, mongoAcc, iDay) {
     boundaryUtcHour,
   );
 
-  let dayStats = {};
-  const daysLength = mongoAcc.legend.days?.length ?? 0;
-  if (daysLength == 0) {
-    return { attachment: null, isPerfect: false };
-  }
-
-  const dayStatsNewest = mongoAcc.legend.days[0]; // 最新のデータ
-  if (iDay == 'current') {
-    if (dayStatsNewest.day == seasonData.daysNow) {
-      dayStats = dayStatsNewest;
-    } else {
-      // 最新のデータがまだ翌日
-      return { attachment: null, isPerfect: false };
-    }
-  } else if (iDay == 'previous') {
-    if (daysLength == 1) {
-      if (dayStatsNewest.day == seasonData.daysNow) {
-        // 最新のデータが当日
-        return { attachment: null, isPerfect: false };
-      } else {
-        // 最新のデータが前日
-        dayStats = dayStatsNewest;
-      }
-    } else {
-      if (dayStatsNewest.day == seasonData.daysNow) {
-        // 最新のデータが当日
-        dayStats = mongoAcc.legend.days[1];
-      } else {
-        // 最新のデータが前日
-        dayStats = dayStatsNewest;
-      }
-    }
+  const dayStats = resolveLegendDayStatsForImage(
+    mongoAcc,
+    seasonData,
+    iDay,
+  );
+  if (!dayStats) {
+    return { attachment: null, isPerfect: false, dayStats: null };
   }
 
   // ***** CANVAS ***** //
@@ -2821,14 +2841,23 @@ async function legendStatsR1(client, mongoAcc, iDay) {
 
   const lengthLogoLegend = 200;
   const urlLogoLeague = resolveLeagueTierIconUrl(mongoAcc.leagueTier);
-  const imgLogoLegend = await Canvas.loadImage(urlLogoLeague);
-  ctx.drawImage(
-    imgLogoLegend,
-    widthCenter - lengthLogoLegend / 2,
-    150,
-    lengthLogoLegend,
-    lengthLogoLegend,
-  );
+  try {
+    const imgLogoLegend = await Canvas.loadImage(
+      urlLogoLeague || config.urlImage.legend,
+    );
+    ctx.drawImage(
+      imgLogoLegend,
+      widthCenter - lengthLogoLegend / 2,
+      150,
+      lengthLogoLegend,
+      lengthLogoLegend,
+    );
+  } catch (iconErr) {
+    console.warn(
+      `[legendStatsR1] league icon load failed ${mongoAcc?.tag}:`,
+      iconErr?.message ?? iconErr,
+    );
+  }
 
   text = 'Start';
   setFont(ctx, fontSize.xxSmall);

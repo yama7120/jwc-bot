@@ -246,12 +246,13 @@ async function cronUpdate2pmLegend1(client) {
     const nAccs = await autoUpdateAcc(client);
     await fRanking.rankingMain(client.clientMongo);
 
-    // Legend I の日次サマリ（TOP10 / day start / result / day entry）
-    await sendLogUpdated(client, nAccs, seasonData);
-    await sendLogLegendDay(client, seasonData);
-    // 終了した日の順位保存（result 通知有無に依存しない）
+    // ユーザー向け result を先に（重い日次掲示板系の後ろだとタイムアウトで到達しない）
     await saveAllLegend1DayRanks(client, seasonData);
     await sendLegendResult(client, seasonData);
+
+    // Legend I の日次サマリ掲示板など
+    await sendLogUpdated(client, nAccs, seasonData);
+    await sendLogLegendDay(client, seasonData);
     await functions.updateStatusInfoLegend(client, seasonData);
     await addNewDayToLegendAccounts(client, seasonData);
 
@@ -729,10 +730,12 @@ async function sendLogLegendDay(client, seasonData) {
 
 
 async function sendLegendResult(client, seasonData) {
+  // result は slash では文字列 'true'。boolean も許容。current 有無は必須にしない
   const query = {
     status: true,
-    'legend.logSettings.result': 'true',
-    'legend.current': { $ne: null }
+    'leagueTier.id': config_coc.leagueId.legend,
+    'legend.logSettings.result': { $in: ['true', true] },
+    'legend.logSettings.post': { $nin: ['NA', 'false', false, null] },
   };
   const options = {
     projection: {
@@ -761,31 +764,44 @@ async function sendLegendResult(client, seasonData) {
   const summaryByPilot = new Map();
 
   console.log(`sendLegendResult: ${mongoAccs.length}`);
+  let sent = 0;
+  let skippedNoImg = 0;
+  let skippedDelivery = 0;
+  let failed = 0;
 
   for (let i = 0; i < mongoAccs.length; i++) {
     const mongoAcc = mongoAccs[i];
 
-    console.log(`[${i + 1}/${mongoAccs.length}] アカウント処理中: ${mongoAcc.name} (${mongoAcc.tag}) ${mongoAcc.leagueTier.name}`);
-    if (mongoAcc.leagueTier.id != config_coc.leagueId.legend) {
-      continue;
-    }
+    console.log(`[sendLegendResult ${i + 1}/${mongoAccs.length}] ${mongoAcc.name} (${mongoAcc.tag}) post=${mongoAcc.legend?.logSettings?.post}`);
 
     const rankInfo = buildLegendDayRankInfo(mongoAcc, globalRankMap, japanRankMap);
 
     try {
       const resultR1 = await fCanvas.legendStatsR1(client, mongoAcc, 'previous');
-      await sendLogAttachment(client, mongoAcc, resultR1, seasonData, rankInfo, legend200Borders);
+      if (!resultR1?.attachment) {
+        skippedNoImg += 1;
+        console.warn(
+          `[sendLegendResult] no image day=${resultR1?.dayStats?.day ?? 'null'} daysLen=${mongoAcc.legend?.days?.length ?? 0} ${mongoAcc.tag}`,
+        );
+        continue;
+      }
+      const ok = await sendLogAttachment(client, mongoAcc, resultR1, seasonData, rankInfo, legend200Borders);
+      if (ok) sent += 1;
+      else skippedDelivery += 1;
       collectLegendSummary(summaryByPilot, mongoAcc, resultR1, rankInfo);
 
       await functions.sleep(500);
     } catch (error) {
-      console.error(`[${i + 1}/${mongoAccs.length}] エラー発生 (${mongoAcc.tag}): ${error.message}`);
+      failed += 1;
+      console.error(`[sendLegendResult ${i + 1}/${mongoAccs.length}] error (${mongoAcc.tag}):`, error);
       await functions.sleep(1000);
     }
   }
 
   await sendLegendSummaryByPilot(client, seasonData, summaryByPilot);
-  console.log('end: sendLegendResult');
+  console.log(
+    `end: sendLegendResult sent=${sent} noImg=${skippedNoImg} deliveryFail=${skippedDelivery} err=${failed}`,
+  );
 }
 
 /**
@@ -921,12 +937,15 @@ function getLegendRank200BorderTrophies(legends200) {
   };
 }
 
+/**
+ * @returns {Promise<boolean>} 本体 result 画像または embed のどちらかが届けば true
+ */
 async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo = {}, legend200Borders = {}) {
   if (!result?.attachment) {
     console.warn(
       `[sendLogAttachment] skip (no attachment): ${mongoAcc?.name} (${mongoAcc?.tag})`,
     );
-    return;
+    return false;
   }
 
   const embed = new EmbedBuilder();
@@ -988,15 +1007,46 @@ async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo 
   const footer = `DAY ${seasonData.daysNow} | ${functions.formatLegendDaysRemaining(seasonData.daysEnd, 'footer')} | SEASON ${seasonData.seasonId}`;
   embed.setFooter({ text: footer, iconURL: config.urlImage.legend });
 
-  const attachmentHistory = await fCanvas.legendHistory(mongoAcc);
+  // history は失敗しても result 本体は送る
+  let attachmentHistory = null;
+  try {
+    attachmentHistory = await fCanvas.legendHistory(mongoAcc);
+  } catch (historyErr) {
+    console.error(
+      `[sendLogAttachment] legendHistory failed ${mongoAcc.tag}:`,
+      historyErr?.message ?? historyErr,
+    );
+  }
 
-  const delivery = await deliverLegendLogToUser(client, mongoAcc, {
+  const embedDelivery = await deliverLegendLogToUser(client, mongoAcc, {
     embeds: [embed],
   });
-  if (delivery.ok) {
-    await deliverLegendLogToUser(client, mongoAcc, { files: [result.attachment] });
-    await deliverLegendLogToUser(client, mongoAcc, { files: [attachmentHistory] });
+  if (!embedDelivery.ok) {
+    console.warn(
+      `[sendLogAttachment] embed not delivered ${mongoAcc.tag}: ${embedDelivery.reason}`,
+    );
   }
+
+  const imageDelivery = await deliverLegendLogToUser(client, mongoAcc, {
+    files: [result.attachment],
+  });
+  if (!imageDelivery.ok) {
+    console.warn(
+      `[sendLogAttachment] result image not delivered ${mongoAcc.tag}: ${imageDelivery.reason}`,
+    );
+  }
+
+  if (attachmentHistory) {
+    const historyDelivery = await deliverLegendLogToUser(client, mongoAcc, {
+      files: [attachmentHistory],
+    });
+    if (!historyDelivery.ok) {
+      console.warn(
+        `[sendLogAttachment] history image not delivered ${mongoAcc.tag}: ${historyDelivery.reason}`,
+      );
+    }
+  }
+
   // 14時のresult系バックアップ通知先
   const disableLegendLogs = process.env.DISABLE_LEGEND_LOGS === 'true';
   if (!disableLegendLogs && config.logch.legend_result) {
@@ -1005,11 +1055,15 @@ async function sendLogAttachment(client, mongoAcc, result, seasonData, rankInfo 
       backupChannel = await client.channels.fetch(config.logch.legend_result).catch(() => null);
     }
     if (backupChannel) {
-      await backupChannel.send({ embeds: [embed] });
-      await backupChannel.send({ files: [result.attachment] });
-      await backupChannel.send({ files: [attachmentHistory] });
+      await backupChannel.send({ embeds: [embed] }).catch(() => null);
+      await backupChannel.send({ files: [result.attachment] }).catch(() => null);
+      if (attachmentHistory) {
+        await backupChannel.send({ files: [attachmentHistory] }).catch(() => null);
+      }
     }
   }
+
+  return Boolean(embedDelivery.ok || imageDelivery.ok);
 }
 
 async function saveLegendRankHistoryForDay(client, tag, dayStats, rankInfo) {
