@@ -1273,17 +1273,28 @@ function formatRankedBattleLogTitle(eventData, scPlayer) {
 
 /**
  * タイトルの総トロフィー表示可否。
- * player.trophies（API）と event の総数が一致するときだけ出す。
- * 積算値の独走・連鎖表示はしない。
+ * - player.trophies と event が一致
+ * - かつ今回の増減を API が反映済み（apiTrophiesReliable）
+ * API 未反映の古い総数を 🏆 で出し続けない。
  */
 function shouldShowTrophyTotalInTitle(scPlayer, eventData) {
   if (eventData?.showTrophiesInTitle === false) return false;
+  if (eventData?.apiTrophiesReliable === false) return false;
   const eventTrophies = Number(eventData?.trophiesCurrent);
   const profileTrophies = Number(scPlayer?.trophies);
   if (!Number.isFinite(eventTrophies) || !Number.isFinite(profileTrophies)) {
     return false;
   }
   return profileTrophies === eventTrophies;
+}
+
+/** before→after が今回バッチの diff 合計と一致するか（API が戦果を反映済み） */
+function apiTrophiesReflectBattleDiffs(beforePlayerStats, afterPlayerStats, sumDiff) {
+  const beforeT = Number(beforePlayerStats?.trophies);
+  const afterT = Number(afterPlayerStats?.trophies);
+  if (!Number.isFinite(beforeT) || !Number.isFinite(afterT)) return false;
+  if (sumDiff === 0) return true;
+  return beforeT !== afterT && beforeT + sumDiff === afterT;
 }
 
 function buildLegendBarChartLine(kind, nToday) {
@@ -1934,6 +1945,17 @@ async function processLegendRankedBattleLog(
       afterPlayerStats.leagueTier.id,
     );
   });
+  const sumDiff = diffsChronological.reduce(
+    (s, d) => s + (Number(d) || 0),
+    0,
+  );
+  // 監視 before/after が今回の増減を反映しているときだけ 🏆 総数・順位を出す
+  // （未反映の古い trophies を出し続けて「固まる」のを防ぐ）
+  const apiTrophiesReliable = apiTrophiesReflectBattleDiffs(
+    beforePlayerStats,
+    afterPlayerStats,
+    sumDiff,
+  );
   const trophiesByIdx = computeTrophiesCurrentByBattleIndex(
     beforePlayerStats,
     afterPlayerStats,
@@ -1956,7 +1978,6 @@ async function processLegendRankedBattleLog(
           dayBoundaryUtcHour,
         )
       : seasonDataGrace;
-    const includeRanking = true;
     const eventData = buildRankedEventDataFromBattleLogItem(
       item,
       afterPlayerStats,
@@ -1964,8 +1985,9 @@ async function processLegendRankedBattleLog(
       trophiesByIdx[idx],
       diffT,
       unixTimeSeconds,
-      includeRanking,
+      apiTrophiesReliable,
     );
+    eventData.apiTrophiesReliable = apiTrophiesReliable;
 
     lastResult = await writeLogLegendR2(
       client,
@@ -1992,7 +2014,11 @@ async function processLegendRankedBattleLog(
     const pending = pendingNotifications[i];
     const eventDataForSend = {
       ...pending.eventData,
-      showTrophiesInTitle: i === pendingNotifications.length - 1,
+      // 総数は API が反映済みのとき、かつ連続通知の最終件だけ
+      showTrophiesInTitle:
+        apiTrophiesReliable && i === pendingNotifications.length - 1,
+      apiTrophiesReliable,
+      includeRanking: apiTrophiesReliable,
     };
     await sendLogLegendMain(
       client,
