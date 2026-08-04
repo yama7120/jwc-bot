@@ -700,8 +700,8 @@ class PollingSystem {
     return id;
   }
 
-  // statsChange が発火しない「0変動（trophies/defenseWinsが変わらない）防衛」でも
-  // battlelog 側には記録されるため、定期的に battlelog をスイープして取りこぼしを防ぐ。
+  // statsChange が飛んでも飛ばなくても battlelog 新規行が本線。
+  // トロフィー0変動の防衛など statsChange 欠落を定期 sweep で拾う。
   startBattleLogSweepInterval() {
     const intervalMs = 60 * 1000; // 1分
     const perTagCooldownMs = 2 * 60 * 1000; // 同一タグは2分に1回まで

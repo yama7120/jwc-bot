@@ -1163,11 +1163,20 @@ async function sendLogLegendMain(
     if (legendEventType === 'attack' || legendEventType === 'defense') {
       const apiTrophies = Number(scPlayer?.trophies);
       const eventTrophies = Number(eventData.trophiesCurrent);
-      await saveAccountTrophies(
-        client,
-        mongoAcc.tag,
-        Number.isFinite(apiTrophies) ? apiTrophies : eventTrophies,
-      );
+      // battlelog 算出の総数を account.trophies の本線にする（次の積算基準）
+      // API が event と一致するときだけ API で上書き再同期
+      const saveT =
+        Number.isFinite(eventTrophies)
+        && Number.isFinite(apiTrophies)
+        && apiTrophies === eventTrophies
+          ? apiTrophies
+          : Number.isFinite(eventTrophies)
+            ? eventTrophies
+            : apiTrophies;
+      await saveAccountTrophies(client, mongoAcc.tag, saveT);
+      if (Number.isFinite(saveT) && mongoAcc) {
+        mongoAcc.trophies = saveT;
+      }
     }
   }
 
@@ -1271,7 +1280,7 @@ function formatSignedInt(n) {
   return v >= 0 ? `+${v}` : `${v}`;
 }
 
-/** 連続通知時は最新1件だけタイトルに総トロフィーを付ける */
+/** 連続通知でも、正しい event 総トロフィーがあればタイトルに付ける */
 function formatRankedBattleLogTitle(eventData, scPlayer) {
   const titleEmote = eventData.diffTrophies >= 0 ? config.emote.up : config.emote.down;
   const diffPart = `${titleEmote}**${formatSignedInt(eventData.diffTrophies)}**`;
@@ -1283,28 +1292,108 @@ function formatRankedBattleLogTitle(eventData, scPlayer) {
 
 /**
  * タイトルの総トロフィー表示可否。
- * - player.trophies と event が一致
- * - かつ今回の増減を API が反映済み（apiTrophiesReliable）
- * API 未反映の古い総数を 🏆 で出し続けない。
+ * battlelog から算出した event.trophiesCurrent を正とし、有限なら表示する。
+ * （API before/after の遅れで非表示にしない）
  */
-function shouldShowTrophyTotalInTitle(scPlayer, eventData) {
+function shouldShowTrophyTotalInTitle(_scPlayer, eventData) {
   if (eventData?.showTrophiesInTitle === false) return false;
-  if (eventData?.apiTrophiesReliable === false) return false;
-  const eventTrophies = Number(eventData?.trophiesCurrent);
-  const profileTrophies = Number(scPlayer?.trophies);
-  if (!Number.isFinite(eventTrophies) || !Number.isFinite(profileTrophies)) {
-    return false;
-  }
-  return profileTrophies === eventTrophies;
+  return Number.isFinite(Number(eventData?.trophiesCurrent));
 }
 
-/** before→after が今回バッチの diff 合計と一致するか（API が戦果を反映済み） */
-function apiTrophiesReflectBattleDiffs(beforePlayerStats, afterPlayerStats, sumDiff) {
+/**
+ * 直前に保存された総トロフィー（events 先頭＝最新、なければ account.trophies / API）
+ */
+function resolveLastStoredTrophies(mongoAcc, afterPlayerStats) {
+  const fromEvent = Number(mongoAcc?.legend?.events?.[0]?.trophies);
+  if (Number.isFinite(fromEvent)) return fromEvent;
+  const fromAccount = Number(mongoAcc?.trophies);
+  if (Number.isFinite(fromAccount)) return fromAccount;
+  const fromApi = Number(afterPlayerStats?.trophies);
+  if (Number.isFinite(fromApi)) return fromApi;
+  return null;
+}
+
+/**
+ * 各 battle 終了時点の trophiesCurrent を算出する。
+ *
+ * 方針: battlelog の増減を本線。保存済み最終トロフィーから積算する。
+ * API player.trophies は「反映が確認できる時」や「プロファイルは動いたが合計不一致」の再同期に使う。
+ */
+function computeTrophiesCurrentByBattleIndex(
+  beforePlayerStats,
+  afterPlayerStats,
+  diffsChronological,
+  lastStoredTrophies,
+) {
+  const n = diffsChronological.length;
+  if (n === 0) return [];
+
   const beforeT = Number(beforePlayerStats?.trophies);
   const afterT = Number(afterPlayerStats?.trophies);
-  if (!Number.isFinite(beforeT) || !Number.isFinite(afterT)) return false;
-  if (sumDiff === 0) return true;
-  return beforeT !== afterT && beforeT + sumDiff === afterT;
+  const lastT = Number(lastStoredTrophies);
+  const sumDiff = diffsChronological.reduce(
+    (s, d) => s + (Number(d) || 0),
+    0,
+  );
+
+  const forwardFrom = (start) => {
+    let running = start;
+    return diffsChronological.map((d) => {
+      running += Number(d) || 0;
+      return running;
+    });
+  };
+
+  const backwardFrom = (anchor) => {
+    const out = new Array(n);
+    let suffixDelta = 0;
+    for (let i = n - 1; i >= 0; i--) {
+      out[i] = anchor - suffixDelta;
+      suffixDelta += Number(diffsChronological[i]) || 0;
+    }
+    return out;
+  };
+
+  // 1) 監視 before→after が今回バッチの diff 合計と完全一致
+  if (
+    Number.isFinite(beforeT)
+    && Number.isFinite(afterT)
+    && beforeT !== afterT
+    && beforeT + sumDiff === afterT
+  ) {
+    return forwardFrom(beforeT);
+  }
+
+  // 2) API after が「保存値 + sumDiff」と一致 → battlelog 積算を API が裏書き
+  if (
+    Number.isFinite(lastT)
+    && Number.isFinite(afterT)
+    && lastT + sumDiff === afterT
+  ) {
+    return forwardFrom(lastT);
+  }
+
+  // 3) 保存値がある: API 未反映は積算本線。プロファイルだけ不整合なら after で再同期
+  if (Number.isFinite(lastT)) {
+    if (
+      Number.isFinite(beforeT)
+      && Number.isFinite(afterT)
+      && beforeT !== afterT
+      && beforeT + sumDiff !== afterT
+    ) {
+      return backwardFrom(afterT);
+    }
+    return forwardFrom(lastT);
+  }
+
+  // 4) 保存値なし
+  if (Number.isFinite(afterT)) {
+    return backwardFrom(afterT);
+  }
+  if (Number.isFinite(beforeT)) {
+    return forwardFrom(beforeT);
+  }
+  return forwardFrom(0);
 }
 
 function buildLegendBarChartLine(kind, nToday) {
@@ -1488,71 +1577,6 @@ function rankedBattleTrophyDeltaFromBattleLog(
 
   // Legend I 以外は従来ロジック（Electro 等の上限/下限も含めこちらで扱う）
   return calcDefenseTrophies(stars, destruction);
-}
-
-/**
- * 各 battle 終了時点の trophiesCurrent を算出する。
- *
- * 方針: player.trophies（after）を正とする。保存済み総数からの積算はしない
- * （一度ズレると基準が汚染されて連鎖するため）。
- *
- * - before+sumDiff===after: before から積算（バッチ内の途中経過）
- * - それ以外で after がある: after から逆算（API 同期）
- * - after が 0 のまま等の極端な未反映: after を使う（タイトル側で非表示にしうる）
- */
-function computeTrophiesCurrentByBattleIndex(
-  beforePlayerStats,
-  afterPlayerStats,
-  diffsChronological,
-) {
-  const n = diffsChronological.length;
-  if (n === 0) return [];
-
-  const beforeT = Number(beforePlayerStats?.trophies);
-  const afterT = Number(afterPlayerStats?.trophies);
-  const sumDiff = diffsChronological.reduce(
-    (s, d) => s + (Number(d) || 0),
-    0,
-  );
-
-  const forwardFrom = (start) => {
-    let running = start;
-    return diffsChronological.map((d) => {
-      running += Number(d) || 0;
-      return running;
-    });
-  };
-
-  const backwardFrom = (anchor) => {
-    const out = new Array(n);
-    let suffixDelta = 0;
-    for (let i = n - 1; i >= 0; i--) {
-      out[i] = anchor - suffixDelta;
-      suffixDelta += Number(diffsChronological[i]) || 0;
-    }
-    return out;
-  };
-
-  if (Number.isFinite(beforeT) && Number.isFinite(afterT)) {
-    const sameSnapshot = beforeT === afterT;
-    const matchesAfter = beforeT + sumDiff === afterT;
-
-    // 監視が戦前→戦後で整合しているときだけ before から積算
-    if (matchesAfter && !sameSnapshot) {
-      return forwardFrom(beforeT);
-    }
-  }
-
-  // 基本は API after を正（バッチ内は逆算で各战斗時点を復元）
-  if (Number.isFinite(afterT)) {
-    return backwardFrom(afterT);
-  }
-
-  if (Number.isFinite(beforeT)) {
-    return forwardFrom(beforeT);
-  }
-
-  return forwardFrom(0);
 }
 
 async function reloadMongoAccLegendProjection(client, mongoAcc) {
@@ -1839,6 +1863,7 @@ async function ingestLegendRankedBattleLogSilent(
 
 /**
  * battleType ranked / legend を legend.events に記録し、新規行だけ通知する。
+ * 検知の本線は battlelog 差分（プロファイル変化はトリガー補助）。
  * 同日・同 action では opponentPlayerTag は一意（API に battleTime は無い想定）。
  * CoC API の battle log は古い戦闘ほど先頭・新しいほど末尾（下）の並び想定。
  */
@@ -1955,21 +1980,16 @@ async function processLegendRankedBattleLog(
       afterPlayerStats.leagueTier.id,
     );
   });
-  const sumDiff = diffsChronological.reduce(
-    (s, d) => s + (Number(d) || 0),
-    0,
-  );
-  // 監視 before/after が今回の増減を反映しているときだけ 🏆 総数・順位を出す
-  // （未反映の古い trophies を出し続けて「固まる」のを防ぐ）
-  const apiTrophiesReliable = apiTrophiesReflectBattleDiffs(
-    beforePlayerStats,
+  // battlelog 新規行の diff を本線。🏆 は event 総数を常にタイトルに出す
+  const lastStoredTrophies = resolveLastStoredTrophies(
+    mongoAccMut,
     afterPlayerStats,
-    sumDiff,
   );
   const trophiesByIdx = computeTrophiesCurrentByBattleIndex(
     beforePlayerStats,
     afterPlayerStats,
     diffsChronological,
+    lastStoredTrophies,
   );
   const pendingNotifications = [];
 
@@ -1995,9 +2015,9 @@ async function processLegendRankedBattleLog(
       trophiesByIdx[idx],
       diffT,
       unixTimeSeconds,
-      apiTrophiesReliable,
+      true,
     );
-    eventData.apiTrophiesReliable = apiTrophiesReliable;
+    eventData.showTrophiesInTitle = true;
 
     lastResult = await writeLogLegendR2(
       client,
@@ -2024,11 +2044,10 @@ async function processLegendRankedBattleLog(
     const pending = pendingNotifications[i];
     const eventDataForSend = {
       ...pending.eventData,
-      // 総数は API が反映済みのとき、かつ連続通知の最終件だけ
-      showTrophiesInTitle:
-        apiTrophiesReliable && i === pendingNotifications.length - 1,
-      apiTrophiesReliable,
-      includeRanking: apiTrophiesReliable,
+      // 各 battle 時点の総数を表示（連続時も途中経過を出す）
+      showTrophiesInTitle: true,
+      // 順位は getRankingDisplay 内で API 総数と event 一致時のみ
+      includeRanking: true,
     };
     await sendLogLegendMain(
       client,
