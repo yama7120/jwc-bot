@@ -2919,7 +2919,7 @@ async function legendStatsR1(client, mongoAcc, iDay) {
     }
   }
 
-  // グローバル順位（地図中央に重ねる・白字、トロフィーと同サイズ）
+  // グローバル順位（地図中央に重ねる・白字＋黒光彩、トロフィーと同サイズ）
   const drawRankLabel = (centerY, rankValue, numFontSize) => {
     const rankNumberText =
       Number.isFinite(Number(rankValue)) && Number(rankValue) > 0
@@ -2929,13 +2929,26 @@ async function legendStatsR1(client, mongoAcc, iDay) {
     const prevAlign = ctx.textAlign;
     const prevBaseline = ctx.textBaseline;
     const prevFill = ctx.fillStyle;
+    const prevShadowColor = ctx.shadowColor;
+    const prevShadowBlur = ctx.shadowBlur;
+    const prevShadowOffsetX = ctx.shadowOffsetX;
+    const prevShadowOffsetY = ctx.shadowOffsetY;
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     setFont(ctx, numFontSize, FONTS.SC, 'bold');
+    // 白字の視認性用に黒の光彩
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+    ctx.shadowBlur = 14;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
     ctx.fillStyle = config.rgb.snowWhite;
     ctx.fillText(label, widthCenter, centerY);
 
+    ctx.shadowColor = prevShadowColor;
+    ctx.shadowBlur = prevShadowBlur;
+    ctx.shadowOffsetX = prevShadowOffsetX;
+    ctx.shadowOffsetY = prevShadowOffsetY;
     ctx.fillStyle = prevFill;
     ctx.textAlign = prevAlign;
     ctx.textBaseline = prevBaseline;
