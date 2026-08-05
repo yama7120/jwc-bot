@@ -2919,50 +2919,26 @@ async function legendStatsR1(client, mongoAcc, iDay) {
     }
   }
 
-  // グローバル順位（地図中央に重ねる・黒字 + 白光彩、トロフィーと同サイズ）
+  // グローバル順位（地図中央に重ねる・白字、トロフィーと同サイズ）
   const drawRankLabel = (centerY, rankValue, numFontSize) => {
     const rankNumberText =
       Number.isFinite(Number(rankValue)) && Number(rankValue) > 0
         ? String(rankValue)
         : '?';
     const label = `#${rankNumberText}`;
-    const prevAlpha = ctx.globalAlpha;
     const prevAlign = ctx.textAlign;
     const prevBaseline = ctx.textBaseline;
     const prevFill = ctx.fillStyle;
-    const prevStroke = ctx.strokeStyle;
-    const prevLineWidth = ctx.lineWidth;
-    const prevLineJoin = ctx.lineJoin;
-    const prevShadowColor = ctx.shadowColor;
-    const prevShadowBlur = ctx.shadowBlur;
 
-    ctx.globalAlpha = 1;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     setFont(ctx, numFontSize, FONTS.SC, 'bold');
-
-    // 白の光彩（外側ストローク + soft shadow）
-    ctx.shadowColor = 'rgba(255, 255, 255, 0.9)';
-    ctx.shadowBlur = 10;
-    ctx.strokeStyle = config.rgb.snowWhite ?? 'rgb(255, 255, 255)';
-    ctx.lineWidth = Math.max(4, Math.round(numFontSize / 8));
-    ctx.lineJoin = 'round';
-    ctx.strokeText(label, widthCenter, centerY);
-
-    ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = config.rgb.black ?? 'rgb(0, 0, 0)';
+    ctx.fillStyle = config.rgb.snowWhite;
     ctx.fillText(label, widthCenter, centerY);
 
     ctx.fillStyle = prevFill;
-    ctx.strokeStyle = prevStroke;
-    ctx.lineWidth = prevLineWidth;
-    ctx.lineJoin = prevLineJoin;
-    ctx.shadowColor = prevShadowColor;
-    ctx.shadowBlur = prevShadowBlur;
     ctx.textAlign = prevAlign;
     ctx.textBaseline = prevBaseline;
-    ctx.globalAlpha = prevAlpha;
   };
 
   // 世界地図 + ランク（アスペクト比維持）。画像は1回だけ読む
@@ -3002,7 +2978,7 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   // Current/End を上に寄せ、攻防合計 (1250) のスペースを確保
   const yCurrentLabel = 860;
   const yCurrentTrophies = 940;
-  const yCurrentMapTop = 960;
+  const yCurrentMapTop = 980;
 
   text = iDay == 'current' ? 'Current' : 'End';
   setFont(ctx, fontSize.xxSmall);
