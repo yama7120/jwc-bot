@@ -5,6 +5,12 @@ import config_coc from '../config/config_coc.js';
 import * as functions from './functions.js';
 import { setWeekNowLeague } from './weekNow.js';
 
+/** legendStatistics.rank 等から正の順位だけ抜く */
+function parsePositiveRankValue(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 async function fetchPlayerLeagueHistory(clientCoc, playerTag) {
   try {
     return await functions.retryOnThrottle(async () => {
@@ -214,13 +220,19 @@ async function updateAcc(client, tagAccount) {
 
   // レジェンドリーグの情報を処理
   listing.legend = mongoAcc?.legend ?? {};
+  const apiCurrentSeason = scPlayer.legendStatistics?.currentSeason ?? null;
+  const apiRank = parsePositiveRankValue(apiCurrentSeason?.rank);
   if (mongoAcc?.legend?.current?.trophies != null) {
     listing.legend.difference =
       scPlayer.trophies - mongoAcc.legend.current.trophies;
+    // rank: 旧 current を優先。無ければ今回 API の順位（14:00 境界付近なら終了日の近似）
     listing.legend.previousDay = {
       trophies: mongoAcc.legend.current.trophies,
-      rank: mongoAcc.legend.current.rank ?? null,
-      id: mongoAcc.legend.current.id ?? null,
+      rank:
+        parsePositiveRankValue(mongoAcc.legend.current.rank)
+        ?? apiRank
+        ?? null,
+      id: mongoAcc.legend.current.id ?? apiCurrentSeason?.id ?? null,
     };
   } else {
     listing.legend.difference = 0;
@@ -230,9 +242,19 @@ async function updateAcc(client, tagAccount) {
   if (scPlayer.legendStatistics) {
     listing.legend.legendTrophies = scPlayer.legendStatistics.legendTrophies;
     listing.legend.previous = scPlayer.legendStatistics.previousSeason ?? null;
-    listing.legend.current = scPlayer.legendStatistics.currentSeason ?? null;
+    // rank は数値のみ保持（'NaN' 等を入れない）
+    const cs = scPlayer.legendStatistics.currentSeason;
+    listing.legend.current = cs
+      ? {
+          ...cs,
+          rank: parsePositiveRankValue(cs.rank) ?? null,
+          trophies: Number.isFinite(Number(cs.trophies))
+            ? Number(cs.trophies)
+            : cs.trophies,
+        }
+      : null;
     listing.legendStatistics = {
-      currentSeason: scPlayer.legendStatistics.currentSeason ?? null,
+      currentSeason: listing.legend.current,
     };
   }
   if (!scPlayer.legendStatistics && scPlayer.leagueTier.id == config_coc.leagueId.legend) {

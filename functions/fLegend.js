@@ -904,7 +904,7 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
     const existingDayData = Array.isArray(mongoAcc?.legend?.days)
       ? mongoAcc.legend.days.find(
         (d) =>
-          d?.season === targetSeason
+          String(d?.season) === String(targetSeason)
           && Number(d?.day) === Number(targetDay),
       )
       : null;
@@ -914,6 +914,9 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
       const prevJapan = parsePositiveRank(existingDayData?.japanRank);
       updatedDayData.globalRank = prevGlobal;
       updatedDayData.japanRank = prevJapan;
+      // day は数値で統一（型混在で翌日の $elemMatch / 重複 day を防ぐ）
+      updatedDayData.day = Number(targetDay);
+      updatedDayData.season = targetSeason;
     }
     const baseLegendDaysArray = {
       $filter: {
@@ -921,6 +924,9 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
         cond: { $ne: ['$$this', null] },
       },
     };
+    const targetDayNum = Number(targetDay);
+    const targetDayStr = String(targetDay);
+    const targetSeasonStr = String(targetSeason);
     mergedLegendDays = updatedDayData
       ? {
         $concatArrays: [
@@ -930,8 +936,19 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
               cond: {
                 $not: {
                   $and: [
-                    { $eq: ['$$this.season', targetSeason] },
-                    { $eq: ['$$this.day', targetDay] },
+                    {
+                      $or: [
+                        { $eq: ['$$this.season', targetSeason] },
+                        { $eq: ['$$this.season', targetSeasonStr] },
+                      ],
+                    },
+                    {
+                      $or: [
+                        { $eq: ['$$this.day', targetDayNum] },
+                        { $eq: ['$$this.day', targetDayStr] },
+                        { $eq: ['$$this.day', targetDay] },
+                      ],
+                    },
                   ],
                 },
               },
