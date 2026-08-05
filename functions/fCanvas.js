@@ -2944,10 +2944,10 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   // 世界地図 + ランク（アスペクト比維持）。画像は1回だけ読む
   let imgWorldMap = null;
   try {
-    imgWorldMap = await Canvas.loadImage('./image/dot-world-map.png');
+    imgWorldMap = await Canvas.loadImage('./image/earth.png');
   } catch (worldErr) {
     console.warn(
-      `[legendStatsR1] dot-world-map.png load failed ${mongoAcc?.tag}:`,
+      `[legendStatsR1] earth.png load failed ${mongoAcc?.tag}:`,
       worldErr?.message ?? worldErr,
     );
   }
