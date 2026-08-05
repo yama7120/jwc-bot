@@ -2919,47 +2919,51 @@ async function legendStatsR1(client, mongoAcc, iDay) {
     }
   }
 
-  // グローバル順位ラベル（# + 数字、20% 透過、# は1段階小）
-  const drawRankLabel = (baselineY, rankValue) => {
+  // グローバル順位ラベル（画像上に重ねる、# は1段階小、不透明度 80%）
+  const drawRankLabel = (centerY, rankValue) => {
     const rankNumberText =
       Number.isFinite(Number(rankValue)) && Number(rankValue) > 0
         ? String(rankValue)
         : '?';
     const prevAlpha = ctx.globalAlpha;
-    ctx.globalAlpha = 0.2;
+    const prevAlign = ctx.textAlign;
+    const prevBaseline = ctx.textBaseline;
+    // 透過 20% → 80% 不透明（alpha 0.8）
+    ctx.globalAlpha = 0.8;
+    ctx.textBaseline = 'middle';
     setFont(ctx, fontSize.xxxSmall, FONTS.SC, 'bold');
     const hashW = ctx.measureText('#').width;
     setFont(ctx, fontSize.xxSmall, FONTS.SC, 'bold');
     const numW = ctx.measureText(rankNumberText).width;
     const totalW = hashW + numW;
-    const prevAlign = ctx.textAlign;
     ctx.textAlign = 'left';
     setFont(ctx, fontSize.xxxSmall, FONTS.SC, 'bold');
-    ctx.fillText('#', widthCenter - totalW / 2, baselineY);
+    ctx.fillText('#', widthCenter - totalW / 2, centerY);
     setFont(ctx, fontSize.xxSmall, FONTS.SC, 'bold');
     ctx.fillText(
       rankNumberText,
       widthCenter - totalW / 2 + hashW,
-      baselineY,
+      centerY,
     );
     ctx.textAlign = prevAlign;
+    ctx.textBaseline = prevBaseline;
     ctx.globalAlpha = prevAlpha;
   };
 
   // 世界地図 + ランク（アスペクト比維持）。画像は1回だけ読む
   let imgWorldMap = null;
   try {
-    imgWorldMap = await Canvas.loadImage('./image/dot-world-map.png');
+    imgWorldMap = await Canvas.loadImage('./image/world.png');
   } catch (worldErr) {
     console.warn(
-      `[legendStatsR1] dot-world-map.png load failed ${mongoAcc?.tag}:`,
+      `[legendStatsR1] world.png load failed ${mongoAcc?.tag}:`,
       worldErr?.message ?? worldErr,
     );
   }
 
   const drawRankWithMap = (mapTop, rankValue, maxWidth, maxHeight) => {
     if (!imgWorldMap) {
-      drawRankLabel(mapTop - 14, rankValue);
+      drawRankLabel(mapTop + maxHeight / 2, rankValue);
       return;
     }
     const srcW = imgWorldMap.width || 1;
@@ -2972,8 +2976,9 @@ async function legendStatsR1(client, mongoAcc, iDay) {
       drawW = drawH * aspect;
     }
     const mapX = widthCenter - drawW / 2;
-    drawRankLabel(mapTop - 14, rankValue);
+    // 先に地図、その上にランクを重ねる（中央）
     ctx.drawImage(imgWorldMap, mapX, mapTop, drawW, drawH);
+    drawRankLabel(mapTop + drawH / 2, rankValue);
   };
 
   // Start トロフィー下: 保存済み順位
