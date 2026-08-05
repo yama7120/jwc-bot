@@ -2889,31 +2889,55 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   setFont(ctx, fontSize.xSmall, FONTS.SC);
   ctx.fillText(text, widthCenter, 580);
 
-  // Start トロフィー下: グローバル順位の数字 + world.png
-  // 取れていないときは「?」と画像だけ表示
-  const rankLabel =
-    rankStart != null ? String(rankStart) : '?';
-  try {
-    const imgWorld = await Canvas.loadImage('./image/world.png');
-    const worldSize = 88;
-    const worldY = 700;
-    const rankTextY = 660;
-    setFont(ctx, fontSize.xSmall, FONTS.SC, 'bold');
-    ctx.fillText(rankLabel, widthCenter, rankTextY);
-    ctx.drawImage(
-      imgWorld,
-      widthCenter - worldSize / 2,
-      worldY - worldSize / 2,
-      worldSize,
-      worldSize,
+  // Start トロフィー下: グローバル順位（#数字）+ 世界地図（アスペクト比維持）
+  // 取れていないときは「#?」と画像を表示（# は数字より1段階小さい）
+  const rankNumberText = rankStart != null ? String(rankStart) : '?';
+  const drawRankLabel = (baselineY) => {
+    const prevAlpha = ctx.globalAlpha;
+    // ランク数字（#含む）は 20% 不透明
+    ctx.globalAlpha = 0.2;
+    setFont(ctx, fontSize.xxxSmall, FONTS.SC, 'bold');
+    const hashW = ctx.measureText('#').width;
+    setFont(ctx, fontSize.xxSmall, FONTS.SC, 'bold');
+    const numW = ctx.measureText(rankNumberText).width;
+    const totalW = hashW + numW;
+    const prevAlign = ctx.textAlign;
+    ctx.textAlign = 'left';
+    setFont(ctx, fontSize.xxxSmall, FONTS.SC, 'bold');
+    ctx.fillText('#', widthCenter - totalW / 2, baselineY);
+    setFont(ctx, fontSize.xxSmall, FONTS.SC, 'bold');
+    ctx.fillText(
+      rankNumberText,
+      widthCenter - totalW / 2 + hashW,
+      baselineY,
     );
+    ctx.textAlign = prevAlign;
+    ctx.globalAlpha = prevAlpha;
+  };
+  try {
+    const imgWorld = await Canvas.loadImage('./image/dot-world-map.png');
+    const maxWidth = 320;
+    const maxHeight = 150;
+    const srcW = imgWorld.width || 1;
+    const srcH = imgWorld.height || 1;
+    const aspect = srcW / srcH;
+    let drawW = maxWidth;
+    let drawH = drawW / aspect;
+    if (drawH > maxHeight) {
+      drawH = maxHeight;
+      drawW = drawH * aspect;
+    }
+    const mapTop = 675;
+    const mapX = widthCenter - drawW / 2;
+    // 数字は画像の真上
+    drawRankLabel(mapTop - 14);
+    ctx.drawImage(imgWorld, mapX, mapTop, drawW, drawH);
   } catch (worldErr) {
     console.warn(
-      `[legendStatsR1] world.png load failed ${mongoAcc?.tag}:`,
+      `[legendStatsR1] dot-world-map.png load failed ${mongoAcc?.tag}:`,
       worldErr?.message ?? worldErr,
     );
-    setFont(ctx, fontSize.xxSmall, FONTS.SC);
-    ctx.fillText(rankLabel, widthCenter, 680);
+    drawRankLabel(700);
   }
 
   text = iDay == 'current' ? 'Current' : 'End';
