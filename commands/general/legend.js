@@ -443,7 +443,7 @@ async function stats(interaction, client) {
   let iPlayerTag = await interaction.options.getString('account');
   let mongoAcc = await client.clientMongo.db('jwc').collection('accounts').findOne(
     { tag: iPlayerTag },
-    { projection: { name: 1, legend: 1, pilotDC: 1, leagueTier: 1, _id: 0 } }
+    { projection: { tag: 1, name: 1, trophies: 1, legend: 1, pilotDC: 1, leagueTier: 1, _id: 0 } }
   );
 
   if (!mongoAcc?.legend?.events) {

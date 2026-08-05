@@ -2865,19 +2865,25 @@ async function legendStatsR1(client, mongoAcc, iDay) {
 
   let tophiesStart = 5000;
   let rankStart = null;
+  // End/Current 側の順位
+  // - previous: legend.current.rank（保存済み）
+  // - current: コマンド実行時 API
+  let rankEnd = null;
   if (!dayStats || dayStats.day != 1) {
     if (iDay == 'current') {
       tophiesStart = mongoAcc.legend.current
         ? mongoAcc.legend.current.trophies
         : 'no data';
-      // 日開始時点のグローバル順位（legend.current に保存）
+      // Start: 日開始スナップショットとして保存している current
       rankStart = Number(mongoAcc.legend?.current?.rank);
     } else if (iDay == 'previous') {
       tophiesStart =
         mongoAcc.legend.previousDay == null
           ? '?'
           : mongoAcc.legend.previousDay.trophies;
+      // Start: previousDay.rank / End: current.rank
       rankStart = Number(mongoAcc.legend?.previousDay?.rank);
+      rankEnd = Number(mongoAcc.legend?.current?.rank);
     }
   } else {
     tophiesStart = 5000;
@@ -2885,16 +2891,41 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   if (!(Number.isFinite(rankStart) && rankStart > 0)) {
     rankStart = null;
   }
+  if (!(Number.isFinite(rankEnd) && rankEnd > 0)) {
+    rankEnd = null;
+  }
   text = String(tophiesStart);
   setFont(ctx, fontSize.xSmall, FONTS.SC);
   ctx.fillText(text, widthCenter, 580);
 
-  // Start トロフィー下: グローバル順位（#数字）+ 世界地図（アスペクト比維持）
-  // 取れていないときは「#?」と画像を表示（# は数字より1段階小さい）
-  const rankNumberText = rankStart != null ? String(rankStart) : '?';
-  const drawRankLabel = (baselineY) => {
+  // 当日 (current) のみ、Current 欄は API のライブ順位
+  if (iDay == 'current') {
+    const playerTag = mongoAcc?.tag;
+    if (playerTag && client?.clientCoc?.getPlayer) {
+      try {
+        const scPlayer = await client.clientCoc.getPlayer(playerTag);
+        const apiRank = Number(
+          scPlayer?.legendStatistics?.currentSeason?.rank,
+        );
+        if (Number.isFinite(apiRank) && apiRank > 0) {
+          rankEnd = apiRank;
+        }
+      } catch (apiRankErr) {
+        console.warn(
+          `[legendStatsR1] live rank fetch failed ${playerTag}:`,
+          apiRankErr?.message ?? apiRankErr,
+        );
+      }
+    }
+  }
+
+  // グローバル順位ラベル（# + 数字、20% 透過、# は1段階小）
+  const drawRankLabel = (baselineY, rankValue) => {
+    const rankNumberText =
+      Number.isFinite(Number(rankValue)) && Number(rankValue) > 0
+        ? String(rankValue)
+        : '?';
     const prevAlpha = ctx.globalAlpha;
-    // ランク数字（#含む）は 20% 不透明
     ctx.globalAlpha = 0.2;
     setFont(ctx, fontSize.xxxSmall, FONTS.SC, 'bold');
     const hashW = ctx.measureText('#').width;
@@ -2914,12 +2945,25 @@ async function legendStatsR1(client, mongoAcc, iDay) {
     ctx.textAlign = prevAlign;
     ctx.globalAlpha = prevAlpha;
   };
+
+  // 世界地図 + ランク（アスペクト比維持）。画像は1回だけ読む
+  let imgWorldMap = null;
   try {
-    const imgWorld = await Canvas.loadImage('./image/dot-world-map.png');
-    const maxWidth = 320;
-    const maxHeight = 150;
-    const srcW = imgWorld.width || 1;
-    const srcH = imgWorld.height || 1;
+    imgWorldMap = await Canvas.loadImage('./image/dot-world-map.png');
+  } catch (worldErr) {
+    console.warn(
+      `[legendStatsR1] dot-world-map.png load failed ${mongoAcc?.tag}:`,
+      worldErr?.message ?? worldErr,
+    );
+  }
+
+  const drawRankWithMap = (mapTop, rankValue, maxWidth, maxHeight) => {
+    if (!imgWorldMap) {
+      drawRankLabel(mapTop - 14, rankValue);
+      return;
+    }
+    const srcW = imgWorldMap.width || 1;
+    const srcH = imgWorldMap.height || 1;
     const aspect = srcW / srcH;
     let drawW = maxWidth;
     let drawH = drawW / aspect;
@@ -2927,22 +2971,22 @@ async function legendStatsR1(client, mongoAcc, iDay) {
       drawH = maxHeight;
       drawW = drawH * aspect;
     }
-    const mapTop = 675;
     const mapX = widthCenter - drawW / 2;
-    // 数字は画像の真上
-    drawRankLabel(mapTop - 14);
-    ctx.drawImage(imgWorld, mapX, mapTop, drawW, drawH);
-  } catch (worldErr) {
-    console.warn(
-      `[legendStatsR1] dot-world-map.png load failed ${mongoAcc?.tag}:`,
-      worldErr?.message ?? worldErr,
-    );
-    drawRankLabel(700);
-  }
+    drawRankLabel(mapTop - 14, rankValue);
+    ctx.drawImage(imgWorldMap, mapX, mapTop, drawW, drawH);
+  };
+
+  // Start トロフィー下: 保存済み順位
+  drawRankWithMap(640, rankStart, 300, 100);
+
+  // Current/End を上に寄せ、攻防合計 (1250) のスペースを確保
+  const yCurrentLabel = 860;
+  const yCurrentTrophies = 940;
+  const yCurrentMapTop = 975;
 
   text = iDay == 'current' ? 'Current' : 'End';
   setFont(ctx, fontSize.xxSmall);
-  ctx.fillText(text, widthCenter, 1000);
+  ctx.fillText(text, widthCenter, yCurrentLabel);
 
   if (dayStats) {
     text = String(dayStats.trophies);
@@ -2950,7 +2994,12 @@ async function legendStatsR1(client, mongoAcc, iDay) {
     text = String(mongoAcc.trophies);
   }
   setFont(ctx, fontSize.small, FONTS.SC, 'bold');
-  ctx.fillText(text, widthCenter, 1080);
+  ctx.fillText(text, widthCenter, yCurrentTrophies);
+
+  // Current/End トロフィー下:
+  // - previous: legend.current.rank
+  // - current: API ライブ順位
+  drawRankWithMap(yCurrentMapTop, rankEnd, 300, 100);
 
   setFont(ctx, fontSize.xSmall, FONTS.SC, 'bold');
   text = 'Attacks';
@@ -2961,6 +3010,8 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   // ***** ATTACKS & DEFENSES ***** //
   const count = { attacks: 0, defenses: 0 };
   const sumDiffTrophies = { attacks: 0, defenses: 0 };
+  const ySumTrophies = 1250;
+  const yPerfect = 1350;
   if (dayStats) {
     const dayEvents = (mongoAcc.legend?.events ?? []).filter(
       (log) =>
@@ -3009,14 +3060,14 @@ async function legendStatsR1(client, mongoAcc, iDay) {
 
     // 合計値を表示
     setFont(ctx, fontSize.small, FONTS.SC, 'bold');
-    ctx.fillText(`+${sumDiffTrophies.attacks}`, h71, 1250);
-    ctx.fillText(String(sumDiffTrophies.defenses), h72, 1250);
+    ctx.fillText(`+${sumDiffTrophies.attacks}`, h71, ySumTrophies);
+    ctx.fillText(String(sumDiffTrophies.defenses), h72, ySumTrophies);
 
     // パーフェクトメッセージ（攻撃合計が320の場合）
     if (sumDiffTrophies.attacks === 320) {
       setFont(ctx, fontSize.smallMedium, FONTS.SC, 'bold');
       ctx.fillStyle = config.rgb.gold;
-      ctx.fillText('PERFECT DAY!', h71, 1350);
+      ctx.fillText('PERFECT DAY!', h71, yPerfect);
       ctx.fillStyle = config.rgb.snowWhite;
     }
   }
@@ -3026,7 +3077,7 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   let totalDiffTrophies = sumDiffTrophies.attacks + sumDiffTrophies.defenses;
   text =
     totalDiffTrophies < 0 ? String(totalDiffTrophies) : '+' + totalDiffTrophies;
-  ctx.fillText(text, widthCenter, 1250);
+  ctx.fillText(text, widthCenter, ySumTrophies);
 
   // ***** 中央下 ***** //
   const lengthLogoJwc = 100;
