@@ -2972,8 +2972,8 @@ async function legendStatsR1(client, mongoAcc, iDay) {
     drawRankLabel(mapTop + drawH / 2, rankValue, numFontSize);
   };
 
-  // Start トロフィー下: 保存済み順位（トロフィーは xSmall）
-  drawRankWithMap(625, rankStart, 380, 130, fontSize.xSmall);
+  // Start トロフィー下: 保存済み順位（トロフィーは xSmall）。Current/End より 1 段階小さめ
+  drawRankWithMap(625, rankStart, 320, 110, fontSize.xSmall);
 
   // Current/End を上に寄せ、攻防合計 (1250) のスペースを確保
   const yCurrentLabel = 860;
