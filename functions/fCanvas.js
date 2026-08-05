@@ -2864,23 +2864,57 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   ctx.fillText(text, widthCenter, 500);
 
   let tophiesStart = 5000;
+  let rankStart = null;
   if (!dayStats || dayStats.day != 1) {
     if (iDay == 'current') {
       tophiesStart = mongoAcc.legend.current
         ? mongoAcc.legend.current.trophies
         : 'no data';
+      // 日開始時点のグローバル順位（legend.current に保存）
+      rankStart = Number(mongoAcc.legend?.current?.rank);
     } else if (iDay == 'previous') {
       tophiesStart =
         mongoAcc.legend.previousDay == null
           ? '?'
           : mongoAcc.legend.previousDay.trophies;
+      rankStart = Number(mongoAcc.legend?.previousDay?.rank);
     }
   } else {
     tophiesStart = 5000;
   }
+  if (!(Number.isFinite(rankStart) && rankStart > 0)) {
+    rankStart = null;
+  }
   text = String(tophiesStart);
   setFont(ctx, fontSize.xSmall, FONTS.SC);
   ctx.fillText(text, widthCenter, 580);
+
+  // Start トロフィー下: グローバル順位の数字 + world.png
+  // 取れていないときは「?」と画像だけ表示
+  const rankLabel =
+    rankStart != null ? String(rankStart) : '?';
+  try {
+    const imgWorld = await Canvas.loadImage('./image/world.png');
+    const worldSize = 88;
+    const worldY = 700;
+    const rankTextY = 660;
+    setFont(ctx, fontSize.xSmall, FONTS.SC, 'bold');
+    ctx.fillText(rankLabel, widthCenter, rankTextY);
+    ctx.drawImage(
+      imgWorld,
+      widthCenter - worldSize / 2,
+      worldY - worldSize / 2,
+      worldSize,
+      worldSize,
+    );
+  } catch (worldErr) {
+    console.warn(
+      `[legendStatsR1] world.png load failed ${mongoAcc?.tag}:`,
+      worldErr?.message ?? worldErr,
+    );
+    setFont(ctx, fontSize.xxSmall, FONTS.SC);
+    ctx.fillText(rankLabel, widthCenter, 680);
+  }
 
   text = iDay == 'current' ? 'Current' : 'End';
   setFont(ctx, fontSize.xxSmall);
