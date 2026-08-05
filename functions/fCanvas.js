@@ -2919,32 +2919,47 @@ async function legendStatsR1(client, mongoAcc, iDay) {
     }
   }
 
-  // グローバル順位ラベル（画像上に重ねる、# は1段階小、不透明度 80%）
-  const drawRankLabel = (centerY, rankValue) => {
+  // グローバル順位（地図中央に重ねる・黒字 + 白光彩、トロフィーと同サイズ）
+  const drawRankLabel = (centerY, rankValue, numFontSize) => {
     const rankNumberText =
       Number.isFinite(Number(rankValue)) && Number(rankValue) > 0
         ? String(rankValue)
         : '?';
+    const label = `#${rankNumberText}`;
     const prevAlpha = ctx.globalAlpha;
     const prevAlign = ctx.textAlign;
     const prevBaseline = ctx.textBaseline;
-    // 透過 20% → 80% 不透明（alpha 0.8）
-    ctx.globalAlpha = 0.8;
+    const prevFill = ctx.fillStyle;
+    const prevStroke = ctx.strokeStyle;
+    const prevLineWidth = ctx.lineWidth;
+    const prevLineJoin = ctx.lineJoin;
+    const prevShadowColor = ctx.shadowColor;
+    const prevShadowBlur = ctx.shadowBlur;
+
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    setFont(ctx, fontSize.xxxSmall, FONTS.SC, 'bold');
-    const hashW = ctx.measureText('#').width;
-    setFont(ctx, fontSize.xxSmall, FONTS.SC, 'bold');
-    const numW = ctx.measureText(rankNumberText).width;
-    const totalW = hashW + numW;
-    ctx.textAlign = 'left';
-    setFont(ctx, fontSize.xxxSmall, FONTS.SC, 'bold');
-    ctx.fillText('#', widthCenter - totalW / 2, centerY);
-    setFont(ctx, fontSize.xxSmall, FONTS.SC, 'bold');
-    ctx.fillText(
-      rankNumberText,
-      widthCenter - totalW / 2 + hashW,
-      centerY,
-    );
+    setFont(ctx, numFontSize, FONTS.SC, 'bold');
+
+    // 白の光彩（外側ストローク + soft shadow）
+    ctx.shadowColor = 'rgba(255, 255, 255, 0.9)';
+    ctx.shadowBlur = 10;
+    ctx.strokeStyle = config.rgb.snowWhite ?? 'rgb(255, 255, 255)';
+    ctx.lineWidth = Math.max(4, Math.round(numFontSize / 8));
+    ctx.lineJoin = 'round';
+    ctx.strokeText(label, widthCenter, centerY);
+
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = config.rgb.black ?? 'rgb(0, 0, 0)';
+    ctx.fillText(label, widthCenter, centerY);
+
+    ctx.fillStyle = prevFill;
+    ctx.strokeStyle = prevStroke;
+    ctx.lineWidth = prevLineWidth;
+    ctx.lineJoin = prevLineJoin;
+    ctx.shadowColor = prevShadowColor;
+    ctx.shadowBlur = prevShadowBlur;
     ctx.textAlign = prevAlign;
     ctx.textBaseline = prevBaseline;
     ctx.globalAlpha = prevAlpha;
@@ -2953,17 +2968,17 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   // 世界地図 + ランク（アスペクト比維持）。画像は1回だけ読む
   let imgWorldMap = null;
   try {
-    imgWorldMap = await Canvas.loadImage('./image/world.png');
+    imgWorldMap = await Canvas.loadImage('./image/world_gray.png');
   } catch (worldErr) {
     console.warn(
-      `[legendStatsR1] world.png load failed ${mongoAcc?.tag}:`,
+      `[legendStatsR1] world_gray.png load failed ${mongoAcc?.tag}:`,
       worldErr?.message ?? worldErr,
     );
   }
 
-  const drawRankWithMap = (mapTop, rankValue, maxWidth, maxHeight) => {
+  const drawRankWithMap = (mapTop, rankValue, maxWidth, maxHeight, numFontSize) => {
     if (!imgWorldMap) {
-      drawRankLabel(mapTop + maxHeight / 2, rankValue);
+      drawRankLabel(mapTop + maxHeight / 2, rankValue, numFontSize);
       return;
     }
     const srcW = imgWorldMap.width || 1;
@@ -2978,16 +2993,16 @@ async function legendStatsR1(client, mongoAcc, iDay) {
     const mapX = widthCenter - drawW / 2;
     // 先に地図、その上にランクを重ねる（中央）
     ctx.drawImage(imgWorldMap, mapX, mapTop, drawW, drawH);
-    drawRankLabel(mapTop + drawH / 2, rankValue);
+    drawRankLabel(mapTop + drawH / 2, rankValue, numFontSize);
   };
 
-  // Start トロフィー下: 保存済み順位
-  drawRankWithMap(640, rankStart, 300, 100);
+  // Start トロフィー下: 保存済み順位（トロフィーは xSmall）
+  drawRankWithMap(625, rankStart, 380, 130, fontSize.xSmall);
 
   // Current/End を上に寄せ、攻防合計 (1250) のスペースを確保
   const yCurrentLabel = 860;
   const yCurrentTrophies = 940;
-  const yCurrentMapTop = 975;
+  const yCurrentMapTop = 960;
 
   text = iDay == 'current' ? 'Current' : 'End';
   setFont(ctx, fontSize.xxSmall);
@@ -3001,10 +3016,8 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   setFont(ctx, fontSize.small, FONTS.SC, 'bold');
   ctx.fillText(text, widthCenter, yCurrentTrophies);
 
-  // Current/End トロフィー下:
-  // - previous: legend.current.rank
-  // - current: API ライブ順位
-  drawRankWithMap(yCurrentMapTop, rankEnd, 300, 100);
+  // Current/End トロフィー下: トロフィーは small
+  drawRankWithMap(yCurrentMapTop, rankEnd, 380, 130, fontSize.small);
 
   setFont(ctx, fontSize.xSmall, FONTS.SC, 'bold');
   text = 'Attacks';
