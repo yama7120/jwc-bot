@@ -235,34 +235,62 @@ async function cronUpdate2am(client) {
 }
 export { cronUpdate2am };
 
+async function runCronStep(jobLabel, stepName, fn) {
+  try {
+    await fn();
+    return true;
+  } catch (e) {
+    console.error(
+      `[${jobLabel}] step failed: ${stepName}:`,
+      e?.message ?? e,
+    );
+    return false;
+  }
+}
+
 async function cronUpdate2pmLegend1(client) {
   return runHeavyCron('cronUpdate2pmLegend1', async () => {
     const startedAt = Date.now();
     const currentDate = new Date();
     // Legend I の日境界: JST 14:00 (= UTC 05:00)
     const seasonData = functions.calculateSeasonValues(client, currentDate, 5);
+    const job = 'cronUpdate2pmLegend1';
 
-    // 14:00 に全体更新・ランキング更新も集約する
-    const nAccs = await autoUpdateAcc(client);
-    await fRanking.rankingMain(client.clientMongo);
-
-    // ユーザー向け result を先に（重い日次掲示板系の後ろだとタイムアウトで到達しない）
+    // 1) 日次データ更新（失敗しても後続を試みる）
+    let nAccs = 0;
     try {
-      await fMongo.legends200(client);
+      nAccs = await autoUpdateAcc(client);
     } catch (e) {
-      console.warn(
-        '[cronUpdate2pmLegend1] legends200 refresh failed:',
-        e?.message ?? e,
-      );
+      console.error(`[${job}] step failed: autoUpdateAcc:`, e?.message ?? e);
     }
-    await saveAllLegend1DayRanks(client, seasonData);
-    await sendLegendResult(client, seasonData);
 
-    // Legend I の日次サマリ掲示板など
-    await sendLogUpdated(client, nAccs, seasonData);
-    await sendLogLegendDay(client, seasonData);
-    await functions.updateStatusInfoLegend(client, seasonData);
-    await addNewDayToLegendAccounts(client, seasonData);
+    // 2) ユーザー向け result を最優先（rankingMain の Mongo sort 失敗で止まらないように前に置く）
+    await runCronStep(job, 'legends200', () => fMongo.legends200(client));
+    await runCronStep(job, 'saveAllLegend1DayRanks', () =>
+      saveAllLegend1DayRanks(client, seasonData),
+    );
+    await runCronStep(job, 'sendLegendResult', () =>
+      sendLegendResult(client, seasonData),
+    );
+
+    // 3) ランキング集計（失敗しても result は既に送済）
+    await runCronStep(job, 'rankingMain', () =>
+      fRanking.rankingMain(client.clientMongo),
+    );
+
+    // 4) 掲示板・新日エントリ
+    await runCronStep(job, 'sendLogUpdated', () =>
+      sendLogUpdated(client, nAccs, seasonData),
+    );
+    await runCronStep(job, 'sendLogLegendDay', () =>
+      sendLogLegendDay(client, seasonData),
+    );
+    await runCronStep(job, 'updateStatusInfoLegend', () =>
+      functions.updateStatusInfoLegend(client, seasonData),
+    );
+    await runCronStep(job, 'addNewDayToLegendAccounts', () =>
+      addNewDayToLegendAccounts(client, seasonData),
+    );
 
     console.log(`[cronUpdate2pmLegend1] elapsed=${Date.now() - startedAt}ms accounts=${nAccs}`);
   });
@@ -388,10 +416,10 @@ async function addNewDayToLegendAccounts(client, seasonData) {
 async function autoUpdateAcc(client) {
   console.log(`start: autoUpdateAcc`);
 
+  // 並び順は更新結果に不要。Mongo sort は 32MB 制限で落ちうるので使わない
   const query = { status: true };
   const options = { projection: { _id: 0, tag: 1 } };
-  const sort = { trophies: -1 };
-  const cursor = client.clientMongo.db('jwc').collection('accounts').find(query, options).sort(sort);
+  const cursor = client.clientMongo.db('jwc').collection('accounts').find(query, options);
   const accountsAll = await cursor.toArray();
   await cursor.close();
   console.log(`accountsAll: ${accountsAll.length}`);
@@ -440,13 +468,12 @@ async function autoUpdateAccLegend1(client) {
     status: true,
     'leagueTier.id': config_coc.leagueId.legend,
   };
+  // 並び順不要。sort による QueryExceededMemoryLimit を避ける
   const options = { projection: { _id: 0, tag: 1 } };
-  const sort = { trophies: -1 };
   const cursor = client.clientMongo
     .db('jwc')
     .collection('accounts')
-    .find(query, options)
-    .sort(sort);
+    .find(query, options);
   const accountsAll = await cursor.toArray();
   await cursor.close();
   console.log(`accountsLegend1: ${accountsAll.length}`);

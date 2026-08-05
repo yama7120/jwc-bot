@@ -2,19 +2,24 @@ import config from '../config/config.js';
 
 
 async function rankingMain(clientMongo) {
-  // legend previous day [current season]
-  await rankingLegend(clientMongo, 'current', 'legendPreviousDay', 'legend.current.trophies');
+  const steps = [
+    ['legendPreviousDay', () =>
+      rankingLegend(clientMongo, 'current', 'legendPreviousDay', 'legend.current.trophies')],
+    ['legendTrophies', () =>
+      rankingLegend(clientMongo, 'legendTrophies', 'legendTrophies', 'legend.legendTrophies')],
+    ['trophies', () => rankingGeneral(clientMongo, 'trophies')],
+    ['warStars', () => rankingGeneral(clientMongo, 'warStars')],
+    ['attackWins', () => rankingGeneral(clientMongo, 'attackWins')],
+    ['lvHeroes', () => rankingGeneral(clientMongo, 'lvHeroes')],
+  ];
 
-  // legend trophies
-  await rankingLegend(clientMongo, 'legendTrophies', 'legendTrophies', 'legend.legendTrophies');
-
-  // ** Others **
-  await rankingGeneral(clientMongo, 'trophies');
-  await rankingGeneral(clientMongo, 'warStars');
-  await rankingGeneral(clientMongo, 'attackWins');
-  await rankingGeneral(clientMongo, 'lvHeroes');
-
-  return;
+  for (const [name, fn] of steps) {
+    try {
+      await fn();
+    } catch (e) {
+      console.error(`[rankingMain] ${name} failed:`, e?.message ?? e);
+    }
+  }
 }
 export { rankingMain };
 
@@ -22,12 +27,27 @@ export { rankingMain };
 async function rankingLegend(clientMongo, nameItem, nameRanking, key) {
   let arr = [];
   let query = { status: true, [key]: { $gt: 0 } };
-  let options = { projection: { _id: 0, name: 1, pilotName: 1, townHallLevel: 1, homeClanAbbr: 1, legend: 1, diffAttackWins: 1, diffDefenseWins: 1, trophies: 1, unixTimeRequest: 1 } };
+  // legend 全体（days 履歴など）は載せない。ソート 32MB 制限対策
+  let options = {
+    projection: {
+      _id: 0,
+      name: 1,
+      pilotName: 1,
+      townHallLevel: 1,
+      homeClanAbbr: 1,
+      [`legend.${nameItem}`]: 1,
+      'legend.difference': 1,
+      diffAttackWins: 1,
+      diffDefenseWins: 1,
+      trophies: 1,
+      unixTimeRequest: 1,
+    },
+  };
   let sort = { [key]: -1 };
   let accs = await getAccsFromMongo(clientMongo, query, options, sort);
 
   await Promise.all(accs.map(async (acc, index) => {
-    let obj = { name: acc.name, pilotName: acc.pilotName, townHallLevel: acc.townHallLevel, homeClanAbbr: acc.homeClanAbbr, [nameRanking]: acc.legend[nameItem], difference: acc.legend.difference, diffAttackWins: acc.diffAttackWins, diffDefenseWins: acc.diffDefenseWins, trophies: acc.trophies, unixTimeRequest: acc.unixTimeRequest };
+    let obj = { name: acc.name, pilotName: acc.pilotName, townHallLevel: acc.townHallLevel, homeClanAbbr: acc.homeClanAbbr, [nameRanking]: acc.legend?.[nameItem], difference: acc.legend?.difference, diffAttackWins: acc.diffAttackWins, diffDefenseWins: acc.diffDefenseWins, trophies: acc.trophies, unixTimeRequest: acc.unixTimeRequest };
     arr.push(obj);
   }));
 
@@ -72,7 +92,13 @@ export { rankingGeneral };
 
 
 async function getAccsFromMongo(clientMongo, query, options, sort) {
-  const cursor = clientMongo.db('jwc').collection('accounts').find(query, options).sort(sort);
+  // Atlas 既定 32MB ソート上限を超えないよう disk use を許可
+  const cursor = clientMongo
+    .db('jwc')
+    .collection('accounts')
+    .find(query, options)
+    .sort(sort)
+    .allowDiskUse(true);
   const accs = await cursor.toArray();
   await cursor.close();
   return accs;
@@ -82,7 +108,12 @@ async function getAccsFromMongo(clientMongo, query, options, sort) {
 async function getDescriptionRankingJwcAttack(clientMongo, league, query, sort, teamAbbr, lvTH, nDisplay, flagSummary, flagRegularSeason, attackType) {
   const projection = { _id: 0, name: 1, homeClanAbbr: 1, pilotName: 1, stats: 1 };
   const options = { projection: projection };
-  const cursor = clientMongo.db('jwc').collection('accounts').find(query, options).sort(sort);
+  const cursor = clientMongo
+    .db('jwc')
+    .collection('accounts')
+    .find(query, options)
+    .sort(sort)
+    .allowDiskUse(true);
   let accs = await cursor.toArray();
   await cursor.close();
 
