@@ -93,6 +93,9 @@ function getStoredRankedSeasonId(playerStats, seasonData) {
   return String(seasonData.seasonId);
 }
 
+/** account / events と API の総トロフィーが大きく食い違うとみなす閾値（単発戦の上限より大きい） */
+const TROPHY_BASELINE_RESYNC_GAP = 100;
+
 function isNonLegendLeagueReset(beforePlayerStats, afterPlayerStats) {
   if (afterPlayerStats?.leagueTier?.id === config_coc.leagueId.legend) {
     return false;
@@ -106,6 +109,13 @@ function isNonLegendLeagueReset(beforePlayerStats, afterPlayerStats) {
   const afterDefenseWins = Number(afterPlayerStats?.defenseWins ?? 0);
   const beforeLeagueSeasonId = beforePlayerStats?.currentLeagueSeasonId;
   const afterLeagueSeasonId = afterPlayerStats?.currentLeagueSeasonId;
+  const beforeTierId = beforePlayerStats?.leagueTier?.id ?? null;
+  const afterTierId = afterPlayerStats?.leagueTier?.id ?? null;
+
+  // Legend I からの降格: トロフィー 0 にならないケースもある。基準を必ず API に載せ直す
+  if (beforeTierId === config_coc.leagueId.legend && afterTierId !== config_coc.leagueId.legend) {
+    return true;
+  }
 
   const droppedToZero = afterTrophies === 0 && beforeTrophies > 0;
   const winsReset =
@@ -115,8 +125,54 @@ function isNonLegendLeagueReset(beforePlayerStats, afterPlayerStats) {
     beforeLeagueSeasonId != null
     && afterLeagueSeasonId != null
     && String(beforeLeagueSeasonId) !== String(afterLeagueSeasonId);
+  const tierChanged =
+    beforeTierId != null && afterTierId != null && beforeTierId !== afterTierId;
+  const largeTrophyDrop =
+    Number.isFinite(beforeTrophies)
+    && Number.isFinite(afterTrophies)
+    && beforeTrophies - afterTrophies >= TROPHY_BASELINE_RESYNC_GAP;
 
-  return droppedToZero || (afterTrophies === 0 && (winsReset || leagueSeasonChanged));
+  if (droppedToZero) return true;
+  if (afterTrophies === 0 && (winsReset || leagueSeasonChanged)) return true;
+  // 昇降格 + トロフィー大幅変動（0 リセット以外の league 切替）
+  if (tierChanged && largeTrophyDrop) return true;
+  if (leagueSeasonChanged && (winsReset || largeTrophyDrop || afterTrophies === 0)) {
+    return true;
+  }
+
+  return false;
+}
+
+/** events 先頭が「現在のリーグ / ranked シーズン」と不一致ならリセット前の残骸 */
+function isStaleRankedEventTrophyBaseline(event0, afterPlayerStats, seasonData) {
+  if (!event0) return true;
+  const afterLeagueId = afterPlayerStats?.leagueTier?.id;
+  const eventLeagueId = event0?.leagueId;
+  if (
+    afterLeagueId != null
+    && eventLeagueId != null
+    && eventLeagueId !== afterLeagueId
+  ) {
+    return true;
+  }
+  if (!seasonData) return false;
+  const currentRid = getStoredRankedSeasonId(afterPlayerStats, seasonData);
+  if (
+    event0.rankedSeasonId != null
+    && String(event0.rankedSeasonId) !== String(currentRid)
+  ) {
+    return true;
+  }
+  // Legend I 外: calendar season が違う events は旧シーズン
+  if (
+    afterLeagueId !== config_coc.leagueId.legend
+    && typeof event0.season === 'string'
+    && event0.season
+    && event0.season !== seasonData.seasonId
+  ) {
+    return true;
+  }
+  return false;
 }
 
 /** Legend I 以外のランク戦シーズン切り替え（前シーズンの battle log が一括で「新規」扱いされるのを防ぐ） */
@@ -1180,16 +1236,28 @@ async function sendLogLegendMain(
     if (legendEventType === 'attack' || legendEventType === 'defense') {
       const apiTrophies = Number(scPlayer?.trophies);
       const eventTrophies = Number(eventData.trophiesCurrent);
-      // battlelog 算出の総数を account.trophies の本線にする（次の積算基準）
-      // API が event と一致するときだけ API で上書き再同期
-      const saveT =
+      const isLegend1 = scPlayer?.leagueTier?.id === config_coc.leagueId.legend;
+      // Legend I: 積算を本線（API 遅延対策）。一致時だけ API 同期。
+      // それ以外: API と大きくずれた積算で Mongo を汚染しない（降格後の残渣対策）
+      let saveT;
+      if (
         Number.isFinite(eventTrophies)
         && Number.isFinite(apiTrophies)
         && apiTrophies === eventTrophies
-          ? apiTrophies
-          : Number.isFinite(eventTrophies)
-            ? eventTrophies
-            : apiTrophies;
+      ) {
+        saveT = apiTrophies;
+      } else if (
+        !isLegend1
+        && Number.isFinite(apiTrophies)
+        && Number.isFinite(eventTrophies)
+        && Math.abs(apiTrophies - eventTrophies) >= TROPHY_BASELINE_RESYNC_GAP
+      ) {
+        saveT = apiTrophies;
+      } else if (Number.isFinite(eventTrophies)) {
+        saveT = eventTrophies;
+      } else {
+        saveT = apiTrophies;
+      }
       await saveAccountTrophies(client, mongoAcc.tag, saveT);
       if (Number.isFinite(saveT) && mongoAcc) {
         mongoAcc.trophies = saveT;
@@ -1319,13 +1387,45 @@ function shouldShowTrophyTotalInTitle(_scPlayer, eventData) {
 
 /**
  * 直前に保存された総トロフィー（events 先頭＝最新、なければ account.trophies / API）
+ * 降格・シーズンまたぎで events が古いままのときは API を優先する。
+ *
+ * @param {object} [seasonData]
+ * @param {{ forceApi?: boolean }} [opts]
  */
-function resolveLastStoredTrophies(mongoAcc, afterPlayerStats) {
-  const fromEvent = Number(mongoAcc?.legend?.events?.[0]?.trophies);
-  if (Number.isFinite(fromEvent)) return fromEvent;
-  const fromAccount = Number(mongoAcc?.trophies);
-  if (Number.isFinite(fromAccount)) return fromAccount;
+function resolveLastStoredTrophies(mongoAcc, afterPlayerStats, seasonData = null, opts = {}) {
   const fromApi = Number(afterPlayerStats?.trophies);
+  if (opts?.forceApi && Number.isFinite(fromApi)) {
+    return fromApi;
+  }
+
+  const event0 = mongoAcc?.legend?.events?.[0];
+  const fromEvent = Number(event0?.trophies);
+  if (
+    Number.isFinite(fromEvent)
+    && !isStaleRankedEventTrophyBaseline(event0, afterPlayerStats, seasonData)
+  ) {
+    // 保存 events が API より大幅に高い（降格後の残渣）→ API
+    if (
+      Number.isFinite(fromApi)
+      && afterPlayerStats?.leagueTier?.id !== config_coc.leagueId.legend
+      && fromEvent - fromApi >= TROPHY_BASELINE_RESYNC_GAP
+    ) {
+      return fromApi;
+    }
+    return fromEvent;
+  }
+
+  const fromAccount = Number(mongoAcc?.trophies);
+  if (Number.isFinite(fromAccount)) {
+    if (
+      Number.isFinite(fromApi)
+      && afterPlayerStats?.leagueTier?.id !== config_coc.leagueId.legend
+      && fromAccount - fromApi >= TROPHY_BASELINE_RESYNC_GAP
+    ) {
+      return fromApi;
+    }
+    return fromAccount;
+  }
   if (Number.isFinite(fromApi)) return fromApi;
   return null;
 }
@@ -1335,12 +1435,15 @@ function resolveLastStoredTrophies(mongoAcc, afterPlayerStats) {
  *
  * 方針: battlelog の増減を本線。保存済み最終トロフィーから積算する。
  * API player.trophies は「反映が確認できる時」や「プロファイルは動いたが合計不一致」の再同期に使う。
+ *
+ * @param {{ forceApiAnchor?: boolean }} [opts]
  */
 function computeTrophiesCurrentByBattleIndex(
   beforePlayerStats,
   afterPlayerStats,
   diffsChronological,
   lastStoredTrophies,
+  opts = {},
 ) {
   const n = diffsChronological.length;
   if (n === 0) return [];
@@ -1370,6 +1473,25 @@ function computeTrophiesCurrentByBattleIndex(
     }
     return out;
   };
+
+  // 降格・リーグ切替直後: 今回バッチの終点を API after に合わせる
+  if (opts?.forceApiAnchor && Number.isFinite(afterT)) {
+    return backwardFrom(afterT);
+  }
+
+  // 0) 保存値 + 今回 diff の終点が API と大きく乖離、かつそのギャップを
+  //    今回の diff では説明しきれない → リセット / 汚染済み基準とみなして API 再同期
+  if (Number.isFinite(lastT) && Number.isFinite(afterT)) {
+    const residual = Math.abs(lastT + sumDiff - afterT);
+    const gapStored = Math.abs(lastT - afterT);
+    if (
+      residual >= TROPHY_BASELINE_RESYNC_GAP
+      && gapStored >= TROPHY_BASELINE_RESYNC_GAP
+      && Math.abs(sumDiff) < gapStored
+    ) {
+      return backwardFrom(afterT);
+    }
+  }
 
   // 1) 監視 before→after が今回バッチの diff 合計と完全一致
   if (
@@ -1998,15 +2120,26 @@ async function processLegendRankedBattleLog(
     );
   });
   // battlelog 新規行の diff を本線。🏆 は event 総数を常にタイトルに出す
+  const beforeTierId = beforePlayerStats?.leagueTier?.id ?? null;
+  const afterTierId = afterPlayerStats?.leagueTier?.id ?? null;
+  const forceApiAnchor =
+    (beforeTierId != null && afterTierId != null && beforeTierId !== afterTierId)
+    || (
+      beforeTierId === config_coc.leagueId.legend
+      && afterTierId !== config_coc.leagueId.legend
+    );
   const lastStoredTrophies = resolveLastStoredTrophies(
     mongoAccMut,
     afterPlayerStats,
+    seasonData,
+    { forceApi: forceApiAnchor },
   );
   const trophiesByIdx = computeTrophiesCurrentByBattleIndex(
     beforePlayerStats,
     afterPlayerStats,
     diffsChronological,
     lastStoredTrophies,
+    { forceApiAnchor },
   );
   const pendingNotifications = [];
 
