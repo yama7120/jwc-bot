@@ -308,6 +308,8 @@ class PollingSystem {
     this.lastBattleLogSweepMsByTag = new Map();
     this.battleLogSweepFailStreakByTag = new Map();
     this.battleLogSweepBackoffUntilByTag = new Map();
+    this.battleLogSweepRunning = false;
+    this.battleLogSweepPausedUntil = 0;
   }
 
   sanitizeTagForBattleLogSweep(rawTag) {
@@ -323,6 +325,13 @@ class PollingSystem {
     if (err?.status) parts.push(`status=${err.status}`);
     if (err?.message) parts.push(String(err.message));
     return parts.length > 0 ? parts.join(' | ') : String(err);
+  }
+
+  isTransientNetworkError(err) {
+    const msg = this.formatBattleLogSweepError(err);
+    return /Connect Timeout|ETIMEDOUT|EPIPE|ECONNRESET|ECONNREFUSED|UND_ERR|other side closed|socket hang up|fetch failed/i.test(
+      msg,
+    );
   }
 
   // メンテナンスの処理の初期化
@@ -501,14 +510,32 @@ class PollingSystem {
       `⏳ mongo accounts find start (${label})... (+${sinceBoot()} since boot)`,
     );
     const tMongo = Date.now();
-    const cursor = clientMongo
-      .db('jwc')
-      .collection('accounts')
-      .find(this.getMonitoringAccountsQuery(), {
-        projection: this.getMonitoringAccountsProjection(mode),
-      });
-    const accounts = await cursor.toArray();
-    await cursor.close();
+    const maxAttempts = 3;
+    let accounts;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const cursor = clientMongo
+        .db('jwc')
+        .collection('accounts')
+        .find(this.getMonitoringAccountsQuery(), {
+          projection: this.getMonitoringAccountsProjection(mode),
+          maxTimeMS: 60_000,
+          batchSize: 200,
+        });
+      try {
+        accounts = await cursor.toArray();
+        await cursor.close().catch(() => {});
+        break;
+      } catch (error) {
+        await cursor.close().catch(() => {});
+        const cursorGone =
+          error?.code === 43 ||
+          /cursor id .* not found/i.test(String(error?.message ?? ''));
+        if (!cursorGone || attempt === maxAttempts) throw error;
+        console.warn(
+          `⚠️ mongo accounts find cursor expired (${label}), retry ${attempt}/${maxAttempts - 1}`,
+        );
+      }
+    }
     const mongoMs = Date.now() - tMongo;
     console.log(
       `✅ mongo accounts find done (${label}): ${accounts.length} docs in ${formatDuration(mongoMs)} (+${sinceBoot()} since boot)`,
@@ -705,12 +732,26 @@ class PollingSystem {
   startBattleLogSweepInterval() {
     const intervalMs = 60 * 1000; // 1分
     const perTagCooldownMs = 2 * 60 * 1000; // 同一タグは2分に1回まで
+    const maxTagsPerTick = 20;
+    const globalPauseMs = 4 * 60 * 1000;
     const id = setInterval(async () => {
+      if (this.battleLogSweepRunning) return;
       try {
+        this.battleLogSweepRunning = true;
         if (!this.client?.clientCoc) return;
         if (!Array.isArray(this.accountsLegend) || this.accountsLegend.length === 0) return;
+        if (isHeavyCronRunning()) return;
+        const tickNow = Date.now();
+        if (tickNow < this.battleLogSweepPausedUntil) return;
+
+        let processed = 0;
+        let failCount = 0;
+        let lastFailMsg = '';
+        let pausedForNetwork = false;
 
         for (const mongoAcc of this.accountsLegend) {
+          if (processed >= maxTagsPerTick) break;
+
           const tag = mongoAcc?.tag;
           if (!tag) continue;
           if (this.playerUpdateLocks.has(tag)) continue;
@@ -729,6 +770,7 @@ class PollingSystem {
             continue;
           }
 
+          processed += 1;
           this.lastBattleLogSweepMsByTag.set(tag, now);
           this.playerUpdateLocks.add(tag);
           try {
@@ -791,21 +833,33 @@ class PollingSystem {
               perTagCooldownMs * (2 ** Math.min(streak, 4)),
             );
             this.battleLogSweepBackoffUntilByTag.set(tag, now + backoffMs);
-            if (streak === 1 || streak % 5 === 0) {
-              console.warn(
-                `⚠️ battlelog sweep failed for ${tag} (api=${apiTag}, streak=${streak}, retry in ${Math.round(backoffMs / 1000)}s):`,
-                this.formatBattleLogSweepError(e),
-              );
+            failCount += 1;
+            lastFailMsg = this.formatBattleLogSweepError(e);
+            if (this.isTransientNetworkError(e)) {
+              this.battleLogSweepPausedUntil = Date.now() + globalPauseMs;
+              pausedForNetwork = true;
+              break;
             }
           } finally {
             this.playerUpdateLocks.delete(tag);
           }
+        }
+
+        if (failCount > 0) {
+          const pauseNote = pausedForNetwork
+            ? `; global pause ${Math.round(globalPauseMs / 1000)}s`
+            : '';
+          console.warn(
+            `⚠️ battlelog sweep: ${failCount} failed / ${processed} tried (${lastFailMsg})${pauseNote}`,
+          );
         }
       } catch (e) {
         console.warn('⚠️ battlelog sweep loop error:', e?.message ?? e);
         reportError(this.client, e, { source: 'polling:battleLogSweep' }).catch(
           () => {},
         );
+      } finally {
+        this.battleLogSweepRunning = false;
       }
     }, intervalMs);
     return id;
