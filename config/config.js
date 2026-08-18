@@ -45,7 +45,7 @@ export default {
   weeksQ: {
     j1: 5,
     j2: 5,
-    swiss: 4,
+    swiss: 5,
     mix: 5,
     cup: 3,
   }, // 予選週数
