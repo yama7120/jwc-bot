@@ -1369,13 +1369,10 @@ async function fireball(interaction, client) {
 async function usefulLinks(interaction, client) {
   const iItem = await interaction.options.getString('item');
 
-  let link = '';
   let title = '';
   let description = '';
-  let content = '';
 
   if (iItem == 'rule') {
-    link = client.config.link[iItem];
     title = '**RULEBOOK**';
     description += `* **J1 / J2** *SEASON ${config.link.rule.j.season}*\n`;
     description += `[__document__](${config.link.rule.j.url})\n`;
@@ -1397,7 +1394,11 @@ async function usefulLinks(interaction, client) {
     return;
   }
   else if (iItem.includes('playerRegistration') == true || iItem.includes('bet') == true) {
-    link = config.link[iItem];
+    const link = config.link[iItem];
+    if (!link) {
+      await interaction.followUp({ content: '_link not configured_' });
+      return;
+    }
     await interaction.followUp({ content: link });
 
     if (iItem == 'betLeague' || iItem == 'betWeek') {
@@ -1418,8 +1419,8 @@ async function usefulLinks(interaction, client) {
   let embed = new EmbedBuilder()
     .setTitle(title)
     .setDescription(description)
-    .setColor(client.config.color.main)
-    .setFooter({ text: client.config.footer, iconURL: client.config.urlImage.jwc });
+    .setColor(config.color.main)
+    .setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
 
   await interaction.followUp({ embeds: [embed] });
 };

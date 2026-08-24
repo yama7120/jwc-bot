@@ -91,6 +91,59 @@ function formatOptionValue(opt) {
 }
 
 /**
+ * Known transient / library-race errors that should not spam the error channel.
+ * @param {unknown} reason
+ * @returns {boolean}
+ */
+export function isIgnorableProcessError(reason) {
+  if (!(reason instanceof Error)) return false;
+
+  const msg = reason.message ?? '';
+  const stack = reason.stack ?? '';
+
+  // ws: handshake timeout fires after req was nulled by error/upgrade →
+  // abortHandshake does null.setHeader (race in ws + Node timeout).
+  // Discord gateway reconnects on its own; reporting only adds noise.
+  if (
+    reason.name === 'TypeError' &&
+    (msg.includes("reading 'setHeader'") ||
+      msg.includes("property 'setHeader' of null")) &&
+    (stack.includes('abortHandshake') ||
+      stack.includes('/ws/lib/websocket') ||
+      stack.includes('\\ws\\lib\\websocket'))
+  ) {
+    return true;
+  }
+
+  // Transient TLS/HTTP drop (remote closed before response). Often escapes as
+  // uncaughtException with only node:_http_client / _tls_wrap frames when a
+  // request has no error listener. Callers retry / Discord reconnects.
+  const code = /** @type {{ code?: string }} */ (reason).code;
+  if (
+    msg === 'socket hang up' ||
+    msg.includes(
+      'Client network socket disconnected before secure TLS connection was established',
+    ) ||
+    code === 'ECONNRESET' ||
+    (msg.includes('socket hang up') && stack.includes('node:_http_client'))
+  ) {
+    return true;
+  }
+
+  // Discord REST request timeout → AbortController.abort() in @discordjs/rest.
+  // Usually a transient network/API stall; the library retries on next call.
+  if (
+    (reason.name === 'AbortError' || code === 'ABORT_ERR') &&
+    (msg.includes('This operation was aborted') ||
+      stack.includes('@discordjs/rest'))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * @param {unknown} reason
  * @returns {string}
  */

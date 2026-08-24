@@ -4493,11 +4493,12 @@ async function warProgress(mongoWar, teamLogos = {}) {
   }
 
   setFont(ctx, config.canvasFontSize.xSmall, FONTS.NUMBER);
-  if (mongoWar.result != '') {
-    text = `${mongoWar.clan_war.teamSize} v ${mongoWar.opponent_war.teamSize}`;
-  } else {
-    text = `${config.minSize[league]} v ${config.minSize[league]}`;
-  }
+  const teamSize =
+    mongoWar.clan_war?.teamSize ??
+    mongoWar.opponent_war?.teamSize ??
+    mongoWar.result?.size ??
+    config.minSize[league];
+  text = `${teamSize} v ${teamSize}`;
   ctx.fillText(text, widthCenter, pos.v171 + 50);
 
   if (resultClan && resultOpponent) {
@@ -4880,7 +4881,7 @@ async function warProgress(mongoWar, teamLogos = {}) {
   }
 
   // ***** LINEUPS ***** //
-  if (mongoWar.result != '') {
+  if (mongoWar.clan_war?.teamSize) {
     const posLineup = pos.v41;
     ctx.textAlign = 'center';
     ctx.fillStyle = config.rgb.snowWhite;
@@ -5190,7 +5191,7 @@ async function warProgress(mongoWar, teamLogos = {}) {
   ctx.fillText(text, pos.h101, heightCanvas - 120);
 
   // ***** 右下 ***** //
-  if (mongoWar.result != '') {
+  if (mongoWar.clan_war?.endTime) {
     const endTimeUtc = mongoWar.clan_war.endTime;
     const endTimeJst = toZonedTime(endTimeUtc, 'Asia/Tokyo');
 

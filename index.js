@@ -14,7 +14,10 @@ import schedule from './config/schedule.js';
 import appConfig from './config/config.js';
 import config_coc from './config/config_coc.js';
 import * as functions from './functions/functions.js';
-import { reportError } from './functions/errorReport.js';
+import {
+  reportError,
+  isIgnorableProcessError,
+} from './functions/errorReport.js';
 import {
   isHeavyCronRunning,
   getHeavyCronJob,
@@ -147,6 +150,27 @@ client.schedule = schedule;
 
 client.once(Events.ClientReady, (c) => {
   console.log(`✅ Discord client ready: ${c.user.tag}`);
+});
+
+client.on('error', (error) => {
+  if (isIgnorableProcessError(error)) {
+    console.warn('[discord] ignorable client error:', error.message);
+    return;
+  }
+  reportError(client, error, { source: 'discord:client' }).catch(() => {});
+});
+client.on('shardError', (error, shardId) => {
+  if (isIgnorableProcessError(error)) {
+    console.warn(
+      `[discord] ignorable shardError (shard ${shardId}):`,
+      error.message,
+    );
+    return;
+  }
+  reportError(client, error, {
+    source: 'discord:shardError',
+    extra: { shardId },
+  }).catch(() => {});
 });
 
 // ===== CommandLoader =====
@@ -952,9 +976,20 @@ class PollingSystem {
 
     // エラーハンドリング
     process.on('uncaughtException', (error) => {
+      if (isIgnorableProcessError(error)) {
+        console.warn('[uncaughtException] ignorable:', error.message);
+        return;
+      }
       reportError(client, error, { source: 'uncaughtException' });
     });
     process.on('unhandledRejection', (reason) => {
+      if (isIgnorableProcessError(reason)) {
+        console.warn(
+          '[unhandledRejection] ignorable:',
+          reason instanceof Error ? reason.message : reason,
+        );
+        return;
+      }
       reportError(client, reason, { source: 'unhandledRejection' });
     });
 

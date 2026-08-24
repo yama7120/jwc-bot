@@ -228,53 +228,21 @@ async function warSummary(interaction, client) {
     iLeague,
   );
 
-  let description1 = '';
-  let description2 = '';
-  let description3 = '';
-  arrDescription.forEach(function(value, index) {
-    if (index < 6) {
-      description1 += value;
-    }
-    else if (index < 12) {
-      description2 += value;
-    }
-    else if (index < 18) {
-      description3 += value;
-    };
-  });
+  let embedDescriptions = functions.packEmbedDescriptionParts(arrDescription);
+  if (embedDescriptions.length === 0) {
+    embedDescriptions = ['_no matches_'];
+  }
 
-  let title = `${config.league[iLeague]}  |  ${schedule.week['w' + iWeek]}`;
-  await interaction.followUp({
-    embeds: [
-      new EmbedBuilder()
-        .setTitle(title)
-        .setDescription(description1)
-        .setColor(config.color[iLeague])
-        .setFooter({ text: config.footer, iconURL: config.urlImage.jwc })
-    ]
-  });
-  if (description2 != '') {
-    await interaction.followUp({
-      embeds: [
-        new EmbedBuilder()
-          .setTitle(title)
-          .setDescription(description2)
-          .setColor(config.color[iLeague])
-          .setFooter({ text: config.footer, iconURL: config.urlImage.jwc })
-      ]
-    })
-  };
-  if (description3 != '') {
-    await interaction.followUp({
-      embeds: [
-        new EmbedBuilder()
-          .setTitle(title)
-          .setDescription(description3)
-          .setColor(config.color[iLeague])
-          .setFooter({ text: config.footer, iconURL: config.urlImage.jwc })
-      ]
-    })
-  };
+  const title = `${config.league[iLeague]}  |  ${schedule.week['w' + iWeek]}`;
+  const embed = new EmbedBuilder()
+    .setTitle(title)
+    .setColor(config.color[iLeague])
+    .setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
+
+  for (const description of embedDescriptions) {
+    embed.setDescription(description);
+    await interaction.followUp({ embeds: [embed] });
+  }
 
   return;
 };
@@ -377,6 +345,10 @@ async function warSingle(interaction, client) {
 
   let mongoWar = await client.clientMongo.db('jwc').collection('wars')
     .findOne({ season: config.season[iLeague], league: iLeague, week: iWeek, match: iMatch });
+  if (!mongoWar) {
+    await interaction.followUp({ content: '_war not found_', ephemeral: true });
+    return;
+  }
   await fGetWars.sendWarStats(interaction, client.clientMongo, iLeague, mongoWar);
 
   return;
@@ -512,18 +484,18 @@ async function warAttacks(interaction, client) {
   }
 
   let clanAbbrOpp = '';
-  let arrAttacks = {};
+  let arrAttacks = null;
   let action = '';
 
   if (mongoWar.clan_abbr == clanAbbr) {
     action = 'attack';
     clanAbbrOpp = mongoWar.opponent_abbr;
-    arrAttacks = mongoWar.result.arrAttacksPlus;
+    arrAttacks = mongoWar.result?.arrAttacksPlus ?? null;
   }
   else if (mongoWar.opponent_abbr == clanAbbr) {
     action = 'defense';
     clanAbbrOpp = mongoWar.clan_abbr;
-    arrAttacks = mongoWar.result.arrAttacksPlus;
+    arrAttacks = mongoWar.result?.arrAttacksPlus ?? null;
   };
 
   let teamNameOpp = '';
@@ -536,7 +508,7 @@ async function warAttacks(interaction, client) {
   let arrDescription = ['', '', '', '', ''];
   let footerText = '';
   let counter = 0;
-  if (arrAttacks && clanAbbrOpp) {
+  if (Array.isArray(arrAttacks) && clanAbbrOpp) {
     await Promise.all(arrAttacks.map(async (attack) => {
       if (attack.action == action) {
         let countEquip = null;
@@ -677,17 +649,17 @@ async function warDefenses(interaction, client) {
   }
 
   let clanAbbrOpp = '';
-  let arrAttacks = {};
+  let arrAttacks = null;
   let members = {};
 
   if (mongoWar.clan_abbr == clanAbbr) {
     clanAbbrOpp = mongoWar.opponent_abbr;
-    arrAttacks = mongoWar.result.arrAttacksPlus;
+    arrAttacks = mongoWar.result?.arrAttacksPlus ?? null;
     members = mongoWar.clan_war?.clan?.members;
   }
   else if (mongoWar.opponent_abbr == clanAbbr) {
     clanAbbrOpp = mongoWar.clan_abbr;
-    arrAttacks = mongoWar.result.arrAttacksPlus;
+    arrAttacks = mongoWar.result?.arrAttacksPlus ?? null;
     members = mongoWar.opponent_war?.clan?.members;
   };
 
@@ -701,7 +673,7 @@ async function warDefenses(interaction, client) {
   let arrDescription = ['', '', '', '', ''];
   let footerText = '';
 
-  if (arrAttacks && clanAbbrOpp && Array.isArray(members)) {
+  if (Array.isArray(arrAttacks) && clanAbbrOpp && Array.isArray(members)) {
     members.sort((a, b) => a.mapPosition - b.mapPosition);
 
     let membersTag = [];
