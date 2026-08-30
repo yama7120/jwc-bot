@@ -1152,6 +1152,10 @@ export default {
         id: 965, name: 'Electro Fangs', hero: 'Dragon Duke', type: 'common',
         emote: '<:eqElectroFangs:1504306725623435284>'
       },
+      {
+        id: 966, name: 'Revenge Deck', hero: 'Dragon Duke', type: 'epic',
+        emote: '<:eqReverseCard:1543527177075564697>'
+      },
     ],
     /*
     新装備実装時
