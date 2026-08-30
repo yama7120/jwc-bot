@@ -1154,7 +1154,7 @@ export default {
       },
       {
         id: 966, name: 'Revenge Deck', hero: 'Dragon Duke', type: 'epic',
-        emote: '<:eqReverseCard:1543527177075564697>'
+        emote: '<:eqRevengeDeck:1543527177075564697>'
       },
     ],
     /*
