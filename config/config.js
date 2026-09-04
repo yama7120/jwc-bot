@@ -359,7 +359,7 @@ export default {
       },
     },
     war_reminders: {
-      id: '', // deploy_commands 後に Discord の command id を入れる
+      id: '1545329080214360125',
       subCommand: {
         settings: 'クラン対戦リマインダー設定',
       },
