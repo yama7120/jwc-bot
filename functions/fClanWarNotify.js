@@ -2,7 +2,7 @@ import { EmbedBuilder } from 'discord.js';
 
 import config from '../config/config.js';
 import * as functions from './functions.js';
-import { deliverLegendLogToUser } from './fLegend.js';
+import { canBotPostLegendLogToChannel } from './fLegend.js';
 
 const HOUR_MS = 60 * 60 * 1000;
 const END_REMINDER_HOURS = [
@@ -14,11 +14,141 @@ const END_REMINDER_HOURS = [
 const CLAN_RESOLVE_CONCURRENCY = 5;
 const WAR_FETCH_CONCURRENCY = 3;
 const SEND_DELAY_MS = 200;
+const BROKEN_DELIVERY_ERROR_CODES = new Set([50001, 10003, 50007]);
 
-function accountHasClanWarReminders(logSettings) {
-  if (!logSettings || logSettings.war_reminders !== 'all') return false;
-  if (logSettings.post !== 'channel' && logSettings.post !== 'dm') return false;
+function getWarReminderSettings(mongoAcc) {
+  return mongoAcc?.warReminders ?? null;
+}
+
+function accountHasClanWarReminders(mongoAcc) {
+  const settings = getWarReminderSettings(mongoAcc);
+  if (!settings || settings.enabled !== 'all') return false;
+  if (settings.post !== 'channel' && settings.post !== 'dm') return false;
   return true;
+}
+
+async function resolveDeliveryChannel(client, channelId) {
+  if (!channelId) return null;
+  let channel = client.channels.cache.get(channelId);
+  if (!channel) {
+    channel = await client.channels.fetch(channelId).catch(() => null);
+  }
+  return channel?.isTextBased() ? channel : null;
+}
+
+async function disableBrokenWarReminderSettings(client, mongoAcc, details) {
+  const settings = getWarReminderSettings(mongoAcc);
+  if (!settings || settings.post === 'NA') return false;
+
+  const disabledAt = Math.floor(Date.now() / 1000);
+  await client.clientMongo
+    .db('jwc')
+    .collection('accounts')
+    .updateOne(
+      { tag: mongoAcc.tag },
+      {
+        $set: {
+          'warReminders.post': 'NA',
+          'warReminders.channel': null,
+          'warReminders.lastDisabledAt': disabledAt,
+          'warReminders.lastDisabledReason': details.reason,
+        },
+      },
+    );
+
+  mongoAcc.warReminders = {
+    ...settings,
+    post: 'NA',
+    channel: null,
+    lastDisabledAt: disabledAt,
+    lastDisabledReason: details.reason,
+  };
+  return true;
+}
+
+async function notifyWarReminderSettingsDisabled(client, mongoAcc, reason) {
+  const commandId = config.command?.war_reminders?.id;
+  const settingsCommand = commandId
+    ? `</war_reminders settings:${commandId}>`
+    : '`/war_reminders settings`';
+  const accountLabel = `${mongoAcc.name ?? 'unknown'} (${mongoAcc.tag ?? 'unknown'})`;
+  const content = [
+    ':warning: Clan war reminder delivery was disabled.',
+    `Account: **${accountLabel}**`,
+    `Reason: ${reason}`,
+    `Please reconfigure with ${settingsCommand}.`,
+  ].join('\n');
+
+  if (mongoAcc.pilotDC?.id) {
+    try {
+      const pilot = await client.users.fetch(mongoAcc.pilotDC.id);
+      await pilot.send({ content });
+    } catch (error) {
+      console.warn(
+        `[clanWarNotify] failed to notify pilot (${mongoAcc.tag}):`,
+        error?.message ?? error,
+      );
+    }
+  }
+}
+
+async function deliverWarReminderToUser(client, mongoAcc, payload) {
+  const settings = getWarReminderSettings(mongoAcc);
+  if (!settings || settings.post === 'NA') {
+    return { ok: false, reason: 'disabled' };
+  }
+
+  try {
+    if (settings.post === 'channel') {
+      const channel = await resolveDeliveryChannel(client, settings.channel);
+      if (!channel) {
+        await disableBrokenWarReminderSettings(client, mongoAcc, {
+          reason: 'channel_not_found',
+        });
+        await notifyWarReminderSettingsDisabled(client, mongoAcc, 'channel_not_found');
+        return { ok: false, reason: 'channel_not_found' };
+      }
+      if (!canBotPostLegendLogToChannel(channel, client.user)) {
+        await disableBrokenWarReminderSettings(client, mongoAcc, {
+          reason: 'missing_channel_permissions',
+        });
+        await notifyWarReminderSettingsDisabled(
+          client,
+          mongoAcc,
+          'missing_channel_permissions',
+        );
+        return { ok: false, reason: 'missing_channel_permissions' };
+      }
+      await channel.send(payload);
+      return { ok: true };
+    }
+
+    if (settings.post === 'dm') {
+      const pilotId = mongoAcc.pilotDC?.id;
+      if (!pilotId) {
+        return { ok: false, reason: 'pilot_missing' };
+      }
+      const pilot = await client.users.fetch(pilotId);
+      await pilot.send(payload);
+      return { ok: true };
+    }
+
+    return { ok: false, reason: 'unsupported_post_mode' };
+  } catch (error) {
+    console.error(
+      '[clanWarNotify] delivery failed:',
+      mongoAcc.name,
+      mongoAcc.tag,
+      error,
+    );
+    if (BROKEN_DELIVERY_ERROR_CODES.has(error?.code)) {
+      const reason =
+        settings.post === 'dm' ? 'dm_unreachable' : `discord_error_${error.code}`;
+      await disableBrokenWarReminderSettings(client, mongoAcc, { reason });
+      await notifyWarReminderSettingsDisabled(client, mongoAcc, reason);
+    }
+    return { ok: false, reason: 'delivery_failed', error };
+  }
 }
 
 function buildWarKey(clanTag, startTime) {
@@ -137,8 +267,8 @@ async function fetchEligibleAccounts(client) {
     .find(
       {
         status: { $ne: false },
-        'legend.logSettings.war_reminders': 'all',
-        'legend.logSettings.post': { $in: ['channel', 'dm'] },
+        'warReminders.enabled': 'all',
+        'warReminders.post': { $in: ['channel', 'dm'] },
       },
       {
         projection: {
@@ -148,7 +278,7 @@ async function fetchEligibleAccounts(client) {
           townHallLevel: 1,
           clan: 1,
           pilotDC: 1,
-          legend: 1,
+          warReminders: 1,
           clanWarNotify: 1,
         },
       },
@@ -264,7 +394,7 @@ async function claimAndSend(client, mongoAcc, warKey, primaryKey, embed, alsoMar
 
   mongoAcc.clanWarNotify = notify;
 
-  const result = await deliverLegendLogToUser(client, mongoAcc, { embeds: [embed] });
+  const result = await deliverWarReminderToUser(client, mongoAcc, { embeds: [embed] });
   if (!result?.ok) {
     console.warn(
       `[clanWarNotify] delivery failed ${mongoAcc.tag} ${primaryKey}:`,
@@ -402,7 +532,7 @@ async function cronClanWarNotify(client) {
 
   const withClan = [];
   await runWithConcurrency(accounts, CLAN_RESOLVE_CONCURRENCY, async (mongoAcc) => {
-    if (!accountHasClanWarReminders(mongoAcc.legend?.logSettings)) {
+    if (!accountHasClanWarReminders(mongoAcc)) {
       return;
     }
     const clanTag = await resolveClanTag(client, mongoAcc, playerCache);
