@@ -166,9 +166,34 @@ function isFriendlyWar(clanWar) {
   return false;
 }
 
+function normalizeAttacks(member) {
+  const raw = member?.attacks;
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw.length === 'number') {
+    try {
+      return Array.from(raw);
+    } catch {
+      const list = [];
+      for (let i = 0; i < raw.length; i += 1) {
+        if (raw[i] != null) list.push(raw[i]);
+      }
+      return list;
+    }
+  }
+  if (typeof raw.values === 'function') {
+    try {
+      return [...raw.values()];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 function remainingAttacks(clanWar, member) {
   const apm = Number(clanWar?.attacksPerMember) || 0;
-  const used = Array.isArray(member?.attacks) ? member.attacks.length : 0;
+  const used = normalizeAttacks(member).length;
   return Math.max(0, apm - used);
 }
 
@@ -410,27 +435,36 @@ function createAttackResultEmbed(mongoAcc, clanWar, homeClanTag, attack, attackN
   return embed;
 }
 
+function toClanWarNotifyDoc(notify) {
+  const doc = {
+    warKey: notify.warKey,
+    sent: { ...(notify.sent ?? {}) },
+  };
+  if (typeof notify.attackCount === 'number' && Number.isFinite(notify.attackCount)) {
+    doc.attackCount = notify.attackCount;
+  }
+  return doc;
+}
+
 async function persistNotifyState(client, mongoAcc, notify) {
+  const doc = toClanWarNotifyDoc(notify);
   await client.clientMongo
     .db('jwc')
     .collection('accounts')
-    .updateOne({ tag: mongoAcc.tag }, { $set: { clanWarNotify: notify } });
-  mongoAcc.clanWarNotify = notify;
+    .updateOne({ tag: mongoAcc.tag }, { $set: { clanWarNotify: doc } });
+  mongoAcc.clanWarNotify = doc;
 }
 
-/** 新規追跡時は現状の攻撃数をベースラインにし、遡及通知しない */
-async function seedAttackBaseline(client, mongoAcc, warKey, currentAttackCount) {
+/** attackCount 未設定なら 0 から開始（既存攻撃も未送信なら通知する） */
+async function ensureAttackCount(client, mongoAcc, warKey) {
   const notify = getNotifyState(mongoAcc, warKey);
-  if (typeof notify.attackCount === 'number') {
+  if (typeof notify.attackCount === 'number' && Number.isFinite(notify.attackCount)) {
     return notify.attackCount;
   }
 
-  notify.attackCount = currentAttackCount;
-  for (let i = 0; i < currentAttackCount; i += 1) {
-    notify.sent[`attack${i + 1}`] = true;
-  }
+  notify.attackCount = 0;
   await persistNotifyState(client, mongoAcc, notify);
-  return notify.attackCount;
+  return 0;
 }
 
 async function processNewAttackResults(
@@ -441,14 +475,9 @@ async function processNewAttackResults(
   homeClanTag,
   member,
 ) {
-  const attacks = Array.isArray(member?.attacks) ? member.attacks : [];
+  const attacks = normalizeAttacks(member);
   const apm = Number(clanWar?.attacksPerMember) || attacks.length || 1;
-  let previousCount = await seedAttackBaseline(
-    client,
-    mongoAcc,
-    warKey,
-    attacks.length,
-  );
+  let previousCount = await ensureAttackCount(client, mongoAcc, warKey);
 
   let sent = 0;
   for (let i = previousCount; i < attacks.length; i += 1) {
@@ -462,16 +491,13 @@ async function processNewAttackResults(
       attackNo,
       apm,
     );
-    const alsoMark = [];
-    // claimAndSend 後に attackCount も更新
-    if (await claimAndSend(client, mongoAcc, warKey, `attack${attackNo}`, embed, alsoMark)) {
+    if (await claimAndSend(client, mongoAcc, warKey, `attack${attackNo}`, embed)) {
       const notify = getNotifyState(mongoAcc, warKey);
       notify.attackCount = Math.max(notify.attackCount ?? 0, attackNo);
       await persistNotifyState(client, mongoAcc, notify);
       sent += 1;
       await functions.sleep(SEND_DELAY_MS);
     } else {
-      // 既送信ならカウントだけ進める
       const notify = getNotifyState(mongoAcc, warKey);
       if ((notify.attackCount ?? 0) < attackNo) {
         notify.attackCount = attackNo;
@@ -493,6 +519,8 @@ async function claimAndSend(client, mongoAcc, warKey, primaryKey, embed, alsoMar
     notify.sent[key] = true;
   }
 
+  const doc = toClanWarNotifyDoc(notify);
+
   const claim = await client.clientMongo
     .db('jwc')
     .collection('accounts')
@@ -508,7 +536,7 @@ async function claimAndSend(client, mongoAcc, warKey, primaryKey, embed, alsoMar
           },
         ],
       },
-      { $set: { clanWarNotify: notify } },
+      { $set: { clanWarNotify: doc } },
     );
 
   if (claim.matchedCount === 0) {
@@ -520,7 +548,7 @@ async function claimAndSend(client, mongoAcc, warKey, primaryKey, embed, alsoMar
     return false;
   }
 
-  mongoAcc.clanWarNotify = notify;
+  mongoAcc.clanWarNotify = doc;
 
   const result = await deliverWarReminderToUser(client, mongoAcc, { embeds: [embed] });
   if (!result?.ok) {
