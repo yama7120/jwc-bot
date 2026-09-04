@@ -270,7 +270,7 @@ function createEndReminderEmbed(mongoAcc, clanWar, homeClanTag, member, reminder
   const apm = clanWar.attacksPerMember ?? '?';
   const embed = new EmbedBuilder();
   embed.setTitle(reminder.title);
-  embed.setColor(config.color.main);
+  embed.setColor(config.color.red);
   embed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
   embed.setTimestamp();
   embed.setDescription(
@@ -419,9 +419,13 @@ function formatAttackResultLine(clanWar, homeClanTag, attack, attackNo) {
 function createAttackResultEmbed(mongoAcc, clanWar, homeClanTag, attack, attackNo, attacksUsed, apm) {
   const embed = new EmbedBuilder();
   embed.setTitle(`⚔️ WAR ATTACK #${attackNo}`);
-  embed.setColor(config.color.main);
+  embed.setColor(config.color.green);
   embed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
   embed.setTimestamp();
+  const usedLine =
+    Number(attacksUsed) >= Number(apm) && Number(apm) > 0
+      ? `Attacks used: **${attacksUsed}/${apm}** :white_check_mark:`
+      : `Attacks used: **${attacksUsed}/${apm}**`;
   embed.setDescription(
     [
       playerHeader(mongoAcc),
@@ -429,7 +433,7 @@ function createAttackResultEmbed(mongoAcc, clanWar, homeClanTag, attack, attackN
       '',
       formatAttackResultLine(clanWar, homeClanTag, attack, attackNo),
       '',
-      `Attacks used: **${attacksUsed}/${apm}**`,
+      usedLine,
     ].join('\n'),
   );
   return embed;
