@@ -130,6 +130,16 @@ let data = new SlashCommandBuilder()
       )
       .addStringOption(option =>
         option
+          .setName('war_reminders')
+          .setDescription('クラン対戦リマインダー（マッチング／開始／終了前の残攻撃）')
+          .addChoices(
+            { name: '[all] 通知する', value: 'all' },
+            { name: '[false] 通知しない', value: 'false' },
+          )
+          .setRequired(true)
+      )
+      .addStringOption(option =>
+        option
           .setName('post')
           .setDescription('通知先')
           .addChoices(
@@ -343,6 +353,7 @@ async function settings(interaction, client) {
   let iSettingsAttacks = await interaction.options.getString('attacks');
   let iSettingsDefenses = await interaction.options.getString('defenses');
   let iSettingsResult = await interaction.options.getString('result');
+  let iSettingsWarReminders = await interaction.options.getString('war_reminders');
   let iSettingsPost = await interaction.options.getString('post');
   let iSettingsChannelId = null;
   if (iSettingsPost == 'dm') {
@@ -376,8 +387,23 @@ async function settings(interaction, client) {
     iSettingsChannelId = channel.id;
   };
 
-  const logSettings = { attacks: iSettingsAttacks, defenses: iSettingsDefenses, result: iSettingsResult, post: iSettingsPost, channel: iSettingsChannelId };
+  const logSettings = {
+    attacks: iSettingsAttacks,
+    defenses: iSettingsDefenses,
+    result: iSettingsResult,
+    war_reminders: iSettingsWarReminders,
+    post: iSettingsPost,
+    channel: iSettingsChannelId,
+  };
   let updatedListing = { 'legend.logSettings': logSettings };
+  if (resultScan?.scPlayer?.clan) {
+    updatedListing.clan = {
+      tag: resultScan.scPlayer.clan.tag,
+      name: resultScan.scPlayer.clan.name,
+    };
+  } else if (resultScan?.scPlayer) {
+    updatedListing.clan = null;
+  }
   if (!mongoAcc.legend.days) { // 初めての登録
     updatedListing['legend.days'] = [];
     updatedListing['legend.events'] = [];
@@ -417,6 +443,7 @@ async function settings(interaction, client) {
   description += `[Attacks] *${iSettingsAttacks}*\n`;
   description += `[Defenses] *${iSettingsDefenses}*\n`;
   description += `[Result at End of the Day] *${iSettingsResult}*\n`;
+  description += `[Clan War Reminders] *${iSettingsWarReminders}*\n`;
   description += `\n`;
   if (iSettingsPost == 'dm') {
     description += `*JWC bot will dm to you.*\n`;

@@ -218,6 +218,10 @@ async function updateAcc(client, tagAccount) {
   listing.diffAttackWins = diffAttackWins;
   listing.diffDefenseWins = diffDefenseWins;
 
+  listing.clan = scPlayer.clan
+    ? { tag: scPlayer.clan.tag, name: scPlayer.clan.name }
+    : null;
+
   // レジェンドリーグの情報を処理
   listing.legend = mongoAcc?.legend ?? {};
   const apiCurrentSeason = scPlayer.legendStatistics?.currentSeason ?? null;

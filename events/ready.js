@@ -3,6 +3,7 @@ import config from '../config/config.js';
 import * as fMongo from '../functions/fMongo.js';
 import * as fCron from '../functions/fCron.js';
 import * as fLegend from '../functions/fLegend.js';
+import * as fClanWarNotify from '../functions/fClanWarNotify.js';
 import { reportError } from '../functions/errorReport.js';
 import cron from 'node-cron';
 
@@ -82,6 +83,17 @@ export default {
         console.log('END: fLegend.cronRankedWeekEndReminder');
       },
       { timeoutMs: 30 * 60 * 1000 },
+    );
+
+    // クラン対戦リマインダー（マッチング / 開始 / 終了 12h・3h・1h 前）
+    scheduleCronWithGuard(
+      'clanWarNotify',
+      '*/5 * * * *',
+      async () => {
+        await fClanWarNotify.cronClanWarNotify(client);
+        console.log('END: fClanWarNotify.cronClanWarNotify');
+      },
+      { timeoutMs: 10 * 60 * 1000 },
     );
 
     // 毎週月曜 15:00 JST (= 月曜 06:00 UTC) — leaguehistory を一括取得
