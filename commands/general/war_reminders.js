@@ -24,7 +24,7 @@ const data = new SlashCommandBuilder()
           .setName('reminders')
           .setDescription('クラン対戦リマインダー')
           .addChoices(
-            { name: '[all] 通知する（マッチング／開始／残攻撃）', value: 'all' },
+            { name: '[all] 通知する（マッチング／開始／攻撃結果／残攻撃）', value: 'all' },
             { name: '[false] 通知しない', value: 'false' },
           )
           .setRequired(true),

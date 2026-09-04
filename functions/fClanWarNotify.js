@@ -346,12 +346,140 @@ async function getCurrentWarCached(client, clanTag, warCache) {
 function getNotifyState(mongoAcc, warKey) {
   const current = mongoAcc.clanWarNotify;
   if (!current || current.warKey !== warKey) {
-    return { warKey, sent: {} };
+    return { warKey, sent: {}, attackCount: undefined };
   }
   return {
     warKey,
     sent: { ...(current.sent ?? {}) },
+    attackCount: current.attackCount,
   };
+}
+
+function formatStars(stars) {
+  const n = Number(stars) || 0;
+  const filled = config.emote?.star ?? '⭐';
+  const empty = config.emote?.starGray ?? '☆';
+  return `${filled.repeat(Math.min(3, Math.max(0, n)))}${empty.repeat(Math.max(0, 3 - n))}`;
+}
+
+function findDefender(clanWar, homeClanTag, defenderTag) {
+  const opp = opponentClan(clanWar, homeClanTag);
+  if (!opp?.members || !defenderTag) return null;
+  return opp.members.find((m) => m.tag === defenderTag) ?? null;
+}
+
+function formatAttackResultLine(clanWar, homeClanTag, attack, attackNo) {
+  const stars = formatStars(attack?.stars);
+  const destruction = attack?.destruction ?? 0;
+  const duration = Number(attack?.duration);
+  const left = Number.isFinite(duration) ? Math.max(0, 180 - duration) : null;
+  const defender = findDefender(clanWar, homeClanTag, attack?.defenderTag);
+  const defTh = defender?.townHallLevel;
+  const defThEmote = defTh != null
+    ? (config.emote?.thn?.[defTh] ?? `TH${defTh}`)
+    : '';
+  const defName = defender?.name
+    ? functions.nameReplacer(defender.name)
+    : (attack?.defenderTag ?? 'Unknown');
+  const mapPos = defender?.mapPosition != null ? `#${defender.mapPosition}` : '';
+
+  const lines = [
+    `**Attack ${attackNo}**`,
+    `${stars} **${destruction}%**${left != null ? `  _${left}″ left_` : ''}`,
+    `${config.emote?.sword ?? '⚔️'} ${defThEmote} ${defName}${mapPos ? ` (${mapPos})` : ''}`,
+  ];
+  return lines.join('\n');
+}
+
+function createAttackResultEmbed(mongoAcc, clanWar, homeClanTag, attack, attackNo, attacksUsed, apm) {
+  const embed = new EmbedBuilder();
+  embed.setTitle(`⚔️ WAR ATTACK #${attackNo}`);
+  embed.setColor(config.color.main);
+  embed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
+  embed.setTimestamp();
+  embed.setDescription(
+    [
+      playerHeader(mongoAcc),
+      warMatchLine(clanWar, homeClanTag),
+      '',
+      formatAttackResultLine(clanWar, homeClanTag, attack, attackNo),
+      '',
+      `Attacks used: **${attacksUsed}/${apm}**`,
+    ].join('\n'),
+  );
+  return embed;
+}
+
+async function persistNotifyState(client, mongoAcc, notify) {
+  await client.clientMongo
+    .db('jwc')
+    .collection('accounts')
+    .updateOne({ tag: mongoAcc.tag }, { $set: { clanWarNotify: notify } });
+  mongoAcc.clanWarNotify = notify;
+}
+
+/** 新規追跡時は現状の攻撃数をベースラインにし、遡及通知しない */
+async function seedAttackBaseline(client, mongoAcc, warKey, currentAttackCount) {
+  const notify = getNotifyState(mongoAcc, warKey);
+  if (typeof notify.attackCount === 'number') {
+    return notify.attackCount;
+  }
+
+  notify.attackCount = currentAttackCount;
+  for (let i = 0; i < currentAttackCount; i += 1) {
+    notify.sent[`attack${i + 1}`] = true;
+  }
+  await persistNotifyState(client, mongoAcc, notify);
+  return notify.attackCount;
+}
+
+async function processNewAttackResults(
+  client,
+  mongoAcc,
+  warKey,
+  clanWar,
+  homeClanTag,
+  member,
+) {
+  const attacks = Array.isArray(member?.attacks) ? member.attacks : [];
+  const apm = Number(clanWar?.attacksPerMember) || attacks.length || 1;
+  let previousCount = await seedAttackBaseline(
+    client,
+    mongoAcc,
+    warKey,
+    attacks.length,
+  );
+
+  let sent = 0;
+  for (let i = previousCount; i < attacks.length; i += 1) {
+    const attackNo = i + 1;
+    const embed = createAttackResultEmbed(
+      mongoAcc,
+      clanWar,
+      homeClanTag,
+      attacks[i],
+      attackNo,
+      attackNo,
+      apm,
+    );
+    const alsoMark = [];
+    // claimAndSend 後に attackCount も更新
+    if (await claimAndSend(client, mongoAcc, warKey, `attack${attackNo}`, embed, alsoMark)) {
+      const notify = getNotifyState(mongoAcc, warKey);
+      notify.attackCount = Math.max(notify.attackCount ?? 0, attackNo);
+      await persistNotifyState(client, mongoAcc, notify);
+      sent += 1;
+      await functions.sleep(SEND_DELAY_MS);
+    } else {
+      // 既送信ならカウントだけ進める
+      const notify = getNotifyState(mongoAcc, warKey);
+      if ((notify.attackCount ?? 0) < attackNo) {
+        notify.attackCount = attackNo;
+        await persistNotifyState(client, mongoAcc, notify);
+      }
+    }
+  }
+  return sent;
 }
 
 async function claimAndSend(client, mongoAcc, warKey, primaryKey, embed, alsoMarkKeys = []) {
@@ -454,6 +582,15 @@ async function processAccountWar(client, mongoAcc, clanTag, clanWar, playerCache
       sent += 1;
       await functions.sleep(SEND_DELAY_MS);
     }
+
+    sent += await processNewAttackResults(
+      client,
+      mongoAcc,
+      warKey,
+      clanWar,
+      effectiveClanTag,
+      member,
+    );
 
     const left = remainingAttacks(clanWar, member);
     if (left >= 1 && Number.isFinite(endMs)) {
