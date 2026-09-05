@@ -28,23 +28,46 @@ function isDeliverablePostMode(post) {
   return isChannelPostMode(post) || post === 'dm';
 }
 
-/** types 未設定（旧設定）は全種類 ON 扱い */
-function isWarReminderTypeEnabled(mongoAcc, typeKey) {
+/**
+ * 種類ごとの通知先を返す。
+ * 旧形式（types が boolean / 共通 post）も互換。
+ */
+function getTypePostMode(mongoAcc, typeKey) {
   const settings = getWarReminderSettings(mongoAcc);
-  if (!settings || settings.enabled !== 'all') return false;
-  if (!isDeliverablePostMode(settings.post)) return false;
+  if (!settings || settings.enabled === 'false') return 'NA';
+
   const types = settings.types;
-  if (!types || typeof types !== 'object') return true;
-  return types[typeKey] === true;
+  if (!types || typeof types !== 'object') {
+    return isDeliverablePostMode(settings.post) ? settings.post : 'NA';
+  }
+
+  const value = types[typeKey];
+  if (value === true || value === 'true' || value === 'all') {
+    return isDeliverablePostMode(settings.post) ? settings.post : 'NA';
+  }
+  if (value === false || value === 'false' || value == null) return 'NA';
+  if (isDeliverablePostMode(value) || value === 'NA') return value;
+  return 'NA';
+}
+
+function isWarReminderTypeEnabled(mongoAcc, typeKey) {
+  return isDeliverablePostMode(getTypePostMode(mongoAcc, typeKey));
 }
 
 function accountHasClanWarReminders(mongoAcc) {
   const settings = getWarReminderSettings(mongoAcc);
-  if (!settings || settings.enabled !== 'all') return false;
-  if (!isDeliverablePostMode(settings.post)) return false;
-  const types = settings.types;
-  if (!types || typeof types !== 'object') return true;
-  return Object.values(types).some((v) => v === true);
+  if (!settings) return false;
+  if (settings.enabled === 'false') return false;
+
+  const typeKeys = ['matched', 'started', 'end12h', 'end3h', 'end1h', 'attack'];
+  return typeKeys.some((key) => isWarReminderTypeEnabled(mongoAcc, key));
+}
+
+function typeKeyFromPrimaryKey(primaryKey) {
+  if (typeof primaryKey === 'string' && primaryKey.startsWith('attack')) {
+    return 'attack';
+  }
+  return primaryKey;
 }
 
 async function resolveDeliveryChannel(client, channelId) {
@@ -56,33 +79,47 @@ async function resolveDeliveryChannel(client, channelId) {
   return channel?.isTextBased() ? channel : null;
 }
 
-async function disableBrokenWarReminderSettings(client, mongoAcc, details) {
+async function disableBrokenChannelWarReminders(client, mongoAcc, details) {
   const settings = getWarReminderSettings(mongoAcc);
-  if (!settings || settings.post === 'NA') return false;
+  if (!settings) return false;
 
+  const types = { ...(settings.types ?? {}) };
+  const typeKeys = ['matched', 'started', 'end12h', 'end3h', 'end1h', 'attack'];
+  let changed = false;
+
+  for (const key of typeKeys) {
+    const mode = getTypePostMode(mongoAcc, key);
+    if (isChannelPostMode(mode)) {
+      types[key] = 'NA';
+      changed = true;
+    } else if (typeof types[key] === 'boolean' || types[key] === 'true' || types[key] === 'all') {
+      // keep non-channel legacy as explicit dm if that was shared post
+      if (settings.post === 'dm') {
+        types[key] = 'dm';
+      }
+    }
+  }
+
+  if (!changed && !settings.channel && !isChannelPostMode(settings.post)) {
+    return false;
+  }
+
+  const anyOn = typeKeys.some((key) => isDeliverablePostMode(types[key]));
   const disabledAt = Math.floor(Date.now() / 1000);
-  await client.clientMongo
-    .db('jwc')
-    .collection('accounts')
-    .updateOne(
-      { tag: mongoAcc.tag },
-      {
-        $set: {
-          'warReminders.post': 'NA',
-          'warReminders.channel': null,
-          'warReminders.lastDisabledAt': disabledAt,
-          'warReminders.lastDisabledReason': details.reason,
-        },
-      },
-    );
-
-  mongoAcc.warReminders = {
-    ...settings,
-    post: 'NA',
+  const next = {
+    enabled: anyOn ? 'all' : 'false',
     channel: null,
+    types,
     lastDisabledAt: disabledAt,
     lastDisabledReason: details.reason,
   };
+
+  await client.clientMongo
+    .db('jwc')
+    .collection('accounts')
+    .updateOne({ tag: mongoAcc.tag }, { $set: { warReminders: next } });
+
+  mongoAcc.warReminders = next;
   return true;
 }
 
@@ -93,7 +130,7 @@ async function notifyWarReminderSettingsDisabled(client, mongoAcc, reason) {
     : '`/war_reminders settings`';
   const accountLabel = `${mongoAcc.name ?? 'unknown'} (${mongoAcc.tag ?? 'unknown'})`;
   const content = [
-    ':warning: Clan war reminder delivery was disabled.',
+    ':warning: Clan war reminder channel delivery was disabled.',
     `Account: **${accountLabel}**`,
     `Reason: ${reason}`,
     `Please reconfigure with ${settingsCommand}.`,
@@ -112,24 +149,25 @@ async function notifyWarReminderSettingsDisabled(client, mongoAcc, reason) {
   }
 }
 
-async function deliverWarReminderToUser(client, mongoAcc, payload) {
-  const settings = getWarReminderSettings(mongoAcc);
-  if (!settings || settings.post === 'NA') {
+async function deliverWarReminderToUser(client, mongoAcc, payload, postMode) {
+  if (!isDeliverablePostMode(postMode)) {
     return { ok: false, reason: 'disabled' };
   }
 
+  const settings = getWarReminderSettings(mongoAcc);
+
   try {
-    if (isChannelPostMode(settings.post)) {
-      const channel = await resolveDeliveryChannel(client, settings.channel);
+    if (isChannelPostMode(postMode)) {
+      const channel = await resolveDeliveryChannel(client, settings?.channel);
       if (!channel) {
-        await disableBrokenWarReminderSettings(client, mongoAcc, {
+        await disableBrokenChannelWarReminders(client, mongoAcc, {
           reason: 'channel_not_found',
         });
         await notifyWarReminderSettingsDisabled(client, mongoAcc, 'channel_not_found');
         return { ok: false, reason: 'channel_not_found' };
       }
       if (!canBotPostLegendLogToChannel(channel, client.user)) {
-        await disableBrokenWarReminderSettings(client, mongoAcc, {
+        await disableBrokenChannelWarReminders(client, mongoAcc, {
           reason: 'missing_channel_permissions',
         });
         await notifyWarReminderSettingsDisabled(
@@ -141,7 +179,7 @@ async function deliverWarReminderToUser(client, mongoAcc, payload) {
       }
 
       const sendPayload = { ...payload };
-      if (settings.post === 'channel_mention') {
+      if (postMode === 'channel_mention') {
         const pilotId = mongoAcc.pilotDC?.id;
         if (!pilotId) {
           return { ok: false, reason: 'pilot_missing' };
@@ -154,7 +192,7 @@ async function deliverWarReminderToUser(client, mongoAcc, payload) {
       return { ok: true };
     }
 
-    if (settings.post === 'dm') {
+    if (postMode === 'dm') {
       const pilotId = mongoAcc.pilotDC?.id;
       if (!pilotId) {
         return { ok: false, reason: 'pilot_missing' };
@@ -174,9 +212,11 @@ async function deliverWarReminderToUser(client, mongoAcc, payload) {
     );
     if (BROKEN_DELIVERY_ERROR_CODES.has(error?.code)) {
       const reason =
-        settings.post === 'dm' ? 'dm_unreachable' : `discord_error_${error.code}`;
-      await disableBrokenWarReminderSettings(client, mongoAcc, { reason });
-      await notifyWarReminderSettingsDisabled(client, mongoAcc, reason);
+        postMode === 'dm' ? 'dm_unreachable' : `discord_error_${error.code}`;
+      if (isChannelPostMode(postMode)) {
+        await disableBrokenChannelWarReminders(client, mongoAcc, { reason });
+        await notifyWarReminderSettingsDisabled(client, mongoAcc, reason);
+      }
     }
     return { ok: false, reason: 'delivery_failed', error };
   }
@@ -308,14 +348,27 @@ function createEndReminderEmbed(mongoAcc, clanWar, homeClanTag, member, reminder
 }
 
 async function fetchEligibleAccounts(client) {
+  const deliverable = ['channel', 'channel_mention', 'dm'];
   return client.clientMongo
     .db('jwc')
     .collection('accounts')
     .find(
       {
         status: { $ne: false },
-        'warReminders.enabled': 'all',
-        'warReminders.post': { $in: ['channel', 'channel_mention', 'dm'] },
+        'warReminders.enabled': { $ne: 'false' },
+        $or: [
+          { 'warReminders.types.matched': { $in: deliverable } },
+          { 'warReminders.types.started': { $in: deliverable } },
+          { 'warReminders.types.end12h': { $in: deliverable } },
+          { 'warReminders.types.end3h': { $in: deliverable } },
+          { 'warReminders.types.end1h': { $in: deliverable } },
+          { 'warReminders.types.attack': { $in: deliverable } },
+          // legacy: boolean types + shared post
+          {
+            'warReminders.enabled': 'all',
+            'warReminders.post': { $in: deliverable },
+          },
+        ],
       },
       {
         projection: {
@@ -576,7 +629,12 @@ async function claimAndSend(client, mongoAcc, warKey, primaryKey, embed, alsoMar
 
   mongoAcc.clanWarNotify = doc;
 
-  const result = await deliverWarReminderToUser(client, mongoAcc, { embeds: [embed] });
+  const result = await deliverWarReminderToUser(
+    client,
+    mongoAcc,
+    { embeds: [embed] },
+    getTypePostMode(mongoAcc, typeKeyFromPrimaryKey(primaryKey)),
+  );
   if (!result?.ok) {
     console.warn(
       `[clanWarNotify] delivery failed ${mongoAcc.tag} ${primaryKey}:`,
