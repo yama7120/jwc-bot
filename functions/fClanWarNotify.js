@@ -188,15 +188,6 @@ function buildWarKey(clanTag, startTime) {
   return `${clanTag}:${startUnix}`;
 }
 
-function isFriendlyWar(clanWar) {
-  if (!clanWar) return false;
-  if (clanWar.isFriendly === true) return true;
-  if (typeof clanWar.warType === 'string') {
-    return clanWar.warType.toLowerCase() === 'friendly';
-  }
-  return false;
-}
-
 function normalizeAttacks(member) {
   const raw = member?.attacks;
   if (!raw) return [];
@@ -596,7 +587,7 @@ async function claimAndSend(client, mongoAcc, warKey, primaryKey, embed, alsoMar
 }
 
 async function processAccountWar(client, mongoAcc, clanTag, clanWar, playerCache, warCache) {
-  if (!clanWar || isFriendlyWar(clanWar)) return { sent: 0 };
+  if (!clanWar) return { sent: 0 };
   if (clanWar.state !== 'preparation' && clanWar.state !== 'inWar') return { sent: 0 };
 
   let member = findWarMember(clanWar, mongoAcc.tag);
@@ -614,7 +605,6 @@ async function processAccountWar(client, mongoAcc, clanTag, clanWar, playerCache
     const refreshedWar = await getCurrentWarCached(client, refreshedTag, warCache);
     if (
       !refreshedWar
-      || isFriendlyWar(refreshedWar)
       || (refreshedWar.state !== 'preparation' && refreshedWar.state !== 'inWar')
     ) {
       return { sent: 0 };
@@ -763,16 +753,11 @@ async function cronClanWarNotify(client) {
 
   let sentTotal = 0;
   let skippedNoWar = 0;
-  let skippedFriendly = 0;
 
   for (const [clanTag, clanAccounts] of byClan) {
     const clanWar = warCache.get(clanTag);
     if (!clanWar || (clanWar.state !== 'preparation' && clanWar.state !== 'inWar')) {
       skippedNoWar += clanAccounts.length;
-      continue;
-    }
-    if (isFriendlyWar(clanWar)) {
-      skippedFriendly += clanAccounts.length;
       continue;
     }
 
@@ -794,8 +779,7 @@ async function cronClanWarNotify(client) {
   }
 
   console.log(
-    `[clanWarNotify] done sent=${sentTotal} `
-    + `skippedNoWar=${skippedNoWar} skippedFriendly=${skippedFriendly}`,
+    `[clanWarNotify] done sent=${sentTotal} skippedNoWar=${skippedNoWar}`,
   );
 }
 
