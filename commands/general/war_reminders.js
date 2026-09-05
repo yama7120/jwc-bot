@@ -5,42 +5,68 @@ import { canBotPostLegendLogToChannel } from '../../functions/fLegend.js';
 
 const nameCommand = 'war_reminders';
 
-const data = new SlashCommandBuilder()
-  .setName(nameCommand)
-  .setDescription('no description')
-  .addSubcommand((subcommand) =>
-    subcommand
-      .setName('settings')
-      .setDescription(config.command[nameCommand].subCommand.settings)
-      .addStringOption((option) =>
-        option
-          .setName('account')
-          .setDescription('プレイヤータグ')
-          .setRequired(true)
-          .setAutocomplete(true),
-      )
-      .addStringOption((option) =>
-        option
-          .setName('reminders')
-          .setDescription('クラン対戦リマインダー')
-          .addChoices(
-            { name: '[all] 通知する（マッチング／開始／攻撃結果／残攻撃）', value: 'all' },
-            { name: '[false] 通知しない', value: 'false' },
-          )
-          .setRequired(true),
-      )
-      .addStringOption((option) =>
-        option
-          .setName('post')
-          .setDescription('通知先（legend とは別チャンネルを指定可）')
-          .addChoices(
-            { name: '[this_channel] このチャンネル', value: 'channel' },
-            { name: '[dm] DM', value: 'dm' },
-            { name: '[false] 通知しない', value: 'NA' },
-          )
-          .setRequired(true),
-      ),
-  );
+const ON_OFF_CHOICES = [
+  { name: '[true] ON', value: 'true' },
+  { name: '[false] OFF', value: 'false' },
+];
+
+const NOTIFY_TYPE_OPTIONS = [
+  { name: 'matched', description: 'MATCHED（マッチング時）' },
+  { name: 'started', description: 'STARTED（戦争開始時）' },
+  { name: 'end_12h', description: 'WAR ENDS IN 12 HOURS', key: 'end12h' },
+  { name: 'end_3h', description: 'WAR ENDS IN 3 HOURS', key: 'end3h' },
+  { name: 'end_1h', description: 'WAR ENDS IN 1 HOUR', key: 'end1h' },
+  { name: 'attack', description: 'ATTACK（攻撃結果・撃ごと）' },
+];
+
+function buildSettingsSubcommand() {
+  let sub = new SlashCommandBuilder()
+    .setName(nameCommand)
+    .setDescription('no description')
+    .addSubcommand((subcommand) => {
+      subcommand
+        .setName('settings')
+        .setDescription(config.command[nameCommand].subCommand.settings)
+        .addStringOption((option) =>
+          option
+            .setName('account')
+            .setDescription('プレイヤータグ')
+            .setRequired(true)
+            .setAutocomplete(true),
+        )
+        .addStringOption((option) =>
+          option
+            .setName('post')
+            .setDescription('通知先（legend とは別チャンネルを指定可）')
+            .addChoices(
+              { name: '[this_channel] このチャンネル', value: 'channel' },
+              {
+                name: '[channel_mention] このチャンネル（メンションあり）',
+                value: 'channel_mention',
+              },
+              { name: '[dm] DM', value: 'dm' },
+              { name: '[false] 通知しない', value: 'NA' },
+            )
+            .setRequired(true),
+        );
+
+      for (const typeOpt of NOTIFY_TYPE_OPTIONS) {
+        subcommand.addStringOption((option) =>
+          option
+            .setName(typeOpt.name)
+            .setDescription(typeOpt.description)
+            .addChoices(...ON_OFF_CHOICES)
+            .setRequired(true),
+        );
+      }
+
+      return subcommand;
+    });
+
+  return sub;
+}
+
+const data = buildSettingsSubcommand();
 
 export default {
   data,
@@ -108,11 +134,10 @@ async function settings(interaction, client) {
     return;
   }
 
-  const iReminders = interaction.options.getString('reminders');
   const iPost = interaction.options.getString('post');
   let iChannelId = null;
 
-  if (iPost === 'channel') {
+  if (iPost === 'channel' || iPost === 'channel_mention') {
     const channel = interaction.channel;
     if (!channel?.isTextBased()) {
       await interaction.followUp({
@@ -137,14 +162,36 @@ async function settings(interaction, client) {
       });
       return;
     }
+
+    if (iPost === 'channel_mention' && !mongoAcc.pilotDC?.id) {
+      await interaction.followUp({
+        content: 'pilotDC.id is missing. Link the account to Discord first.',
+        ephemeral: true,
+      });
+      return;
+    }
+
     iChannelId = channel.id;
   }
 
+  const types = {};
+  for (const typeOpt of NOTIFY_TYPE_OPTIONS) {
+    const storageKey = typeOpt.key ?? typeOpt.name;
+    types[storageKey] = interaction.options.getString(typeOpt.name) === 'true';
+  }
+
+  const anyTypeOn = Object.values(types).some(Boolean);
+  const enabled =
+    iPost !== 'NA' && anyTypeOn
+      ? 'all'
+      : 'false';
+
   const resultScan = await functions.scanAcc(client.clientCoc, iPlayerTag);
   const warReminders = {
-    enabled: iReminders,
+    enabled,
     post: iPost,
     channel: iChannelId,
+    types,
   };
 
   const updatedListing = { warReminders };
@@ -172,14 +219,23 @@ async function settings(interaction, client) {
     description += `\n`;
   }
   description += `⚔️ Clan War Reminder Settings\n`;
-  description += `[Reminders] *${iReminders}*\n`;
   description += `[Post] *${iPost}*\n`;
+  description += `[Matched] *${types.matched ? 'ON' : 'OFF'}*\n`;
+  description += `[Started] *${types.started ? 'ON' : 'OFF'}*\n`;
+  description += `[Ends 12h] *${types.end12h ? 'ON' : 'OFF'}*\n`;
+  description += `[Ends 3h] *${types.end3h ? 'ON' : 'OFF'}*\n`;
+  description += `[Ends 1h] *${types.end1h ? 'ON' : 'OFF'}*\n`;
+  description += `[Attack] *${types.attack ? 'ON' : 'OFF'}*\n`;
   description += `\n`;
-  if (iPost === 'dm') {
+  if (iPost === 'dm' && anyTypeOn) {
     description += `*JWC bot will dm war reminders to you.*\n`;
-  } else if (iPost === 'channel') {
+  } else if (iPost === 'channel' && anyTypeOn) {
     description += `*JWC bot will post war reminders on this channel.*\n`;
     description += `<#${interaction.channel.id}>\n`;
+  } else if (iPost === 'channel_mention' && anyTypeOn) {
+    description += `*JWC bot will post war reminders on this channel with a mention.*\n`;
+    description += `<#${interaction.channel.id}>\n`;
+    description += `mention: <@!${mongoAcc.pilotDC.id}>\n`;
   } else {
     description += `*War reminders are disabled.*\n`;
   }

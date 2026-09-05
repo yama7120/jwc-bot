@@ -20,11 +20,31 @@ function getWarReminderSettings(mongoAcc) {
   return mongoAcc?.warReminders ?? null;
 }
 
+function isChannelPostMode(post) {
+  return post === 'channel' || post === 'channel_mention';
+}
+
+function isDeliverablePostMode(post) {
+  return isChannelPostMode(post) || post === 'dm';
+}
+
+/** types 未設定（旧設定）は全種類 ON 扱い */
+function isWarReminderTypeEnabled(mongoAcc, typeKey) {
+  const settings = getWarReminderSettings(mongoAcc);
+  if (!settings || settings.enabled !== 'all') return false;
+  if (!isDeliverablePostMode(settings.post)) return false;
+  const types = settings.types;
+  if (!types || typeof types !== 'object') return true;
+  return types[typeKey] === true;
+}
+
 function accountHasClanWarReminders(mongoAcc) {
   const settings = getWarReminderSettings(mongoAcc);
   if (!settings || settings.enabled !== 'all') return false;
-  if (settings.post !== 'channel' && settings.post !== 'dm') return false;
-  return true;
+  if (!isDeliverablePostMode(settings.post)) return false;
+  const types = settings.types;
+  if (!types || typeof types !== 'object') return true;
+  return Object.values(types).some((v) => v === true);
 }
 
 async function resolveDeliveryChannel(client, channelId) {
@@ -99,7 +119,7 @@ async function deliverWarReminderToUser(client, mongoAcc, payload) {
   }
 
   try {
-    if (settings.post === 'channel') {
+    if (isChannelPostMode(settings.post)) {
       const channel = await resolveDeliveryChannel(client, settings.channel);
       if (!channel) {
         await disableBrokenWarReminderSettings(client, mongoAcc, {
@@ -119,7 +139,18 @@ async function deliverWarReminderToUser(client, mongoAcc, payload) {
         );
         return { ok: false, reason: 'missing_channel_permissions' };
       }
-      await channel.send(payload);
+
+      const sendPayload = { ...payload };
+      if (settings.post === 'channel_mention') {
+        const pilotId = mongoAcc.pilotDC?.id;
+        if (!pilotId) {
+          return { ok: false, reason: 'pilot_missing' };
+        }
+        sendPayload.content = `<@!${pilotId}>`;
+        sendPayload.allowedMentions = { users: [String(pilotId)] };
+      }
+
+      await channel.send(sendPayload);
       return { ok: true };
     }
 
@@ -293,7 +324,7 @@ async function fetchEligibleAccounts(client) {
       {
         status: { $ne: false },
         'warReminders.enabled': 'all',
-        'warReminders.post': { $in: ['channel', 'dm'] },
+        'warReminders.post': { $in: ['channel', 'channel_mention', 'dm'] },
       },
       {
         projection: {
@@ -601,34 +632,41 @@ async function processAccountWar(client, mongoAcc, clanTag, clanWar, playerCache
   const endMs = new Date(clanWar.endTime).getTime();
 
   if (clanWar.state === 'preparation') {
-    const embed = createMatchedEmbed(mongoAcc, clanWar, effectiveClanTag);
-    if (await claimAndSend(client, mongoAcc, warKey, 'matched', embed)) {
-      sent += 1;
-      await functions.sleep(SEND_DELAY_MS);
+    if (isWarReminderTypeEnabled(mongoAcc, 'matched')) {
+      const embed = createMatchedEmbed(mongoAcc, clanWar, effectiveClanTag);
+      if (await claimAndSend(client, mongoAcc, warKey, 'matched', embed)) {
+        sent += 1;
+        await functions.sleep(SEND_DELAY_MS);
+      }
     }
   }
 
   if (clanWar.state === 'inWar') {
-    const startedEmbed = createStartedEmbed(mongoAcc, clanWar, effectiveClanTag);
-    if (await claimAndSend(client, mongoAcc, warKey, 'started', startedEmbed)) {
-      sent += 1;
-      await functions.sleep(SEND_DELAY_MS);
+    if (isWarReminderTypeEnabled(mongoAcc, 'started')) {
+      const startedEmbed = createStartedEmbed(mongoAcc, clanWar, effectiveClanTag);
+      if (await claimAndSend(client, mongoAcc, warKey, 'started', startedEmbed)) {
+        sent += 1;
+        await functions.sleep(SEND_DELAY_MS);
+      }
     }
 
-    sent += await processNewAttackResults(
-      client,
-      mongoAcc,
-      warKey,
-      clanWar,
-      effectiveClanTag,
-      member,
-    );
+    if (isWarReminderTypeEnabled(mongoAcc, 'attack')) {
+      sent += await processNewAttackResults(
+        client,
+        mongoAcc,
+        warKey,
+        clanWar,
+        effectiveClanTag,
+        member,
+      );
+    }
 
     const left = remainingAttacks(clanWar, member);
     if (left >= 1 && Number.isFinite(endMs)) {
       for (let i = END_REMINDER_HOURS.length - 1; i >= 0; i -= 1) {
         const reminder = END_REMINDER_HOURS[i];
         if (nowMs < endMs - reminder.hours * HOUR_MS) continue;
+        if (!isWarReminderTypeEnabled(mongoAcc, reminder.key)) continue;
 
         const alsoMark = END_REMINDER_HOURS.slice(0, i).map((r) => r.key);
         const embed = createEndReminderEmbed(
