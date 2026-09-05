@@ -3,7 +3,7 @@ import config from '../../config/config.js';
 import * as functions from '../../functions/functions.js';
 import { canBotPostLegendLogToChannel } from '../../functions/fLegend.js';
 
-const nameCommand = 'war_reminders';
+const nameCommand = 'reminders';
 
 const POST_CHOICES = [
   { name: '[this_channel] このチャンネル', value: 'channel' },
@@ -35,37 +35,46 @@ function isChannelPostMode(post) {
   return post === 'channel' || post === 'channel_mention';
 }
 
-function buildSettingsSubcommand() {
+function buildCommand() {
   return new SlashCommandBuilder()
     .setName(nameCommand)
     .setDescription('no description')
-    .addSubcommand((subcommand) => {
-      subcommand
-        .setName('settings')
-        .setDescription(config.command[nameCommand].subCommand.settings)
-        .addStringOption((option) =>
-          option
-            .setName('account')
-            .setDescription('プレイヤータグ')
-            .setRequired(true)
-            .setAutocomplete(true),
-        );
+    .addSubcommandGroup((group) => {
+      group
+        .setName('war')
+        .setDescription('クラン対戦リマインダー')
+        .addSubcommand((subcommand) => {
+          subcommand
+            .setName('settings')
+            .setDescription(
+              config.command[nameCommand].subCommandGroup.war.settings,
+            )
+            .addStringOption((option) =>
+              option
+                .setName('account')
+                .setDescription('プレイヤータグ')
+                .setRequired(true)
+                .setAutocomplete(true),
+            );
 
-      for (const typeOpt of NOTIFY_TYPE_OPTIONS) {
-        subcommand.addStringOption((option) =>
-          option
-            .setName(typeOpt.name)
-            .setDescription(typeOpt.description)
-            .addChoices(...POST_CHOICES)
-            .setRequired(true),
-        );
-      }
+          for (const typeOpt of NOTIFY_TYPE_OPTIONS) {
+            subcommand.addStringOption((option) =>
+              option
+                .setName(typeOpt.name)
+                .setDescription(typeOpt.description)
+                .addChoices(...POST_CHOICES)
+                .setRequired(true),
+            );
+          }
 
-      return subcommand;
+          return subcommand;
+        });
+
+      return group;
     });
 }
 
-const data = buildSettingsSubcommand();
+const data = buildCommand();
 
 export default {
   data,
@@ -105,13 +114,15 @@ export default {
   },
 
   async execute(interaction, client) {
-    if (interaction.options.getSubcommand() === 'settings') {
-      await settings(interaction, client);
+    const group = interaction.options.getSubcommandGroup();
+    const sub = interaction.options.getSubcommand();
+    if (group === 'war' && sub === 'settings') {
+      await warSettings(interaction, client);
     }
   },
 };
 
-async function settings(interaction, client) {
+async function warSettings(interaction, client) {
   const iPlayerTag = interaction.options.getString('account');
   const mongoAcc = await client.clientMongo.db('jwc').collection('accounts').findOne(
     { tag: iPlayerTag },

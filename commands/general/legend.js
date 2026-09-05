@@ -435,10 +435,10 @@ async function settings(interaction, client) {
     description += `<#${interaction.channel.id}>\n`;
   };
   description += `\n`;
-  const warRemindersCmdId = config.command.war_reminders?.id;
+  const warRemindersCmdId = config.command.reminders?.id;
   description += warRemindersCmdId
-    ? `_Clan war reminders: </war_reminders settings:${warRemindersCmdId}>_\n`
-    : `_Clan war reminders: \`/war_reminders settings\`_\n`;
+    ? `_Clan war reminders: </reminders war settings:${warRemindersCmdId}>_\n`
+    : `_Clan war reminders: \`/reminders war settings\`_\n`;
   embed.setTitle(title);
   embed.setDescription(description);
 

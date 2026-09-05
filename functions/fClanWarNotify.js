@@ -124,10 +124,10 @@ async function disableBrokenChannelWarReminders(client, mongoAcc, details) {
 }
 
 async function notifyWarReminderSettingsDisabled(client, mongoAcc, reason) {
-  const commandId = config.command?.war_reminders?.id;
+  const commandId = config.command?.reminders?.id;
   const settingsCommand = commandId
-    ? `</war_reminders settings:${commandId}>`
-    : '`/war_reminders settings`';
+    ? `</reminders war settings:${commandId}>`
+    : '`/reminders war settings`';
   const accountLabel = `${mongoAcc.name ?? 'unknown'} (${mongoAcc.tag ?? 'unknown'})`;
   const content = [
     ':warning: Clan war reminder channel delivery was disabled.',
