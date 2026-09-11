@@ -944,18 +944,16 @@ export default {
         });
       }
 
-      if (accs.length > 0) {
-        await interaction.respond(
-          accs.map((acc) => {
-            const pilotName =
-              acc.pilotDC.globalName ?? acc.pilotDC.username ?? 'unknown';
-            return {
-              name: `[TH${acc.townHallLevel}] ${acc.name} | ${pilotName}`,
-              value: acc.tag,
-            };
-          }),
-        );
-      }
+      await interaction.respond(
+        accs.map((acc) => {
+          const pilotName =
+            acc.pilotDC.globalName ?? acc.pilotDC.username ?? 'unknown';
+          return {
+            name: `[TH${acc.townHallLevel}] ${acc.name} | ${pilotName}`,
+            value: acc.tag,
+          };
+        }),
+      );
     } else if (
       subcommandGroup == 'update' &&
       subcommand == 'logo_thumbs' &&
@@ -991,33 +989,66 @@ export default {
           value: team.clan_abbr,
         })),
       );
-    } else if (subcommandGroup == 'roster') {
-      const mongoTeam = await client.clientMongo
-        .db('jwc')
-        .collection('clans')
-        .findOne(
-          { rep_channel: interaction.channel.id },
-          { projection: { clan_abbr: 1, team_name: 1, _id: 0 } },
-        );
-
+    } else if (subcommandGroup == 'roster' && subcommand == 'delete') {
       if (focusedOption.name === 'team') {
-        if (mongoTeam) {
-          await interaction.respond([
+        const focusedValue = interaction.options.getFocused();
+        const cursor = client.clientMongo
+          .db('jwc')
+          .collection('clans')
+          .find(
+            {},
             {
-              name: functions.formatTeamAutocompleteName(
-                mongoTeam.clan_abbr,
-                mongoTeam.team_name,
-              ),
-              value: mongoTeam.clan_abbr,
+              projection: {
+                clan_abbr: 1,
+                team_name: 1,
+                league: 1,
+                _id: 0,
+              },
             },
-          ]);
+          )
+          .sort({ clan_abbr: 1 });
+        let teams = await cursor.toArray();
+        await cursor.close();
+
+        teams = teams.filter((team) =>
+          functions.teamMatchesAutocompleteFilter(team, focusedValue),
+        );
+        if (teams.length > 25) {
+          teams = teams.slice(0, 25);
         }
+
+        await interaction.respond(
+          teams.map((team) => ({
+            name: functions.formatTeamAutocompleteName(
+              team.clan_abbr,
+              team.team_name,
+            ),
+            value: team.clan_abbr,
+          })),
+        );
       } else if (focusedOption.name === 'account') {
-        const iTeamAbbr = await interaction.options.getString('team');
-        let leagueM = mongoTeam.league;
-        if (leagueM == 'j1' || leagueM == 'j2') {
-          leagueM = 'j';
+        const iTeamAbbr = functions.normalizeTeamAbbrFromOption(
+          interaction.options.getString('team'),
+        );
+        if (!iTeamAbbr) {
+          await interaction.respond([]);
+          return;
         }
+
+        const mongoTeam = await client.clientMongo
+          .db('jwc')
+          .collection('clans')
+          .findOne(
+            { clan_abbr: iTeamAbbr },
+            { projection: { league: 1, clan_abbr: 1, _id: 0 } },
+          );
+        if (!mongoTeam?.league) {
+          await interaction.respond([]);
+          return;
+        }
+
+        const leagueM =
+          config.leagueM[mongoTeam.league] ?? mongoTeam.league;
 
         const query = { [`homeClanAbbr.${leagueM}`]: iTeamAbbr, status: true };
         const options = {
@@ -1041,21 +1072,23 @@ export default {
 
         const focusedValue = interaction.options.getFocused();
         accs = accs.filter(function (acc) {
-          return acc.name.includes(focusedValue);
+          return String(acc.name ?? '')
+            .toLowerCase()
+            .includes(String(focusedValue ?? '').toLowerCase());
         });
         if (accs.length > 24) {
-          accs = accs.filter(function (acc, index) {
-            return index < 24;
-          });
+          accs = accs.slice(0, 24);
         }
 
         await interaction.respond([
           { name: 'ALL', value: 'all' },
           ...accs.map((acc) => ({
-            name: `[TH${acc.townHallLevel}] ${acc.name} | ${acc.pilotName[leagueM]}`,
+            name: `[TH${acc.townHallLevel}] ${acc.name} | ${acc.pilotName?.[leagueM] ?? '—'}`,
             value: acc.tag,
           })),
         ]);
+      } else {
+        await interaction.respond([]);
       }
     } else {
       if (focusedOption.name === 'match') {
