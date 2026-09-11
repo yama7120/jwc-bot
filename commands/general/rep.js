@@ -401,12 +401,11 @@ export default {
       );
 
       if (!mongoTeam) {
-        await safeAutocompleteRespond(interaction, []);
-        void reportAutocompleteIssue(
-          client,
-          interaction,
-          `rep team_information: no team found for channel ${interaction.channel.id}`,
+        // チーム専用チャンネル外での入力は想定内（エラーチャンネルへは流さない）
+        console.warn(
+          `[autocomplete] rep team_information: no team for channel ${interaction.channel.id}`,
         );
+        await safeAutocompleteRespond(interaction, []);
         return;
       }
 
@@ -482,12 +481,11 @@ export default {
         );
 
         if (!mongoTeam) {
-          await safeAutocompleteRespond(interaction, []);
-          void reportAutocompleteIssue(
-            client,
-            interaction,
-            `rep roster delete: no team found for channel ${interaction.channel.id}`,
+          // チーム専用チャンネル外での入力は想定内（エラーチャンネルへは流さない）
+          console.warn(
+            `[autocomplete] rep roster delete: no team for channel ${interaction.channel.id}`,
           );
+          await safeAutocompleteRespond(interaction, []);
           return;
         }
 
