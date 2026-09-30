@@ -317,7 +317,7 @@ let data = new SlashCommandBuilder()
                 },
                 { name: '配信フラグ ON/OFF', value: 'stream' },
                 {
-                  name: '対戦結果の手動追加（要：星数・破壊率・全壊数・攻撃数・サイズ）',
+                  name: '対戦結果の手動追加/修正（未入力は既存値を維持）',
                   value: 'addResult',
                 },
               ),
@@ -2424,33 +2424,64 @@ async function addResultManual(
   const iOppAttacks = interaction.options.getInteger('opp_attacks');
   const iSize = interaction.options.getInteger('war_size');
 
-  // 必須パラメータのチェック
-  if (
-    iClanStars == null ||
-    iOppStars == null ||
-    iClanDestruction == null ||
-    iOppDestruction == null ||
-    iClanTriples == null ||
-    iOppTriples == null ||
-    iClanAttacks == null ||
-    iOppAttacks == null ||
-    iSize == null
-  ) {
+  const existing = mongoWar.result;
+  const isEdit = existing?.state === 'warEnded';
+
+  if (existing?.state === 'forfeited') {
     await interaction.followUp({
-      content:
-        ':x: 必須パラメータが不足しています（clan_stars, opp_stars, clan_destruction, opp_destruction, clan_triples, opp_triples, clan_attacks, opp_attacks, war_size）',
+      content: `:x: 没収試合の結果は手動修正できません（state: forfeited）`,
     });
     return;
   }
 
-  // 既に結果がある場合は上書き防止
   if (
-    mongoWar.result &&
-    (mongoWar.result.state === 'warEnded' ||
-      mongoWar.result.state === 'forfeited')
+    iClanStars == null &&
+    iOppStars == null &&
+    iClanDestruction == null &&
+    iOppDestruction == null &&
+    iClanTriples == null &&
+    iOppTriples == null &&
+    iClanAttacks == null &&
+    iOppAttacks == null &&
+    iSize == null
   ) {
     await interaction.followUp({
-      content: `:x: この対戦には既に結果が存在します（state: ${mongoWar.result.state}）`,
+      content: ':x: 変更するパラメータを1つ以上指定してください。',
+    });
+    return;
+  }
+
+  // 未入力は既存値を維持。新規追加時は全項目必須
+  const clanStars = iClanStars ?? existing?.clan?.stars ?? null;
+  const oppStars = iOppStars ?? existing?.opponent?.stars ?? null;
+  const clanDestruction =
+    iClanDestruction ?? existing?.clan?.destruction ?? null;
+  const oppDestruction =
+    iOppDestruction ?? existing?.opponent?.destruction ?? null;
+  const clanTriples =
+    iClanTriples ?? existing?.clan?.allAttackTypes?.nTriple?.total ?? null;
+  const oppTriples =
+    iOppTriples ?? existing?.opponent?.allAttackTypes?.nTriple?.total ?? null;
+  const clanAttacks =
+    iClanAttacks ?? existing?.clan?.allAttackTypes?.nAt?.total ?? null;
+  const oppAttacks =
+    iOppAttacks ?? existing?.opponent?.allAttackTypes?.nAt?.total ?? null;
+  const size = iSize ?? existing?.size ?? null;
+
+  if (
+    clanStars == null ||
+    oppStars == null ||
+    clanDestruction == null ||
+    oppDestruction == null ||
+    clanTriples == null ||
+    oppTriples == null ||
+    clanAttacks == null ||
+    oppAttacks == null ||
+    size == null
+  ) {
+    await interaction.followUp({
+      content:
+        ':x: 必須パラメータが不足しています（clan_stars, opp_stars, clan_destruction, opp_destruction, clan_triples, opp_triples, clan_attacks, opp_attacks, war_size）。既存結果がない場合はすべて入力してください。',
     });
     return;
   }
@@ -2485,104 +2516,175 @@ async function addResultManual(
     return stats;
   }
 
-  // 全データを fresh に格納、cleanup/overkill は空
-  const clanFresh = buildAttackTypeStats(
-    iClanAttacks,
-    iClanTriples,
-    iOppAttacks,
-    iOppTriples,
-  );
-  const clanCleanup = buildAttackTypeStats(0, 0, 0, 0);
-  const clanOverkill = buildAttackTypeStats(0, 0, 0, 0);
-  const clanAllAttackTypes = buildAttackTypeStats(
-    iClanAttacks,
-    iClanTriples,
-    iOppAttacks,
-    iOppTriples,
-  );
+  const statsChanged =
+    iClanAttacks != null ||
+    iOppAttacks != null ||
+    iClanTriples != null ||
+    iOppTriples != null ||
+    iSize != null;
 
-  const oppFresh = buildAttackTypeStats(
-    iOppAttacks,
-    iOppTriples,
-    iClanAttacks,
-    iClanTriples,
-  );
-  const oppCleanup = buildAttackTypeStats(0, 0, 0, 0);
-  const oppOverkill = buildAttackTypeStats(0, 0, 0, 0);
-  const oppAllAttackTypes = buildAttackTypeStats(
-    iOppAttacks,
-    iOppTriples,
-    iClanAttacks,
-    iClanTriples,
-  );
+  let result;
+  if (isEdit) {
+    result = JSON.parse(JSON.stringify(existing));
+    result.clan.stars = clanStars;
+    result.clan.destruction = clanDestruction;
+    result.opponent.stars = oppStars;
+    result.opponent.destruction = oppDestruction;
 
-  const result = {
-    season: config.season[iLeague],
-    league: iLeague,
-    week: iWeek,
-    match: iMatch,
-    state: 'warEnded',
-    size: iSize,
-    apm: apm,
-    arrAttacksPlus: [],
-    clan: {
-      stars: iClanStars,
-      destruction: iClanDestruction,
-      nLeft: iSize * apm - iClanAttacks,
-      nOneDefense: 0,
-      ptDefSum: 0,
-      nDefC: 0,
-      fresh: clanFresh,
-      cleanup: clanCleanup,
-      overkill: clanOverkill,
-      allAttackTypes: clanAllAttackTypes,
-    },
-    opponent: {
-      stars: iOppStars,
-      destruction: iOppDestruction,
-      nLeft: iSize * apm - iOppAttacks,
-      nOneDefense: 0,
-      ptDefSum: 0,
-      nDefC: 0,
-      fresh: oppFresh,
-      cleanup: oppCleanup,
-      overkill: oppOverkill,
-      allAttackTypes: oppAllAttackTypes,
-    },
-  };
+    if (statsChanged) {
+      result.size = size;
+      result.apm = apm;
+      result.clan.nLeft = size * apm - clanAttacks;
+      result.opponent.nLeft = size * apm - oppAttacks;
 
-  // wars コレクションに result を保存
+      const clanFresh = buildAttackTypeStats(
+        clanAttacks,
+        clanTriples,
+        oppAttacks,
+        oppTriples,
+      );
+      const oppFresh = buildAttackTypeStats(
+        oppAttacks,
+        oppTriples,
+        clanAttacks,
+        clanTriples,
+      );
+      const emptyStats = buildAttackTypeStats(0, 0, 0, 0);
+
+      result.clan.fresh = clanFresh;
+      result.clan.cleanup = emptyStats;
+      result.clan.overkill = emptyStats;
+      result.clan.allAttackTypes = buildAttackTypeStats(
+        clanAttacks,
+        clanTriples,
+        oppAttacks,
+        oppTriples,
+      );
+      result.opponent.fresh = oppFresh;
+      result.opponent.cleanup = emptyStats;
+      result.opponent.overkill = emptyStats;
+      result.opponent.allAttackTypes = buildAttackTypeStats(
+        oppAttacks,
+        oppTriples,
+        clanAttacks,
+        clanTriples,
+      );
+    }
+  } else {
+    const clanFresh = buildAttackTypeStats(
+      clanAttacks,
+      clanTriples,
+      oppAttacks,
+      oppTriples,
+    );
+    const clanCleanup = buildAttackTypeStats(0, 0, 0, 0);
+    const clanOverkill = buildAttackTypeStats(0, 0, 0, 0);
+    const clanAllAttackTypes = buildAttackTypeStats(
+      clanAttacks,
+      clanTriples,
+      oppAttacks,
+      oppTriples,
+    );
+
+    const oppFresh = buildAttackTypeStats(
+      oppAttacks,
+      oppTriples,
+      clanAttacks,
+      clanTriples,
+    );
+    const oppCleanup = buildAttackTypeStats(0, 0, 0, 0);
+    const oppOverkill = buildAttackTypeStats(0, 0, 0, 0);
+    const oppAllAttackTypes = buildAttackTypeStats(
+      oppAttacks,
+      oppTriples,
+      clanAttacks,
+      clanTriples,
+    );
+
+    result = {
+      season: config.season[iLeague],
+      league: iLeague,
+      week: iWeek,
+      match: iMatch,
+      state: 'warEnded',
+      size: size,
+      apm: apm,
+      arrAttacksPlus: [],
+      clan: {
+        stars: clanStars,
+        destruction: clanDestruction,
+        nLeft: size * apm - clanAttacks,
+        nOneDefense: 0,
+        ptDefSum: 0,
+        nDefC: 0,
+        fresh: clanFresh,
+        cleanup: clanCleanup,
+        overkill: clanOverkill,
+        allAttackTypes: clanAllAttackTypes,
+      },
+      opponent: {
+        stars: oppStars,
+        destruction: oppDestruction,
+        nLeft: size * apm - oppAttacks,
+        nOneDefense: 0,
+        ptDefSum: 0,
+        nDefC: 0,
+        fresh: oppFresh,
+        cleanup: oppCleanup,
+        overkill: oppOverkill,
+        allAttackTypes: oppAllAttackTypes,
+      },
+    };
+  }
+
+  // 順位計算は clan_war / opponent_war の stars・destruction を参照するため同期
+  const updatedListing = { result: result };
+  if (mongoWar.clan_war?.clan) {
+    updatedListing['clan_war.clan.stars'] = clanStars;
+    updatedListing['clan_war.clan.destruction'] = clanDestruction;
+  }
+  if (mongoWar.opponent_war?.clan) {
+    updatedListing['opponent_war.clan.stars'] = oppStars;
+    updatedListing['opponent_war.clan.destruction'] = oppDestruction;
+  }
+
   await client.clientMongo
     .db('jwc')
     .collection('wars')
-    .updateOne(query, { $set: { result: result } });
+    .updateOne(query, { $set: updatedListing });
 
-  // war info の更新
+  await fScore.autoUpdate(client.clientMongo, iLeague);
+  await fMongo.standings(client.clientMongo, iLeague);
   await functions.updateWarInfo(client, iLeague, iWeek);
 
   // 結果表示
   let description = '';
-  description += `:white_check_mark: **対戦結果を手動追加しました**\n\n`;
+  description += isEdit
+    ? `:white_check_mark: **対戦結果を手動修正しました**\n\n`
+    : `:white_check_mark: **対戦結果を手動追加しました**\n\n`;
   description += `${config.league[iLeague]} - Week ${iWeek} - Match ${iMatch}\n`;
   description += `**${mongoWar.clan_abbr.toUpperCase()} vs. ${mongoWar.opponent_abbr.toUpperCase()}**\n\n`;
-  description += `${config.emote.star} **${iClanStars}** - **${iOppStars}**`;
-  description += `  ( *${iClanDestruction}%* - *${iOppDestruction}%* )\n`;
-  description += `:boom: **${iClanTriples}**/${iClanAttacks}`;
-  description += ` - **${iOppTriples}**/${iOppAttacks}\n`;
+  description += `${config.emote.star} **${clanStars}** - **${oppStars}**`;
+  description += `  ( *${clanDestruction}%* - *${oppDestruction}%* )\n`;
+  description += `:boom: **${clanTriples}**/${clanAttacks}`;
+  description += ` - **${oppTriples}**/${oppAttacks}\n`;
 
   const clanHitrate =
-    iClanAttacks > 0
-      ? Math.round((iClanTriples / iClanAttacks) * 100 * 100) / 100
+    clanAttacks > 0
+      ? Math.round((clanTriples / clanAttacks) * 100 * 100) / 100
       : 0;
   const oppHitrate =
-    iOppAttacks > 0
-      ? Math.round((iOppTriples / iOppAttacks) * 100 * 100) / 100
+    oppAttacks > 0
+      ? Math.round((oppTriples / oppAttacks) * 100 * 100) / 100
       : 0;
   description += `( **${clanHitrate}**% - **${oppHitrate}**% )\n`;
-  description += `Size: **${iSize}** / APM: **${apm}**\n`;
+  description += `Size: **${size}** / APM: **${apm}**\n`;
+  description += `:white_check_mark: *${config.league[iLeague]} standings has successfully updated.*\n`;
 
   const embed = new EmbedBuilder();
-  embed.setTitle('**WAR RESULT ADDED (MANUAL)**');
+  embed.setTitle(
+    isEdit ? '**WAR RESULT EDITED (MANUAL)**' : '**WAR RESULT ADDED (MANUAL)**',
+  );
   embed.setDescription(description);
   embed.setColor(config.color[iLeague]);
   embed.setFooter({ text: config.footer, iconURL: config.urlImage.jwc });
