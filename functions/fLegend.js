@@ -1434,7 +1434,8 @@ function resolveLastStoredTrophies(mongoAcc, afterPlayerStats, seasonData = null
  * 各 battle 終了時点の trophiesCurrent を算出する。
  *
  * 方針: battlelog の増減を本線。保存済み最終トロフィーから積算する。
- * API player.trophies は「反映が確認できる時」や「プロファイルは動いたが合計不一致」の再同期に使う。
+ * Legend I は保存値がある限り積算だけ（API は当日分が遅れる）。
+ * それ以外は、API player.trophies が反映済み、またはプロファイルだけ不整合のときに再同期する。
  *
  * @param {{ forceApiAnchor?: boolean }} [opts]
  */
@@ -1474,9 +1475,21 @@ function computeTrophiesCurrentByBattleIndex(
     return out;
   };
 
+  const isLegend1 =
+    afterPlayerStats?.leagueTier?.id === config_coc.leagueId.legend
+    || beforePlayerStats?.leagueTier?.id === config_coc.leagueId.legend;
+
   // 降格・リーグ切替直後: 今回バッチの終点を API after に合わせる
   if (opts?.forceApiAnchor && Number.isFinite(afterT)) {
     return backwardFrom(afterT);
+  }
+
+  // Legend I: player.trophies は当日の攻撃・防衛より遅れる。
+  // 3 戦三冠で +120 になり、閾値 100 の API 再同期が正しい積算を古い API 値へ巻き戻す。
+  // 保存済み総数がある間は battlelog の増減だけを足す。
+  // シーズンリセットは呼び出し元で先に抜け、リーグ変動は forceApiAnchor が上で処理する。
+  if (isLegend1 && Number.isFinite(lastT)) {
+    return forwardFrom(lastT);
   }
 
   // 0) 保存値 + 今回 diff の終点が API と大きく乖離、かつそのギャップを
