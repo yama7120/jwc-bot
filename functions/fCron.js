@@ -332,27 +332,50 @@ async function addNewDayToLegendAccounts(client, seasonData) {
       try {
         const daysArr = Array.isArray(account?.legend?.days) ? account.legend.days : [];
 
-        // 既に当日エントリ (season, day) が存在するアカウントはスキップ（重複 push 防止）
-        const hasCurrentDay = daysArr.some(
+        // Legend I: 14:00 autoUpdateAcc 直後の API トロフィーを日次基準の正とする。
+        // 前日 day.trophies（積算）を引き継ぐと、日中のずれが翌日に汚染される。
+        const startingTrophies = Number(account?.trophies) || 0;
+
+        // 既に当日エントリがある場合は重複 push しない。
+        // ランク戦経由で先に作られた day には trophiesStart が無いことがあるので後付けする。
+        const currentDayEntry = daysArr.find(
           (d) =>
             String(d?.season) === String(seasonId)
             && Number(d?.day) === Number(currentDay),
         );
-        if (hasCurrentDay) {
+        if (currentDayEntry) {
           nSkipped += 1;
+          if (!Number.isFinite(Number(currentDayEntry.trophiesStart))) {
+            await client.clientMongo
+              .db('jwc')
+              .collection('accounts')
+              .updateOne(
+                {
+                  tag: account.tag,
+                  'legend.days': {
+                    $elemMatch: {
+                      season: { $in: [seasonId, String(seasonId)].filter(Boolean) },
+                      day: {
+                        $in: [Number(currentDay), String(currentDay), currentDay]
+                          .filter((v) => v != null && v !== ''),
+                      },
+                    },
+                  },
+                },
+                {
+                  $set: {
+                    'legend.days.$.trophiesStart': startingTrophies,
+                  },
+                },
+              );
+          }
           continue;
         }
-
-        // 新しい1日の開始トロフィーは、直前の day の終了値（無ければ現在のトロフィー）を引き継ぐ
-        // 当日エントリが存在しない前提なので、legend.days[0] は前日以前のもの
-        const prevDayTrophies = Number(daysArr[0]?.trophies);
-        const startingTrophies = Number.isFinite(prevDayTrophies) && prevDayTrophies > 0
-          ? prevDayTrophies
-          : Number(account?.trophies) || 0;
 
         const newDayObject = {
           season: seasonId,
           day: Number(currentDay) || currentDay,
+          trophiesStart: startingTrophies,
           trophies: startingTrophies,
           diffTrophies: 0,
           attacks: 0,

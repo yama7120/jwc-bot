@@ -970,6 +970,11 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
       const prevJapan = parsePositiveRank(existingDayData?.japanRank);
       updatedDayData.globalRank = prevGlobal;
       updatedDayData.japanRank = prevJapan;
+      // 14:00 基準の trophiesStart は再集計で消さない
+      const prevTrophiesStart = Number(existingDayData?.trophiesStart);
+      if (Number.isFinite(prevTrophiesStart)) {
+        updatedDayData.trophiesStart = prevTrophiesStart;
+      }
       // day は数値で統一（型混在で翌日の $elemMatch / 重複 day を防ぐ）
       updatedDayData.day = Number(targetDay);
       updatedDayData.season = targetSeason;
@@ -1430,11 +1435,37 @@ function resolveLastStoredTrophies(mongoAcc, afterPlayerStats, seasonData = null
   return null;
 }
 
+/** 当日 legend.days の 14:00 基準 trophiesStart（無ければ null） */
+function resolveLegend1DayTrophiesStart(mongoAcc, seasonData) {
+  if (!seasonData) return null;
+  const days = mongoAcc?.legend?.days;
+  if (!Array.isArray(days)) return null;
+  const hit = days.find(
+    (d) =>
+      String(d?.season) === String(seasonData.seasonId)
+      && Number(d?.day) === Number(seasonData.daysNow),
+  );
+  const start = Number(hit?.trophiesStart);
+  return Number.isFinite(start) ? start : null;
+}
+
+/** 当日 events の diffTrophies 合計（battlelog 増減の本線） */
+function sumLegend1TodayEventDiffs(mongoAcc, seasonData) {
+  if (!seasonData) return 0;
+  const events = mongoAcc?.legend?.events;
+  if (!Array.isArray(events)) return 0;
+  return events.reduce((sum, e) => {
+    if (String(e?.season) !== String(seasonData.seasonId)) return sum;
+    if (Number(e?.day) !== Number(seasonData.daysNow)) return sum;
+    return sum + (Number(e?.diffTrophies) || 0);
+  }, 0);
+}
+
 /**
  * 各 battle 終了時点の trophiesCurrent を算出する。
  *
  * 方針: battlelog の増減を本線。保存済み最終トロフィーから積算する。
- * Legend I は保存値がある限り積算だけ（API は当日分が遅れる）。
+ * Legend I は 14:00 基準 + 当日 diff のみ（日中の live API は使わない）。
  * それ以外は、API player.trophies が反映済み、またはプロファイルだけ不整合のときに再同期する。
  *
  * @param {{ forceApiAnchor?: boolean }} [opts]
@@ -1484,10 +1515,8 @@ function computeTrophiesCurrentByBattleIndex(
     return backwardFrom(afterT);
   }
 
-  // Legend I: player.trophies は当日の攻撃・防衛より遅れる。
-  // 3 戦三冠で +120 になり、閾値 100 の API 再同期が正しい積算を古い API 値へ巻き戻す。
-  // 保存済み総数がある間は battlelog の増減だけを足す。
-  // シーズンリセットは呼び出し元で先に抜け、リーグ変動は forceApiAnchor が上で処理する。
+  // Legend I: 日中の player.trophies は遅れ・不整合があり得るので使わない。
+  // lastStoredTrophies は呼び出し側で trophiesStart + 当日既存 diff を渡す。
   if (isLegend1 && Number.isFinite(lastT)) {
     return forwardFrom(lastT);
   }
@@ -2141,12 +2170,22 @@ async function processLegendRankedBattleLog(
       beforeTierId === config_coc.leagueId.legend
       && afterTierId !== config_coc.leagueId.legend
     );
-  const lastStoredTrophies = resolveLastStoredTrophies(
+  const isLegend1 =
+    afterPlayerStats?.leagueTier?.id === config_coc.leagueId.legend;
+  // Legend I: 14:00 trophiesStart + 当日既存 diff を基準。無ければ従来の保存総数。
+  let lastStoredTrophies = resolveLastStoredTrophies(
     mongoAccMut,
     afterPlayerStats,
     seasonData,
     { forceApi: forceApiAnchor },
   );
+  if (isLegend1 && !forceApiAnchor) {
+    const dayStart = resolveLegend1DayTrophiesStart(mongoAccMut, seasonDataGrace);
+    if (Number.isFinite(dayStart)) {
+      lastStoredTrophies =
+        dayStart + sumLegend1TodayEventDiffs(mongoAccMut, seasonDataGrace);
+    }
+  }
   const trophiesByIdx = computeTrophiesCurrentByBattleIndex(
     beforePlayerStats,
     afterPlayerStats,
