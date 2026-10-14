@@ -3280,6 +3280,31 @@ async function legendHistory(mongoAcc) {
   );
 
   // ***** トロフィー表示 ***** //
+  // LAST DAY: 当日 14:00 基準 (trophiesStart) = 前日終了の正。無ければ前日 day / previousDay。
+  // CURRENT: 当日の積算総数 (days[0].trophies)。無ければ account.trophies。
+  // 旧実装は LAST DAY に mongoAcc.trophies を出しており、CURRENT と同値になりやすかった。
+  const legendDays = Array.isArray(mongoAcc?.legend?.days)
+    ? mongoAcc.legend.days
+    : [];
+  const day0 = legendDays[0];
+  const day1 = legendDays[1];
+  const lastDayTrophies = (() => {
+    const fromStart = Number(day0?.trophiesStart);
+    if (Number.isFinite(fromStart)) return fromStart;
+    const fromPrevDay = Number(day1?.trophies);
+    if (Number.isFinite(fromPrevDay)) return fromPrevDay;
+    const fromPreviousDay = Number(mongoAcc?.legend?.previousDay?.trophies);
+    if (Number.isFinite(fromPreviousDay)) return fromPreviousDay;
+    return null;
+  })();
+  const currentTrophies = (() => {
+    const fromDay = Number(day0?.trophies);
+    if (Number.isFinite(fromDay)) return fromDay;
+    const fromAccount = Number(mongoAcc?.trophies);
+    if (Number.isFinite(fromAccount)) return fromAccount;
+    return null;
+  })();
+
   ctx.save();
   ctx.fillStyle = config.rgb.snowWhite;
   ctx.textBaseline = 'bottom';
@@ -3290,7 +3315,11 @@ async function legendHistory(mongoAcc) {
 
   setFontJP(ctx, config.canvasFontSize.xSmall, FONTS.SC);
   ctx.textAlign = 'left';
-  drawTextWithShadow(String(mongoAcc.trophies), h82, 200);
+  drawTextWithShadow(
+    lastDayTrophies != null ? String(lastDayTrophies) : '?',
+    h82,
+    200,
+  );
 
   setFontJP(ctx, config.canvasFontSize.xxSmall, FONTS.SC);
   ctx.textAlign = 'right';
@@ -3298,7 +3327,11 @@ async function legendHistory(mongoAcc) {
 
   setFontJP(ctx, config.canvasFontSize.small, FONTS.SC, 'bold');
   ctx.textAlign = 'left';
-  drawTextWithShadow(String(mongoAcc.legend.days[0].trophies), h82, 300);
+  drawTextWithShadow(
+    currentTrophies != null ? String(currentTrophies) : '?',
+    h82,
+    300,
+  );
   ctx.restore();
 
   // ***** 中央下 ***** //
