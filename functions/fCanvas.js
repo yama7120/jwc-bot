@@ -2720,6 +2720,29 @@ function ctxTriples(
   return;
 }
 
+const LEGEND1_DAY_BATTLES = 8;
+
+/**
+ * レジェンド1: 実防衛が 1〜7 のとき不足枠を平均で埋める（ゲーム日次リザルト準拠）。
+ * @returns {{ defenseTrophies: number, fill: number, fillCount: number, avg: number|null }}
+ */
+function legend1DefenseAvgFillFromSum(defenseTrophiesSum, defenseCount) {
+  const sum = Number(defenseTrophiesSum) || 0;
+  const n = Number(defenseCount) || 0;
+  if (n <= 0 || n >= LEGEND1_DAY_BATTLES) {
+    return { defenseTrophies: sum, fill: 0, fillCount: 0, avg: null };
+  }
+  const avg = Math.round(sum / n);
+  const fillCount = LEGEND1_DAY_BATTLES - n;
+  const fill = avg * fillCount;
+  return {
+    defenseTrophies: sum + fill,
+    fill,
+    fillCount,
+    avg,
+  };
+}
+
 /**
  * legend.days から current / previous の日次を取る（14:00 切替直後でも前日を拾う）
  * days は新しい日が先頭想定。
@@ -2859,6 +2882,46 @@ async function legendStatsR1(client, mongoAcc, iDay) {
     );
   }
 
+  // 攻防 events を先に集計（End / 中央合計と整合させる）
+  const dayEvents = (mongoAcc.legend?.events ?? []).filter(
+    (log) =>
+      String(log?.season ?? '') === String(dayStats.season ?? '')
+      && Number(log?.day) === Number(dayStats.day),
+  );
+  const attackLogs = dayEvents.filter((log) => log.action === 'attack');
+  const defenseLogs = dayEvents.filter((log) => log.action === 'defense');
+  const sumDiffTrophies = {
+    attacks: attackLogs.reduce((s, log) => s + (Number(log.diffTrophies) || 0), 0),
+    defenses: defenseLogs.reduce((s, log) => s + (Number(log.diffTrophies) || 0), 0),
+  };
+  // 終了日 (previous) または既に fill 済みの日: 防衛不足を平均で埋める
+  const storedFill = Number(dayStats?.defenseAvgFillTrophies);
+  let defenseFill = {
+    defenseTrophies: sumDiffTrophies.defenses,
+    fill: 0,
+    fillCount: 0,
+    avg: null,
+  };
+  if (Number.isFinite(storedFill) && storedFill !== 0) {
+    defenseFill = {
+      defenseTrophies: sumDiffTrophies.defenses + storedFill,
+      fill: storedFill,
+      fillCount: Math.max(0, LEGEND1_DAY_BATTLES - defenseLogs.length),
+      avg:
+        defenseLogs.length > 0
+          ? Math.round(sumDiffTrophies.defenses / defenseLogs.length)
+          : null,
+    };
+  } else if (iDay === 'previous') {
+    defenseFill = legend1DefenseAvgFillFromSum(
+      sumDiffTrophies.defenses,
+      defenseLogs.length,
+    );
+  }
+  sumDiffTrophies.defenses = defenseFill.defenseTrophies;
+  const totalDiffTrophies =
+    sumDiffTrophies.attacks + sumDiffTrophies.defenses;
+
   text = 'Start';
   setFont(ctx, fontSize.xxSmall);
   ctx.fillText(text, widthCenter, 500);
@@ -2871,17 +2934,21 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   let rankEnd = null;
   if (!dayStats || dayStats.day != 1) {
     if (iDay == 'current') {
-      tophiesStart = mongoAcc.legend.current
-        ? mongoAcc.legend.current.trophies
-        : 'no data';
-      // Start: 日開始スナップショットとして保存している current
+      // Start: 当日 14:00 基準があればそれを優先
+      const dayStart = Number(dayStats?.trophiesStart);
+      tophiesStart = Number.isFinite(dayStart)
+        ? dayStart
+        : (mongoAcc.legend.current
+          ? mongoAcc.legend.current.trophies
+          : 'no data');
       rankStart = Number(mongoAcc.legend?.current?.rank);
     } else if (iDay == 'previous') {
-      tophiesStart =
-        mongoAcc.legend.previousDay == null
+      const dayStart = Number(dayStats?.trophiesStart);
+      tophiesStart = Number.isFinite(dayStart)
+        ? dayStart
+        : (mongoAcc.legend.previousDay == null
           ? '?'
-          : mongoAcc.legend.previousDay.trophies;
-      // Start: previousDay.rank / End: current.rank
+          : mongoAcc.legend.previousDay.trophies);
       rankStart = Number(mongoAcc.legend?.previousDay?.rank);
       rankEnd = Number(mongoAcc.legend?.current?.rank);
     }
@@ -2918,6 +2985,14 @@ async function legendStatsR1(client, mongoAcc, iDay) {
       }
     }
   }
+
+  // End/Current トロフィー: Start + 攻防合計（埋め込み後）で整合。無ければ dayStats。
+  const startNum = Number(tophiesStart);
+  const endTrophiesDisplay = Number.isFinite(startNum)
+    ? startNum + totalDiffTrophies
+    : (Number.isFinite(Number(dayStats?.trophies))
+      ? Number(dayStats.trophies)
+      : mongoAcc.trophies);
 
   // グローバル順位（地図中央に重ねる・白字＋黒光彩、トロフィーと同サイズ）
   const drawRankLabel = (centerY, rankValue, numFontSize) => {
@@ -2997,11 +3072,7 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   setFont(ctx, fontSize.xxSmall);
   ctx.fillText(text, widthCenter, yCurrentLabel);
 
-  if (dayStats) {
-    text = String(dayStats.trophies);
-  } else {
-    text = String(mongoAcc.trophies);
-  }
+  text = String(endTrophiesDisplay);
   setFont(ctx, fontSize.small, FONTS.SC, 'bold');
   ctx.fillText(text, widthCenter, yCurrentTrophies);
 
@@ -3015,21 +3086,14 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   ctx.fillText(text, h72, 280);
 
   // ***** ATTACKS & DEFENSES ***** //
-  const count = { attacks: 0, defenses: 0 };
-  const sumDiffTrophies = { attacks: 0, defenses: 0 };
+  const count = {
+    attacks: attackLogs.length,
+    defenses: defenseLogs.length + defenseFill.fillCount,
+  };
   const ySumTrophies = 1250;
   const yPerfect = 1350;
   if (dayStats) {
-    const dayEvents = (mongoAcc.legend?.events ?? []).filter(
-      (log) =>
-        log.season === (dayStats.season || '') && log.day === dayStats.day,
-    );
-
     setFont(ctx, fontSize.xSmall, FONTS.SC);
-
-    // 攻撃と防衛を分離して処理
-    const attackLogs = dayEvents.filter((log) => log.action === 'attack');
-    const defenseLogs = dayEvents.filter((log) => log.action === 'defense');
 
     // 攻撃ログを処理
     await Promise.all(
@@ -3042,7 +3106,6 @@ async function legendStatsR1(client, mongoAcc, iDay) {
           posAttacksV,
         );
         ctx.fillText(`+${log.diffTrophies}`, h51, posAttacksV);
-        sumDiffTrophies.attacks += log.diffTrophies;
       }),
     );
 
@@ -3057,13 +3120,17 @@ async function legendStatsR1(client, mongoAcc, iDay) {
           posDefensesV,
         );
         ctx.fillText(String(log.diffTrophies), h52, posDefensesV);
-        sumDiffTrophies.defenses += log.diffTrophies;
       }),
     );
 
-    // 攻撃と防衛の数を更新
-    count.attacks = attackLogs.length;
-    count.defenses = defenseLogs.length;
+    // 不足防衛枠を平均値で表示（ゲームと同じ）
+    if (defenseFill.fillCount > 0 && defenseFill.avg != null) {
+      for (let i = 0; i < defenseFill.fillCount; i++) {
+        const posDefensesV = 400 + (defenseLogs.length + i) * 100;
+        await drawImageStars(ctx, -1, h92, posDefensesV);
+        ctx.fillText(String(defenseFill.avg), h52, posDefensesV);
+      }
+    }
 
     // 合計値を表示
     setFont(ctx, fontSize.small, FONTS.SC, 'bold');
@@ -3081,7 +3148,6 @@ async function legendStatsR1(client, mongoAcc, iDay) {
 
   // ***** TOTAL ***** //
   setFont(ctx, fontSize.medium, FONTS.SC, 'bold');
-  let totalDiffTrophies = sumDiffTrophies.attacks + sumDiffTrophies.defenses;
   text =
     totalDiffTrophies < 0 ? String(totalDiffTrophies) : '+' + totalDiffTrophies;
   ctx.fillText(text, widthCenter, ySumTrophies);
@@ -3141,7 +3207,21 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   // パーフェクトフラグを返す
   const isPerfect = sumDiffTrophies.attacks === 320;
 
-  return { attachment, isPerfect, dayStats };
+  // embed / 集計用: 画像と同じ埋め込み後の数値を返す
+  const dayStatsForReturn = {
+    ...dayStats,
+    attackTrophies: sumDiffTrophies.attacks,
+    defenseTrophies: sumDiffTrophies.defenses,
+    attacks: count.attacks,
+    defenses: count.defenses,
+    diffTrophies: totalDiffTrophies,
+    trophies: endTrophiesDisplay,
+    ...(defenseFill.fill
+      ? { defenseAvgFillTrophies: defenseFill.fill }
+      : {}),
+  };
+
+  return { attachment, isPerfect, dayStats: dayStatsForReturn };
 
   /*
   const imgWorld = await Canvas.loadImage('./image/dot-world-map.png');
