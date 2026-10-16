@@ -1010,16 +1010,31 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
       const prevJapan = parsePositiveRank(existingDayData?.japanRank);
       updatedDayData.globalRank = prevGlobal;
       updatedDayData.japanRank = prevJapan;
+      // 14:00 終了時の防衛平均埋めを再集計で消さない
+      const prevDefenseAvgFill = Number(existingDayData?.defenseAvgFillTrophies);
+      const defenseAvgFill = Number.isFinite(prevDefenseAvgFill)
+        ? prevDefenseAvgFill
+        : 0;
+      if (Number.isFinite(prevDefenseAvgFill)) {
+        updatedDayData.defenseAvgFillTrophies = prevDefenseAvgFill;
+        updatedDayData.defenseTrophies =
+          (Number(updatedDayData.defenseTrophies) || 0) + prevDefenseAvgFill;
+        updatedDayData.defenses = 8;
+        updatedDayData.diffTrophies =
+          (Number(updatedDayData.attackTrophies) || 0)
+          + (Number(updatedDayData.defenseTrophies) || 0);
+      }
       // 14:00 基準の trophiesStart は再集計で消さない
       if (Number.isFinite(prevTrophiesStart)) {
         updatedDayData.trophiesStart = prevTrophiesStart;
-        // day.trophies は event 絶対値ではなく基準 + 当日 diff
+        // day.trophies は event 絶対値ではなく基準 + 当日 diff（+ 防衛平均埋め）
         updatedDayData.trophies =
           prevTrophiesStart
           + allTargetDayEvents.reduce(
             (sum, e) => sum + (Number(e?.diffTrophies) || 0),
             0,
-          );
+          )
+          + defenseAvgFill;
       }
       // day は数値で統一（型混在で翌日の $elemMatch / 重複 day を防ぐ）
       updatedDayData.day = Number(targetDay);

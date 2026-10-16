@@ -264,7 +264,12 @@ async function cronUpdate2pmLegend1(client) {
       console.error(`[${job}] step failed: autoUpdateAcc:`, e?.message ?? e);
     }
 
-    // 2) ユーザー向け result を最優先（rankingMain の Mongo sort 失敗で止まらないように前に置く）
+    // 2) 終了日の防衛不足分を平均値で埋めてから result / 順位保存
+    await runCronStep(job, 'applyLegend1EndedDayDefenseAvgFill', () =>
+      applyLegend1EndedDayDefenseAvgFill(client, seasonData),
+    );
+
+    // 3) ユーザー向け result を最優先（rankingMain の Mongo sort 失敗で止まらないように前に置く）
     await runCronStep(job, 'legends200', () => fMongo.legends200(client));
     await runCronStep(job, 'saveAllLegend1DayRanks', () =>
       saveAllLegend1DayRanks(client, seasonData),
@@ -273,12 +278,12 @@ async function cronUpdate2pmLegend1(client) {
       sendLegendResult(client, seasonData),
     );
 
-    // 3) ランキング集計（失敗しても result は既に送済）
+    // 4) ランキング集計（失敗しても result は既に送済）
     await runCronStep(job, 'rankingMain', () =>
       fRanking.rankingMain(client.clientMongo),
     );
 
-    // 4) 掲示板・新日エントリ
+    // 5) 掲示板・新日エントリ
     await runCronStep(job, 'sendLogUpdated', () =>
       sendLogUpdated(client, nAccs, seasonData),
     );
@@ -988,6 +993,120 @@ function buildLegendDayRankInfo(mongoAcc, japanRankMap) {
 function parsePositiveRankNumber(value) {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+const LEGEND1_DAY_BATTLES = 8;
+
+/**
+ * 終了した Legend I 日について、実防衛が 1〜7 回なら不足枠をその日の防衛平均で埋める。
+ * （ゲーム内リザルトと同じ。仮想 defense event は作らない）
+ */
+async function applyLegend1EndedDayDefenseAvgFill(client, seasonData) {
+  const query = {
+    status: true,
+    'leagueTier.id': config_coc.leagueId.legend,
+    'legend.days.0': { $exists: true },
+  };
+  const options = {
+    projection: {
+      _id: 0,
+      tag: 1,
+      name: 1,
+      legend: 1,
+      leagueTier: 1,
+    },
+  };
+
+  const cursor = client.clientMongo.db('jwc').collection('accounts').find(query, options);
+  const mongoAccs = await cursor.toArray();
+  await cursor.close();
+
+  console.log(`applyLegend1EndedDayDefenseAvgFill: ${mongoAccs.length} accounts`);
+  let applied = 0;
+  let skipped = 0;
+
+  for (const mongoAcc of mongoAccs) {
+    const ended = resolveEndedDayStatsForRankSave(mongoAcc, seasonData);
+    if (!ended) {
+      skipped += 1;
+      continue;
+    }
+    if (Number.isFinite(Number(ended.defenseAvgFillTrophies))) {
+      skipped += 1;
+      continue;
+    }
+
+    const defenses = Number(ended.defenses ?? 0);
+    const defenseTrophies = Number(ended.defenseTrophies ?? 0);
+    if (
+      !Number.isFinite(defenses)
+      || !Number.isFinite(defenseTrophies)
+      || defenses <= 0
+      || defenses >= LEGEND1_DAY_BATTLES
+    ) {
+      skipped += 1;
+      continue;
+    }
+
+    const avg = Math.round(defenseTrophies / defenses);
+    const fill = avg * (LEGEND1_DAY_BATTLES - defenses);
+    const nextDefenseTrophies = defenseTrophies + fill;
+    const attackTrophies = Number(ended.attackTrophies);
+    const nextDiffTrophies = Number.isFinite(attackTrophies)
+      ? attackTrophies + nextDefenseTrophies
+      : (Number(ended.diffTrophies) || 0) + fill;
+    const prevTrophies = Number(ended.trophies);
+    const nextTrophies = Number.isFinite(prevTrophies)
+      ? prevTrophies + fill
+      : prevTrophies;
+
+    const seasonId = ended.season;
+    const day = ended.day;
+    const seasonCandidates = [...new Set(
+      [seasonId, String(seasonId)].filter((s) => s != null && s !== ''),
+    )];
+    const dayCandidates = [...new Set([
+      Number(day),
+      String(day),
+      day,
+    ].filter((v) => v != null && v !== '' && !(typeof v === 'number' && !Number.isFinite(v))))];
+
+    try {
+      const $set = {
+        'legend.days.$.defenseAvgFillTrophies': fill,
+        'legend.days.$.defenseTrophies': nextDefenseTrophies,
+        'legend.days.$.defenses': LEGEND1_DAY_BATTLES,
+        'legend.days.$.diffTrophies': nextDiffTrophies,
+      };
+      if (Number.isFinite(nextTrophies)) {
+        $set['legend.days.$.trophies'] = nextTrophies;
+      }
+
+      await client.clientMongo.db('jwc').collection('accounts').updateOne(
+        {
+          tag: mongoAcc.tag,
+          'legend.days': {
+            $elemMatch: {
+              season: { $in: seasonCandidates },
+              day: { $in: dayCandidates },
+            },
+          },
+        },
+        { $set },
+      );
+      applied += 1;
+    } catch (e) {
+      skipped += 1;
+      console.error(
+        `[applyLegend1EndedDayDefenseAvgFill] failed ${mongoAcc.tag}:`,
+        e?.message ?? e,
+      );
+    }
+  }
+
+  console.log(
+    `applyLegend1EndedDayDefenseAvgFill done: applied=${applied} skipped=${skipped}`,
+  );
 }
 
 /**
