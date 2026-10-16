@@ -837,6 +837,26 @@ function legendEventFingerprint(action, opponentPlayerTag, stars, destructionPer
   return `${action}|${opp}|${st}|${dest}`;
 }
 
+/**
+ * Legend I: 1日分の events の trophies を trophiesStart + diff 時系列積算で書き直す。
+ * （絶対値はキャッシュ。正本は trophiesStart と diffTrophies）
+ */
+function recomputeLegend1DayEventTrophies(dayEvents, trophiesStart) {
+  const start = Number(trophiesStart);
+  if (!Number.isFinite(start) || !Array.isArray(dayEvents)) {
+    return Array.isArray(dayEvents) ? dayEvents : [];
+  }
+  const sorted = [...dayEvents].sort(
+    (a, b) => (Number(a?.unixTime) || 0) - (Number(b?.unixTime) || 0),
+  );
+  let running = start;
+  for (const e of sorted) {
+    running += Number(e?.diffTrophies) || 0;
+    e.trophies = running;
+  }
+  return sorted;
+}
+
 async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
   // 単一イベントの場合は配列に変換
   const events = Array.isArray(eventData) ? eventData : [eventData];
@@ -938,24 +958,16 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
 
   let updatedDayData = null;
   let mergedLegendDays = { $ifNull: ['$legend.days', []] };
+  // trophiesStart がある日は当日 events を全件再計算して $set する（concat だと既存のずれが残る）
+  let recomputedEventsForSet = null;
   if (isLegend1) {
     // 2. 既存のeventsから該当するdayのイベントを取得
-    const existingEvents = Array.isArray(mongoAcc.legend.events)
-      ? mongoAcc.legend.events
-      : [];
     const targetDayEvents = existingEvents.filter(
       (event) =>
-        event?.season === targetSeason
+        String(event?.season) === String(targetSeason)
         && Number(event?.day) === Number(targetDay),
     );
 
-    // 3. 該当するdayのイベントを再計算（既存 + 新規）
-    const allTargetDayEvents = [...targetDayEvents, ...newEvents];
-    updatedDayData = aggregateDaysFromEvents(allTargetDayEvents).find(
-      (d) =>
-        d?.season === targetSeason
-        && Number(d?.day) === Number(targetDay),
-    );
     // legend.days に null が混入していることがある（Mongo 更新側は $filter で除去済み）
     const existingDayData = Array.isArray(mongoAcc?.legend?.days)
       ? mongoAcc.legend.days.find(
@@ -964,6 +976,34 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
           && Number(d?.day) === Number(targetDay),
       )
       : null;
+    const prevTrophiesStart = Number(existingDayData?.trophiesStart);
+
+    // 3. 該当するdayのイベントを再計算（既存 + 新規）
+    let allTargetDayEvents = [...targetDayEvents, ...newEvents];
+    if (Number.isFinite(prevTrophiesStart)) {
+      allTargetDayEvents = recomputeLegend1DayEventTrophies(
+        allTargetDayEvents,
+        prevTrophiesStart,
+      );
+      const otherEvents = existingEvents.filter(
+        (event) =>
+          !(
+            String(event?.season) === String(targetSeason)
+            && Number(event?.day) === Number(targetDay)
+          ),
+      );
+      recomputedEventsForSet = [...otherEvents, ...allTargetDayEvents]
+        .sort(
+          (a, b) => (Number(b?.unixTime) || 0) - (Number(a?.unixTime) || 0),
+        )
+        .slice(0, 80);
+    }
+
+    updatedDayData = aggregateDaysFromEvents(allTargetDayEvents).find(
+      (d) =>
+        d?.season === targetSeason
+        && Number(d?.day) === Number(targetDay),
+    );
     if (updatedDayData) {
       // 既に付与した順位を消さない（day 再集計で null に落とさない）
       const prevGlobal = parsePositiveRank(existingDayData?.globalRank);
@@ -971,9 +1011,15 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
       updatedDayData.globalRank = prevGlobal;
       updatedDayData.japanRank = prevJapan;
       // 14:00 基準の trophiesStart は再集計で消さない
-      const prevTrophiesStart = Number(existingDayData?.trophiesStart);
       if (Number.isFinite(prevTrophiesStart)) {
         updatedDayData.trophiesStart = prevTrophiesStart;
+        // day.trophies は event 絶対値ではなく基準 + 当日 diff
+        updatedDayData.trophies =
+          prevTrophiesStart
+          + allTargetDayEvents.reduce(
+            (sum, e) => sum + (Number(e?.diffTrophies) || 0),
+            0,
+          );
       }
       // day は数値で統一（型混在で翌日の $elemMatch / 重複 day を防ぐ）
       updatedDayData.day = Number(targetDay);
@@ -1022,36 +1068,48 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
   }
 
   // 4. 1回のデータベースアクセスでeventsとdaysを同時に更新
+  const eventsPipelineStages = recomputedEventsForSet
+    ? [
+      {
+        $set: {
+          'legend.events': recomputedEventsForSet,
+        },
+      },
+    ]
+    : [
+      {
+        $set: {
+          'legend.events': {
+            $concatArrays: [{ $ifNull: ['$legend.events', []] }, newEvents],
+          },
+        },
+      },
+      {
+        $set: {
+          'legend.events': {
+            $sortArray: {
+              input: '$legend.events',
+              sortBy: { unixTime: -1 },
+            },
+          },
+        },
+      },
+      {
+        $set: {
+          'legend.events': {
+            $slice: ['$legend.events', 80], // 最新80件のみ保持（先頭から）
+          },
+        },
+      },
+    ];
+
   const result = await client.clientMongo
     .db('jwc')
     .collection('accounts')
     .findOneAndUpdate(
       { tag: mongoAcc.tag },
       [
-        {
-          $set: {
-            'legend.events': {
-              $concatArrays: [{ $ifNull: ['$legend.events', []] }, newEvents],
-            },
-          },
-        },
-        {
-          $set: {
-            'legend.events': {
-              $sortArray: {
-                input: '$legend.events',
-                sortBy: { unixTime: -1 },
-              },
-            },
-          },
-        },
-        {
-          $set: {
-            'legend.events': {
-              $slice: ['$legend.events', 80], // 最新80件のみ保持（先頭から）
-            },
-          },
-        },
+        ...eventsPipelineStages,
         ...(isLegend1 ? [
           {
             $set: {
