@@ -2932,15 +2932,16 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   // - previous: legend.current.rank（保存済み）
   // - current: コマンド実行時 API
   let rankEnd = null;
+  let liveApiTrophies = null;
   if (!dayStats || dayStats.day != 1) {
     if (iDay == 'current') {
-      // Start: 当日 14:00 基準があればそれを優先
+      // Start: 14:00 autoUpdateAcc の legend.current（API）を正とする。
+      // trophiesStart は events 汚染でずれることがあるので後追い。
+      const fromLegendCurrent = Number(mongoAcc.legend?.current?.trophies);
       const dayStart = Number(dayStats?.trophiesStart);
-      tophiesStart = Number.isFinite(dayStart)
-        ? dayStart
-        : (mongoAcc.legend.current
-          ? mongoAcc.legend.current.trophies
-          : 'no data');
+      tophiesStart = Number.isFinite(fromLegendCurrent)
+        ? fromLegendCurrent
+        : (Number.isFinite(dayStart) ? dayStart : 'no data');
       rankStart = Number(mongoAcc.legend?.current?.rank);
     } else if (iDay == 'previous') {
       const dayStart = Number(dayStats?.trophiesStart);
@@ -2965,12 +2966,16 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   setFont(ctx, fontSize.xSmall, FONTS.SC);
   ctx.fillText(text, widthCenter, 580);
 
-  // 当日 (current) のみ、Current 欄は API のライブ順位
+  // 当日 (current): Current トロフィーと順位は live API を正とする
   if (iDay == 'current') {
     const playerTag = mongoAcc?.tag;
     if (playerTag && client?.clientCoc?.getPlayer) {
       try {
         const scPlayer = await client.clientCoc.getPlayer(playerTag);
+        const apiTrophies = Number(scPlayer?.trophies);
+        if (Number.isFinite(apiTrophies)) {
+          liveApiTrophies = apiTrophies;
+        }
         const apiRank = Number(
           scPlayer?.legendStatistics?.currentSeason?.rank,
         );
@@ -2979,20 +2984,39 @@ async function legendStatsR1(client, mongoAcc, iDay) {
         }
       } catch (apiRankErr) {
         console.warn(
-          `[legendStatsR1] live rank fetch failed ${playerTag}:`,
+          `[legendStatsR1] live player fetch failed ${playerTag}:`,
           apiRankErr?.message ?? apiRankErr,
         );
       }
     }
   }
 
-  // End/Current トロフィー: Start + 攻防合計（埋め込み後）で整合。無ければ dayStats。
+  // End/Current:
+  // - current: live API トロフィー（info の RANKED BATTLES と同じ）
+  // - previous: Start + 攻防合計（防衛平均埋め後）で画像内整合
   const startNum = Number(tophiesStart);
-  const endTrophiesDisplay = Number.isFinite(startNum)
-    ? startNum + totalDiffTrophies
-    : (Number.isFinite(Number(dayStats?.trophies))
-      ? Number(dayStats.trophies)
-      : mongoAcc.trophies);
+  let endTrophiesDisplay;
+  let centerDiffDisplay;
+  if (iDay === 'current') {
+    endTrophiesDisplay = Number.isFinite(liveApiTrophies)
+      ? liveApiTrophies
+      : (Number.isFinite(Number(mongoAcc?.trophies))
+        ? Number(mongoAcc.trophies)
+        : (Number.isFinite(startNum)
+          ? startNum + totalDiffTrophies
+          : Number(dayStats?.trophies)));
+    centerDiffDisplay =
+      Number.isFinite(startNum) && Number.isFinite(Number(endTrophiesDisplay))
+        ? Number(endTrophiesDisplay) - startNum
+        : totalDiffTrophies;
+  } else {
+    endTrophiesDisplay = Number.isFinite(startNum)
+      ? startNum + totalDiffTrophies
+      : (Number.isFinite(Number(dayStats?.trophies))
+        ? Number(dayStats.trophies)
+        : mongoAcc.trophies);
+    centerDiffDisplay = totalDiffTrophies;
+  }
 
   // グローバル順位（地図中央に重ねる・白字＋黒光彩、トロフィーと同サイズ）
   const drawRankLabel = (centerY, rankValue, numFontSize) => {
@@ -3147,9 +3171,12 @@ async function legendStatsR1(client, mongoAcc, iDay) {
   }
 
   // ***** TOTAL ***** //
+  // current: Current(API) - Start。previous: 攻防合計（埋め後）
   setFont(ctx, fontSize.medium, FONTS.SC, 'bold');
   text =
-    totalDiffTrophies < 0 ? String(totalDiffTrophies) : '+' + totalDiffTrophies;
+    centerDiffDisplay < 0
+      ? String(centerDiffDisplay)
+      : `+${centerDiffDisplay}`;
   ctx.fillText(text, widthCenter, ySumTrophies);
 
   // ***** 中央下 ***** //
@@ -3214,7 +3241,7 @@ async function legendStatsR1(client, mongoAcc, iDay) {
     defenseTrophies: sumDiffTrophies.defenses,
     attacks: count.attacks,
     defenses: count.defenses,
-    diffTrophies: totalDiffTrophies,
+    diffTrophies: centerDiffDisplay,
     trophies: endTrophiesDisplay,
     ...(defenseFill.fill
       ? { defenseAvgFillTrophies: defenseFill.fill }
