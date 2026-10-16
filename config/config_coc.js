@@ -839,16 +839,16 @@ export default {
         id: 8, name: 'Diggy',
         maxLevel: {
           th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 0,
-          th11: 0, th12: 0, th13: 0, th14: 0, th15: 10, 
-          th16: 10, th17: 10, th18: 10,
+          th11: 0, th12: 0, th13: 0, th14: 0, th15: 10,
+          th16: 10, th17: 10, th18: 15,
         },
       },
       {
         id: 7, name: 'Poison Lizard',
         maxLevel: {
           th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 0,
-          th11: 0, th12: 0, th13: 0, th14: 0, th15: 10, 
-          th16: 10, th17: 10, th18: 15,
+          th11: 0, th12: 0, th13: 0, th14: 0, th15: 10,
+          th16: 10, th17: 15, th18: 15,
         },
       },
       {
@@ -879,8 +879,16 @@ export default {
         id: 993, name: 'Sneezy',
         maxLevel: {
           th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 0,
-          th11: 0, th12: 0, th13: 0, th14: 0, th15: 0, 
-          th16: 10, th17: 10, th18: 10,
+          th11: 0, th12: 0, th13: 0, th14: 0, th15: 0,
+          th16: 0, th17: 10, th18: 10,
+        },
+      },
+      {
+        id: 994, name: 'Greedy Raven',
+        maxLevel: {
+          th3: 0, th4: 0, th5: 0, th6: 0, th7: 0, th8: 0, th9: 0, th10: 0,
+          th11: 0, th12: 0, th13: 0, th14: 0, th15: 0,
+          th16: 0, th17: 0, th18: 10,
         },
       },
     ],
@@ -1131,6 +1139,10 @@ export default {
         id: 956, name: 'Meteor Staff', hero: 'Minion Prince', type: 'epic',
         emote: '<:eqMeteorStaff:1426039889039724594>'
       },
+      {
+        id: 957, name: 'Portal Pendant', hero: 'Minion Prince', type: 'epic',
+        emote: '<:eqPortalPendant:1560648328453296230>'
+      },
       // Dragon Duke
       {
         id: 961, name: 'Fire Heart', hero: 'Dragon Duke', type: 'common',
@@ -1162,8 +1174,26 @@ export default {
     1. config_coc.heroEquipments に追加
     */
       maxLevel: {
+      // API hallMaxLevel が遅れがちなので、ヒーロー上限はここを正とする
       heroes: {
-        minionPrince: { th18: 95, th17: 90, th16: 80, th15: 70, th14: 60, th13: 50, th12: 40, th11: 30, th10: 20, th9: 10 },
+        barbarianKing: {
+          th18: 110, th17: 100, th16: 95, th15: 90, th14: 85, th13: 75, th12: 65,
+          th11: 50, th10: 40, th9: 30, th8: 20, th7: 10, th6: 1, th5: 1, th4: 1,
+        },
+        archerQueen: {
+          th18: 110, th17: 100, th16: 95, th15: 90, th14: 85, th13: 75, th12: 65,
+          th11: 50, th10: 40, th9: 30, th8: 10,
+        },
+        grandWarden: {
+          th18: 85, th17: 75, th16: 70, th15: 65, th14: 60, th13: 50, th12: 40, th11: 20,
+        },
+        royalChampion: {
+          th18: 55, th17: 50, th16: 45, th15: 40, th14: 30, th13: 25,
+        },
+        minionPrince: {
+          th18: 95, th17: 90, th16: 80, th15: 70, th14: 60, th13: 50, th12: 40,
+          th11: 30, th10: 20, th9: 10,
+        },
         dragonDuke: { th18: 25, th17: 20, th16: 15, th15: 10 },
       },
       heroEquipments: {

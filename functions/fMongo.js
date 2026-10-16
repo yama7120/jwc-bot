@@ -380,24 +380,27 @@ async function updateAcc(client, tagAccount) {
     DD: 0,
   };
   const homeHeroNames = new Set(config_coc.heroes.map((hero) => hero.name));
+  const heroMaxLevelKeyByName = {
+    'Barbarian King': 'barbarianKing',
+    'Archer Queen': 'archerQueen',
+    'Grand Warden': 'grandWarden',
+    'Royal Champion': 'royalChampion',
+    'Minion Prince': 'minionPrince',
+    'Dragon Duke': 'dragonDuke',
+  };
   if (scPlayer.heroes != null) {
     scPlayer.heroes.map((hero) => {
       const isHomeHero = hero.village == 'home' || homeHeroNames.has(hero.name);
       if (isHomeHero) {
         lvHeroes.level += hero.level;
-        if (hero.name == 'Minion Prince') {
-          lvHeroes.maxLevel +=
-            config_coc.maxLevel.heroes.minionPrince[
-              `th${scPlayer.townHallLevel}`
-            ] ?? 0;
-        } else if (hero.name == 'Dragon Duke') {
-          lvHeroes.maxLevel +=
-            config_coc.maxLevel.heroes.dragonDuke[
-              `th${scPlayer.townHallLevel}`
-            ] ?? hero.hallMaxLevel ?? 0;
-        } else {
-          lvHeroes.maxLevel += hero.hallMaxLevel ?? 0;
-        }
+        const maxKey = heroMaxLevelKeyByName[hero.name];
+        const fromConfig = maxKey
+          ? config_coc.maxLevel.heroes?.[maxKey]?.[`th${scPlayer.townHallLevel}`]
+          : null;
+        // API hallMaxLevel は遅れやすいので config を優先
+        lvHeroes.maxLevel += Number.isFinite(Number(fromConfig))
+          ? Number(fromConfig)
+          : (hero.hallMaxLevel ?? 0);
       }
       if (hero.name == 'Barbarian King') {
         lvHeroes.BK = hero.level;

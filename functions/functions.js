@@ -575,19 +575,21 @@ async function getAccInfoDescriptionHeroes(scPlayer, showAllEquipment, format) {
         return;
       }
       description += foundHero.emote;
-      let hallMaxLevel = hero.hallMaxLevel ?? hero.maxLevel;
-      if (hero.name == 'Minion Prince') {
-        hallMaxLevel =
-          config_coc.maxLevel.heroes.minionPrince[
-            `th${scPlayer.townHallLevel}`
-          ];
-      }
-      if (hero.name == 'Dragon Duke') {
-        hallMaxLevel =
-          config_coc.maxLevel.heroes.dragonDuke[
-            `th${scPlayer.townHallLevel}`
-          ] ?? hallMaxLevel;
-      }
+      const heroMaxLevelKeyByName = {
+        'Barbarian King': 'barbarianKing',
+        'Archer Queen': 'archerQueen',
+        'Grand Warden': 'grandWarden',
+        'Royal Champion': 'royalChampion',
+        'Minion Prince': 'minionPrince',
+        'Dragon Duke': 'dragonDuke',
+      };
+      const maxKey = heroMaxLevelKeyByName[hero.name];
+      const fromConfig = maxKey
+        ? config_coc.maxLevel.heroes?.[maxKey]?.[`th${scPlayer.townHallLevel}`]
+        : null;
+      let hallMaxLevel = Number.isFinite(Number(fromConfig))
+        ? Number(fromConfig)
+        : (hero.hallMaxLevel ?? hero.maxLevel);
       if (hero.level == hallMaxLevel) {
         description += ` **${hero.level}/${hallMaxLevel}**`;
       } else {
