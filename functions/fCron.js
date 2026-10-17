@@ -337,9 +337,12 @@ async function addNewDayToLegendAccounts(client, seasonData) {
       try {
         const daysArr = Array.isArray(account?.legend?.days) ? account.legend.days : [];
 
-        // Legend I: 14:00 autoUpdateAcc 直後の API トロフィーを日次基準の正とする。
-        // 前日 day.trophies（積算）を引き継ぐと、日中のずれが翌日に汚染される。
-        const startingTrophies = Number(account?.trophies) || 0;
+        // Legend I: 14:00 autoUpdateAcc 直後の legend.current（画像 Start と同じ）を正とする。
+        // account.trophies は速報の誤積算で汚染されうるので使わない。
+        const fromLegendCurrent = Number(account?.legend?.current?.trophies);
+        const startingTrophies = Number.isFinite(fromLegendCurrent)
+          ? fromLegendCurrent
+          : (Number(account?.trophies) || 0);
 
         // 既に当日エントリがある場合は重複 push しない。
         // ランク戦経由で先に作られた day には trophiesStart が無いことがあるので後付けする。

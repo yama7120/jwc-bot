@@ -857,7 +857,7 @@ function recomputeLegend1DayEventTrophies(dayEvents, trophiesStart) {
   return sorted;
 }
 
-async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
+async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData, opts = {}) {
   // 単一イベントの場合は配列に変換
   const events = Array.isArray(eventData) ? eventData : [eventData];
 
@@ -976,7 +976,12 @@ async function writeLogLegendR2(client, mongoAcc, legendEventType, eventData) {
           && Number(d?.day) === Number(targetDay),
       )
       : null;
-    const prevTrophiesStart = Number(existingDayData?.trophiesStart);
+    const storedTrophiesStart = Number(existingDayData?.trophiesStart);
+    // 呼び出し側で画像と同じ基準を渡していればそれを使い、trophiesStart を自己修復する
+    const baselineOpt = Number(opts?.legend1DayBaseline);
+    const prevTrophiesStart = Number.isFinite(baselineOpt)
+      ? baselineOpt
+      : storedTrophiesStart;
 
     // 3. 該当するdayのイベントを再計算（既存 + 新規）
     let allTargetDayEvents = [...targetDayEvents, ...newEvents];
@@ -1508,18 +1513,42 @@ function resolveLastStoredTrophies(mongoAcc, afterPlayerStats, seasonData = null
   return null;
 }
 
-/** 当日 legend.days の 14:00 基準 trophiesStart（無ければ null） */
-function resolveLegend1DayTrophiesStart(mongoAcc, seasonData) {
+/**
+ * Legend I 指定日の 14:00 基準トロフィー。
+ * 画像 Start と同じ legend.current と days.trophiesStart の両方があるときは、
+ * 「基準 + 当日既存 diff」が live API に近い方を選ぶ（汚染 trophiesStart / 14:00 切替の誤用を防ぐ）。
+ */
+function resolveLegend1DayTrophiesStart(mongoAcc, seasonData, apiTrophies = null) {
   if (!seasonData) return null;
+  const seasonId = seasonData.seasonId;
+  const day = seasonData.daysNow;
+  const fromCurrent = Number(mongoAcc?.legend?.current?.trophies);
   const days = mongoAcc?.legend?.days;
-  if (!Array.isArray(days)) return null;
-  const hit = days.find(
-    (d) =>
-      String(d?.season) === String(seasonData.seasonId)
-      && Number(d?.day) === Number(seasonData.daysNow),
-  );
-  const start = Number(hit?.trophiesStart);
-  return Number.isFinite(start) ? start : null;
+  const hit = Array.isArray(days)
+    ? days.find(
+      (d) =>
+        String(d?.season) === String(seasonId)
+        && Number(d?.day) === Number(day),
+    )
+    : null;
+  const fromStored = Number(hit?.trophiesStart);
+  const diffs = sumLegend1TodayEventDiffs(mongoAcc, seasonData);
+  const api = Number(apiTrophies);
+
+  if (
+    Number.isFinite(fromCurrent)
+    && Number.isFinite(fromStored)
+    && Number.isFinite(api)
+  ) {
+    const errCurrent = Math.abs(fromCurrent + diffs - api);
+    const errStored = Math.abs(fromStored + diffs - api);
+    // 同点は画像 Start と同じ legend.current を優先
+    return errCurrent <= errStored ? fromCurrent : fromStored;
+  }
+  // API 無しで両方あるときは trophiesStart（14:00 切替直後の誤用を避ける）
+  if (Number.isFinite(fromStored)) return fromStored;
+  if (Number.isFinite(fromCurrent)) return fromCurrent;
+  return null;
 }
 
 /** 当日 events の diffTrophies 合計（battlelog 増減の本線） */
@@ -1589,7 +1618,7 @@ function computeTrophiesCurrentByBattleIndex(
   }
 
   // Legend I: 日中の player.trophies は遅れ・不整合があり得るので使わない。
-  // lastStoredTrophies は呼び出し側で trophiesStart + 当日既存 diff を渡す。
+  // lastStoredTrophies は呼び出し側で legend.current（または trophiesStart）+ 当日既存 diff。
   if (isLegend1 && Number.isFinite(lastT)) {
     return forwardFrom(lastT);
   }
@@ -2245,18 +2274,23 @@ async function processLegendRankedBattleLog(
     );
   const isLegend1 =
     afterPlayerStats?.leagueTier?.id === config_coc.leagueId.legend;
-  // Legend I: 14:00 trophiesStart + 当日既存 diff を基準。無ければ従来の保存総数。
+  // Legend I: 14:00 基準（API に近い方の legend.current / trophiesStart）+ 当日既存 diff。
   let lastStoredTrophies = resolveLastStoredTrophies(
     mongoAccMut,
     afterPlayerStats,
     seasonData,
     { forceApi: forceApiAnchor },
   );
+  let legend1DayBaseline = null;
   if (isLegend1 && !forceApiAnchor) {
-    const dayStart = resolveLegend1DayTrophiesStart(mongoAccMut, seasonDataGrace);
-    if (Number.isFinite(dayStart)) {
+    legend1DayBaseline = resolveLegend1DayTrophiesStart(
+      mongoAccMut,
+      seasonDataGrace,
+      afterPlayerStats?.trophies,
+    );
+    if (Number.isFinite(legend1DayBaseline)) {
       lastStoredTrophies =
-        dayStart + sumLegend1TodayEventDiffs(mongoAccMut, seasonDataGrace);
+        legend1DayBaseline + sumLegend1TodayEventDiffs(mongoAccMut, seasonDataGrace);
     }
   }
   const trophiesByIdx = computeTrophiesCurrentByBattleIndex(
@@ -2294,11 +2328,21 @@ async function processLegendRankedBattleLog(
     );
     eventData.showTrophiesInTitle = true;
 
+    const baselineForWrite = isLegend1 && !forceApiAnchor
+      ? resolveLegend1DayTrophiesStart(
+        mongoAccMut,
+        seasonDataAtBattle,
+        afterPlayerStats?.trophies,
+      )
+      : legend1DayBaseline;
     lastResult = await writeLogLegendR2(
       client,
       mongoAccMut,
       legendEventType,
       eventData,
+      Number.isFinite(baselineForWrite)
+        ? { legend1DayBaseline: baselineForWrite }
+        : {},
     );
     if (lastResult?.skipped) {
       continue;
